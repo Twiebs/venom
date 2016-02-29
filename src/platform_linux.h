@@ -1,0 +1,37 @@
+#define KEYCODE_ESCAPE 9
+#define KEYCODE_TAB 23
+#define KEYCODE_ENTER 36
+#define KEYCODE_BACKSPACE 22
+#define KEYCODE_SPACE 65
+
+#define KEYCODE_SHIFT 50
+#define KEYCODE_CTRL 37
+#define KEYCODE_ALT 64
+
+#define KEYCODE_LEFT 0x25
+#define KEYCODE_RIGHT 0x27
+#define KEYCODE_UP 0x26
+#define KEYCODE_DOWN 0x28
+
+#define KEYCODE_W 25 
+#define KEYCODE_S 39
+#define KEYCODE_A 38
+#define KEYCODE_D 40 
+#define KEYCODE_Q 24
+
+#define KEYCODE_F1 0x70
+#define KEYCODE_F2 0x71
+#define KEYCODE_F3 0x72
+#define KEYCODE_F4 0x73
+#define KEYCODE_F5 0x74
+#define KEYCODE_F6 0x75
+#define KEYCODE_F7 0x76
+#define KEYCODE_F8 0x77
+#define KEYCODE_F9 0x78
+#define KEYCODE_F10 0x79
+#define KEYCODE_F11 0x7A
+#define KEYCODE_F12 0x7B
+
+#define MOUSE_LEFT 1
+#define MOUSE_MIDDLE 2
+#define MOUSE_RIGHT 3
