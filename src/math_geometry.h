@@ -1,3 +1,4 @@
+#if 0
 struct Rectangle
 {
 	V2 min;
@@ -21,3 +22,4 @@ struct Sphere
 	V3 center;
 	float radius;
 };
+#endif

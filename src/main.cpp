@@ -18,7 +18,11 @@
 */
 
 #include "platform.h"
-#include "venom_module.h"
+
+
+#include "venom_module.cpp"
+#include "venom_physics.cpp"
+#include "venom_render.cpp"
 
 #include "game.h"
 
@@ -37,7 +41,6 @@
 #include "terrain.cpp"
 #include "opengl_glsl.cpp"
 
-
 //TODO(Torin) Possibly change this function to a aquire memory function?
 //That way if we go down the path of allowing mod support all of the avaiable modules
 //could have their aquire_memory functions called and then after all the memory has been
@@ -50,6 +53,9 @@ extern "C" void GameStartup(GameMemory *memory)
 	SystemInfo *sys = &memory->systemInfo;	
 	imgui_init(memory);
 
+	//TODO(Torin) Remove this ImGui Code out into its own procedure
+	// or remove the boilerplate gui / debug code into the venom_module file
+	//and have it manage the way that works!
 	U8* pixels;
 	int width, height;
 	ImGuiIO& io = ImGui::GetIO();

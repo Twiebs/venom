@@ -25,8 +25,6 @@
 	_(grass01, "materials/grass01/diffuse.tga", "", "", MaterialFlag_REPEAT) \
 
 
-
-
 struct AssetDataCache
 {
 	MemoryBlock memory;

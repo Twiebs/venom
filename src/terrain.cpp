@@ -146,6 +146,7 @@ static void GenerateTerrain(TerrainGenerationState *terrainGenState, GameAssets 
 
 #else
 
+
 static float 
 GetTerrainHeightAtWorldPosition(TerrainGenerationState *terrainGenState, float x, float z)
 {
@@ -167,9 +168,23 @@ GetTerrainHeightAtWorldPosition(TerrainGenerationState *terrainGenState, float x
 	U32 gridIndexC = ((gridZ + 1) * (TERRAIN_CELLS_PER_EDGE + 1)) + gridX + 1;
 
 	U8 *heightmap = terrainGenState->heightmap_base + (TERRAIN_VERTEX_COUNT_PER_CHUNK * chunkMemoryIndex);
-	U8 heightA = heightmap[gridIndexA];
-	U8 heightB = heightmap[gridIndexB];
-	U8 heightC = heightmap[gridIndexC];
+	U8 heightA = heightmap[gridIndexA] * TERRAIN_HEIGHT_SCALAR;
+	U8 heightB = heightmap[gridIndexB] * TERRAIN_HEIGHT_SCALAR;
+	U8 heightC = heightmap[gridIndexC] * TERRAIN_HEIGHT_SCALAR;
+
+	V3 p0 = { gridX,   heightA, gridZ };
+	V3 p1 = { gridX,   heightB, gridZ+1 };
+	V3 p2 = { gridX+1, heightC, gridZ+1 };
+
+	Plane plane = ComputePlane(p0, p1, p2);
+	V3 pointOnPlane = ClosestPointOnPlane();
+
+	//(p0 * plane.normal) * 
+	
+										
+										  
+	
+
 
 	float gridOffsetX = (x - worldChunkPosX) - ((float)gridX * (float)TERRAIN_CELL_SIZE);
 	float gridOffsetZ = (z - worldChunkPosZ) - ((float)gridZ * (float)TERRAIN_CELL_SIZE);
