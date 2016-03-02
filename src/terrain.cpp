@@ -146,202 +146,192 @@ static void GenerateTerrain(TerrainGenerationState *terrainGenState, GameAssets 
 
 #else
 
-
 static float 
 GetTerrainHeightAtWorldPosition(TerrainGenerationState *terrainGenState, float x, float z)
 {
-	strict_assert(x >= (terrainGenState->currentOriginX * TERRAIN_CHUNK_SIZE));
-	strict_assert(z >= (terrainGenState->currentOriginZ * TERRAIN_CHUNK_SIZE));
-	strict_assert(x <= (terrainGenState->currentOriginX + TERRAIN_CHUNK_PER_EDGE) * TERRAIN_CHUNK_SIZE);
-	strict_assert(z <= (terrainGenState->currentOriginZ + TERRAIN_CHUNK_PER_EDGE) * TERRAIN_CHUNK_SIZE);
+    strict_assert(x >= (terrainGenState->currentOriginX * TERRAIN_CHUNK_SIZE));
+    strict_assert(z >= (terrainGenState->currentOriginZ * TERRAIN_CHUNK_SIZE));
+    strict_assert(x <= (terrainGenState->currentOriginX + TERRAIN_CHUNK_PER_EDGE) * TERRAIN_CHUNK_SIZE);
+    strict_assert(z <= (terrainGenState->currentOriginZ + TERRAIN_CHUNK_PER_EDGE) * TERRAIN_CHUNK_SIZE);
 
-	U32 chunkIndexX = (U32)((x / (float)TERRAIN_CHUNK_SIZE) - terrainGenState->currentOriginX);
-	U32 chunkIndexZ = (U32)((z / (float)TERRAIN_CHUNK_SIZE) - terrainGenState->currentOriginZ);
-	U32 chunkMemoryIndex = GetTerrainChunkMemoryIndex(terrainGenState, chunkIndexX, chunkIndexZ);
-	float worldChunkPosX = ((float)chunkIndexX + terrainGenState->currentOriginX) * (float)TERRAIN_CHUNK_SIZE;
-	float worldChunkPosZ = ((float)chunkIndexZ + terrainGenState->currentOriginZ) * (float)TERRAIN_CHUNK_SIZE;
+    U32 chunkIndexX = (U32)((x / (float)TERRAIN_CHUNK_SIZE) - terrainGenState->currentOriginX);
+    U32 chunkIndexZ = (U32)((z / (float)TERRAIN_CHUNK_SIZE) - terrainGenState->currentOriginZ);
+    U32 chunkMemoryIndex = GetTerrainChunkMemoryIndex(terrainGenState, chunkIndexX, chunkIndexZ);
+    float worldChunkPosX = ((float)chunkIndexX + terrainGenState->currentOriginX) * (float)TERRAIN_CHUNK_SIZE;
+    float worldChunkPosZ = ((float)chunkIndexZ + terrainGenState->currentOriginZ) * (float)TERRAIN_CHUNK_SIZE;
 
-	U32 gridX = (x - worldChunkPosX) / TERRAIN_CELL_SIZE;
-	U32 gridZ = (z - worldChunkPosZ) / TERRAIN_CELL_SIZE;
-	U32 gridIndexA = (gridZ * (TERRAIN_CELLS_PER_EDGE + 1)) + gridX;
-	U32 gridIndexB = ((gridZ + 1) * (TERRAIN_CELLS_PER_EDGE + 1)) + gridX;
-	U32 gridIndexC = ((gridZ + 1) * (TERRAIN_CELLS_PER_EDGE + 1)) + gridX + 1;
+    float chunkOffsetX = (x - worldChunkPosX);
+    float chunkOffsetZ = (z - worldChunkPosZ);
 
-	U8 *heightmap = terrainGenState->heightmap_base + (TERRAIN_VERTEX_COUNT_PER_CHUNK * chunkMemoryIndex);
-	U8 heightA = heightmap[gridIndexA] * TERRAIN_HEIGHT_SCALAR;
-	U8 heightB = heightmap[gridIndexB] * TERRAIN_HEIGHT_SCALAR;
-	U8 heightC = heightmap[gridIndexC] * TERRAIN_HEIGHT_SCALAR;
+    U32 gridX = (x - worldChunkPosX) / TERRAIN_CELL_SIZE;
+    U32 gridZ = (z - worldChunkPosZ) / TERRAIN_CELL_SIZE;
+    U32 gridIndexA = (gridZ * (TERRAIN_CELLS_PER_EDGE + 1)) + gridX;
+    U32 gridIndexB = ((gridZ + 1) * (TERRAIN_CELLS_PER_EDGE + 1)) + gridX;
+    U32 gridIndexC = ((gridZ + 1) * (TERRAIN_CELLS_PER_EDGE + 1)) + gridX + 1;
 
-	V3 p0 = { gridX,   heightA, gridZ };
-	V3 p1 = { gridX,   heightB, gridZ+1 };
-	V3 p2 = { gridX+1, heightC, gridZ+1 };
+    U8 *heightmap = terrainGenState->heightmap_base + (TERRAIN_VERTEX_COUNT_PER_CHUNK * chunkMemoryIndex);
+    float heightA = ((float)heightmap[gridIndexA] / 255.0f) * TERRAIN_HEIGHT_SCALAR;
+    float heightB = ((float)heightmap[gridIndexB] / 255.0f) * TERRAIN_HEIGHT_SCALAR;
+    float heightC = ((float)heightmap[gridIndexC] / 255.0f) * TERRAIN_HEIGHT_SCALAR;
 
-	Plane plane = ComputePlane(p0, p1, p2);
-	V3 pointOnPlane = ClosestPointOnPlane();
+    V3 p0 = { (float)gridX,   heightA, (float)gridZ };
+    V3 p1 = { (float)gridX,   heightB, (float)gridZ+1 };
+    V3 p2 = { (float)gridX+1, heightC, (float)gridZ+1 }; 
+    Plane plane = ComputePlane(p0, p1, p2);
 
-	//(p0 * plane.normal) * 
-	
-										
-										  
-	
+    V3 line_begin = { chunkOffsetX, 255 * TERRAIN_HEIGHT_SCALAR, chunkOffsetZ };
+    V3 line_end   = { chunkOffsetX, 0, chunkOffsetZ };
+    V3 intersection_point;
+    int is_intersecting = IntersectsPlane(line_begin, line_end, plane, &intersection_point);
+    assert(is_intersecting);
 
-
-	float gridOffsetX = (x - worldChunkPosX) - ((float)gridX * (float)TERRAIN_CELL_SIZE);
-	float gridOffsetZ = (z - worldChunkPosZ) - ((float)gridZ * (float)TERRAIN_CELL_SIZE);
-	float heightOffsetScalarZ = (float)(heightB - heightA) / 255.0f;
-	float heightOffsetScalarX = (float)(heightC - heightA) / 255.0f;
-	float heightContribZ = (gridOffsetZ / (float)TERRAIN_CELL_SIZE) * heightOffsetScalarZ;
-	float heightContribX = (gridOffsetX / (float)TERRAIN_CELL_SIZE) * heightOffsetScalarX;
-
-	float result = heightContribX + heightContribZ + ((float)heightA / 255);
-	result *= TERRAIN_HEIGHT_SCALAR;
-	return result;
+    return intersection_point.y; 
 }
 
 static void 
 GenerateTerrainChunk(TerrainGenerationState *terrainGenState, GameAssets *assets, U32 chunkIndexX, U32 chunkIndexZ)
 {
-	U32 chunkWriteIndexX = terrainGenState->gpuMemoryOriginX + chunkIndexX;
-	U32 chunkWriteIndexZ = terrainGenState->gpuMemoryOriginZ + chunkIndexZ;
-	if (chunkWriteIndexX >= TERRAIN_CHUNK_PER_EDGE) chunkWriteIndexX -= TERRAIN_CHUNK_PER_EDGE;
-	if (chunkWriteIndexZ >= TERRAIN_CHUNK_PER_EDGE) chunkWriteIndexZ -= TERRAIN_CHUNK_PER_EDGE;
-	U32 absoluteChunkMemoryIndex = (chunkWriteIndexZ * TERRAIN_CHUNK_PER_EDGE) + chunkWriteIndexX;
+    U32 chunkWriteIndexX = terrainGenState->gpuMemoryOriginX + chunkIndexX;
+    U32 chunkWriteIndexZ = terrainGenState->gpuMemoryOriginZ + chunkIndexZ;
+    if (chunkWriteIndexX >= TERRAIN_CHUNK_PER_EDGE) chunkWriteIndexX -= TERRAIN_CHUNK_PER_EDGE;
+    if (chunkWriteIndexZ >= TERRAIN_CHUNK_PER_EDGE) chunkWriteIndexZ -= TERRAIN_CHUNK_PER_EDGE;
+    U32 absoluteChunkMemoryIndex = (chunkWriteIndexZ * TERRAIN_CHUNK_PER_EDGE) + chunkWriteIndexX;
 
-	float worldChunkX = ((float)terrainGenState->currentOriginX * (float)TERRAIN_CHUNK_SIZE) + 
-		((float)chunkIndexX * (float)TERRAIN_CHUNK_SIZE);
-	float worldChunkZ = ((float)terrainGenState->currentOriginZ * (float)TERRAIN_CHUNK_SIZE) + 
-		((float)chunkIndexZ * (float)TERRAIN_CHUNK_SIZE);
+    float worldChunkX = ((float)terrainGenState->currentOriginX * (float)TERRAIN_CHUNK_SIZE) + 
+        ((float)chunkIndexX * (float)TERRAIN_CHUNK_SIZE);
+    float worldChunkZ = ((float)terrainGenState->currentOriginZ * (float)TERRAIN_CHUNK_SIZE) + 
+        ((float)chunkIndexZ * (float)TERRAIN_CHUNK_SIZE);
 
-	static const size_t heightmap_memory_size = (TERRAIN_VERTEX_COUNT_PER_CHUNK * 
-			sizeof(*terrainGenState->heightmap_base));
-	static const size_t detailmap_memory_size = (TERRAIN_VERTEX_COUNT_PER_CHUNK *
-			sizeof(*terrainGenState->detailmap_base));
-	static const size_t normalmap_memory_size = (TERRAIN_VERTEX_COUNT_PER_CHUNK *
-			sizeof(*terrainGenState->normals_base));
+    static const size_t heightmap_memory_size = (TERRAIN_VERTEX_COUNT_PER_CHUNK * 
+                                                 sizeof(*terrainGenState->heightmap_base));
+    static const size_t detailmap_memory_size = (TERRAIN_VERTEX_COUNT_PER_CHUNK *
+                                                 sizeof(*terrainGenState->detailmap_base));
+    static const size_t normalmap_memory_size = (TERRAIN_VERTEX_COUNT_PER_CHUNK *
+                                                 sizeof(*terrainGenState->normals_base));
 
-	U8* heightmap = terrainGenState->heightmap_base + 
-		(absoluteChunkMemoryIndex * heightmap_memory_size);
-	U8* detailmap = terrainGenState->detailmap_base + 
-		(absoluteChunkMemoryIndex * detailmap_memory_size);
-	V3* normals = terrainGenState->normals_base + 
-		(absoluteChunkMemoryIndex * normalmap_memory_size);
-	TerrainEntity *entities = terrainGenState->entityBase +
-		(absoluteChunkMemoryIndex * TERRAIN_ENTITIES_PER_CHUNK);
+    U8* heightmap = terrainGenState->heightmap_base + 
+        (absoluteChunkMemoryIndex * heightmap_memory_size);
+    U8* detailmap = terrainGenState->detailmap_base + 
+        (absoluteChunkMemoryIndex * detailmap_memory_size);
+    V3* normals = terrainGenState->normals_base + 
+        (absoluteChunkMemoryIndex * normalmap_memory_size);
+    TerrainEntity *entities = terrainGenState->entityBase +
+        (absoluteChunkMemoryIndex * TERRAIN_ENTITIES_PER_CHUNK);
 		
-	U32 currentVertexIndex = 0;
-	for (U32 z = 0; z < TERRAIN_CELLS_PER_EDGE + 1; z++) 
-	{
-		for (U32 x = 0; x < TERRAIN_CELLS_PER_EDGE + 1; x++) 
-		{
-			float height_scalar = OctaveNoise(worldChunkX + x,  0, worldChunkZ + z, 8, 0.008f, 0.5f); 
-			//height_scalar += RidgedNoise(worldChunkX + x, 0, worldChunkZ + z, 5, 0.002f, 0.1f);
-			height_scalar = (height_scalar + 1.0f) * 0.5f;
-			heightmap[currentVertexIndex] = 255 * height_scalar;
+    U32 currentVertexIndex = 0;
+    for (U32 z = 0; z < TERRAIN_CELLS_PER_EDGE + 1; z++) 
+    {
+        for (U32 x = 0; x < TERRAIN_CELLS_PER_EDGE + 1; x++) 
+        {
+            float height_scalar = OctaveNoise(worldChunkX + x,  0, worldChunkZ + z, 8, 0.008f, 0.5f); 
+            //height_scalar += RidgedNoise(worldChunkX + x, 0, worldChunkZ + z, 5, 0.002f, 0.1f);
+            height_scalar = (height_scalar + 1.0f) * 0.5f;
+            heightmap[currentVertexIndex] = 255 * height_scalar;
 
-			float detail_value = OctaveNoise(worldChunkX + x, 267, worldChunkZ + z, 1, 0.02f, 0.2f);
-			detail_value = (detail_value + 1.0f) * 0.5;
-			detail_value *= 2.0f;
-			detail_value = Clamp01(detail_value);
-			detailmap[currentVertexIndex] = (U8)(255.0f * detail_value);
+            float detail_value = OctaveNoise(worldChunkX + x, 267, worldChunkZ + z, 1, 0.02f, 0.2f);
+            detail_value = (detail_value + 1.0f) * 0.5;
+            detail_value *= 2.0f;
+            detail_value = Clamp01(detail_value);
+            detailmap[currentVertexIndex] = (U8)(255.0f * detail_value);
 
-			currentVertexIndex++;
-		}
-	}
+            currentVertexIndex++;
+        }
+    }
 
-	V2* vertices = terrainGenState->vertices;
-	U32 *indices = terrainGenState->indices;
-	for (U32 i = 0; i < TERRAIN_INDEX_COUNT_PER_CHUNK; i += 3) 
-	{
-		auto index0 = indices[i + 0];
-		auto index1 = indices[i + 1];
-		auto index2 = indices[i + 2];
+    V2* vertices = terrainGenState->vertices;
+    U32 *indices = terrainGenState->indices;
+    for (U32 i = 0; i < TERRAIN_INDEX_COUNT_PER_CHUNK; i += 3) 
+    {
+        auto index0 = indices[i + 0];
+        auto index1 = indices[i + 1];
+        auto index2 = indices[i + 2];
 
-		V3 v0 = { vertices[index0].x, ((float)heightmap[index0] / 255.0f) * 
-			TERRAIN_HEIGHT_SCALAR, vertices[index0].y };
-		V3 v1 = { vertices[index1].x, ((float)heightmap[index1] / 255.0f) * 
-			TERRAIN_HEIGHT_SCALAR, vertices[index1].y };
-		V3 v2 = { vertices[index2].x, ((float)heightmap[index2] / 255.0f) * 
-			TERRAIN_HEIGHT_SCALAR, vertices[index2].y };
+        V3 v0 = { vertices[index0].x, ((float)heightmap[index0] / 255.0f) * 
+                  TERRAIN_HEIGHT_SCALAR, vertices[index0].y };
+        V3 v1 = { vertices[index1].x, ((float)heightmap[index1] / 255.0f) * 
+                  TERRAIN_HEIGHT_SCALAR, vertices[index1].y };
+        V3 v2 = { vertices[index2].x, ((float)heightmap[index2] / 255.0f) * 
+                  TERRAIN_HEIGHT_SCALAR, vertices[index2].y };
 
-		auto edge0 = v1 - v0;
-		auto edge1 = v2 - v0;
-		auto normal = Cross(edge0, edge1);
+                auto edge0 = v1 - v0;
+                auto edge1 = v2 - v0;
+                auto normal = Cross(edge0, edge1);
 
-		normals[index0] += normal;
-		normals[index1] += normal;
-		normals[index2] += normal;
-	}
+                normals[index0] += normal;
+                normals[index1] += normal;
+                normals[index2] += normal;
+            }
 
-	for (U32 i = 0; i < TERRAIN_VERTEX_COUNT_PER_CHUNK; i++) 
-	{
-		normals[i] = Normalize(normals[i]);
-	}
+            for (U32 i = 0; i < TERRAIN_VERTEX_COUNT_PER_CHUNK; i++) 
+            {
+                normals[i] = Normalize(normals[i]);
+            }
 
 
 
-	//NOTE(Torin) The seed cannot be 0 so 1 is added to the chunk memory index
-	U64 seed = (U64)(((terrainGenState->currentOriginZ + chunkIndexZ) * TERRAIN_CHUNK_PER_EDGE) 
-			+ terrainGenState->currentOriginX + chunkIndexX);
+            //NOTE(Torin) The seed cannot be 0 so 1 is added to the chunk memory index
+            U64 seed = (U64)(((terrainGenState->currentOriginZ + chunkIndexZ) * TERRAIN_CHUNK_PER_EDGE) 
+                             + terrainGenState->currentOriginX + chunkIndexX);
 
-	auto randf = [&seed]() -> float
-	{
-		seed ^= seed >> 12;
-		seed ^= seed << 25;
-		seed ^= seed >> 27;
-		U64 value = seed * (U64)(2685821657736338717);
-		float result = (float)((double)value / UINT64_MAX);
-		return result;
-	};
+            auto randf = [&seed]() -> float
+            {
+                seed ^= seed >> 12;
+                seed ^= seed << 25;
+                seed ^= seed >> 27;
+                U64 value = seed * (U64)(2685821657736338717);
+                float result = (float)((double)value / UINT64_MAX);
+                return result;
+            };
 
-	U32 map_index = 0;
-	for (U32 z = 0; z < TERRAIN_CELLS_PER_EDGE + 1; z++)
-	{
-		for (U32 x = 0; x < TERRAIN_CELLS_PER_EDGE + 1; x++)
-		{
-			if (detailmap[map_index] > 0.5)
-			{
+            U32 map_index = 0;
+            for (U32 z = 0; z < TERRAIN_CELLS_PER_EDGE + 1; z++)
+            {
+                for (U32 x = 0; x < TERRAIN_CELLS_PER_EDGE + 1; x++)
+                {
+                    if (detailmap[map_index] > 0.5)
+                    {
 
-			}
-		}
-		map_index++;
-	}
+                    }
+                }
+                map_index++;
+            }
 
 #if 1
-	for (U32 i = 0; i < TERRAIN_ENTITIES_PER_CHUNK; i++)
-	{
-		TerrainEntity *entity = &entities[i];
-		entity->position.x = worldChunkX + ((float)TERRAIN_CHUNK_SIZE * randf());
-		entity->position.z = worldChunkZ + ((float)TERRAIN_CHUNK_SIZE * randf());
-		entity->position.y = GetTerrainHeightAtWorldPosition(terrainGenState, entity->position.x, entity->position.z);
+            for (U32 i = 0; i < TERRAIN_ENTITIES_PER_CHUNK; i++)
+            {
+                TerrainEntity *entity = &entities[i];
+                entity->position.x = worldChunkX + ((float)TERRAIN_CHUNK_SIZE * randf());
+                entity->position.z = worldChunkZ + ((float)TERRAIN_CHUNK_SIZE * randf());
+                entity->position.y = GetTerrainHeightAtWorldPosition(terrainGenState, entity->position.x, entity->position.z);
 
-		entity->drawable = &GetModelDrawable(assets, (DEBUGModelID)((U32)((float)DEBUGModelID_COUNT * randf())));
-		entity->scale = V3(1.0f + randf(), 1.0f + randf(), 1.0f + randf());
-		entity->rotation = V3(randf() * (PI32 / 32), randf() * 2 * PI32, randf() * (PI32 / 32));
-	}
+                entity->drawable = &GetModelDrawable(assets, (DEBUGModelID)((U32)((float)DEBUGModelID_COUNT * randf())));
+                entity->scale = V3(1.0f + randf(), 1.0f + randf(), 1.0f + randf());
+                entity->rotation = V3(randf() * (PI32 / 32), randf() * 2 * PI32, randf() * (PI32 / 32));
+            }
 #endif
 
-	//TODO(Torin) Move this into a seperate stage after the terrain has been entirely generated
-	//and the normals are being calculated for the edges of the terrain chunks
+            //TODO(Torin) Move this into a seperate stage after the terrain has been entirely generated
+            //and the normals are being calculated for the edges of the terrain chunks
 
-	glBindTexture(GL_TEXTURE_2D_ARRAY, terrainGenState->heightmap_texture_array);
-	glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, absoluteChunkMemoryIndex, 
-			(TERRAIN_CELLS_PER_EDGE + 1), (TERRAIN_CELLS_PER_EDGE + 1), 1,
-			GL_RED, GL_UNSIGNED_BYTE, heightmap);
-	glBindTexture(GL_TEXTURE_2D_ARRAY, terrainGenState->normals_texture_array);
-	glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, absoluteChunkMemoryIndex, 
-			(TERRAIN_CELLS_PER_EDGE + 1), (TERRAIN_CELLS_PER_EDGE + 1), 1,
-			GL_RGB, GL_FLOAT, normals);
-	glBindTexture(GL_TEXTURE_2D_ARRAY, terrainGenState->detailmap_texture_array);
-	glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, absoluteChunkMemoryIndex, 
-			(TERRAIN_CELLS_PER_EDGE + 1), (TERRAIN_CELLS_PER_EDGE + 1), 1,
-			GL_RED, GL_UNSIGNED_BYTE, detailmap);
-	glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+            glBindTexture(GL_TEXTURE_2D_ARRAY, terrainGenState->heightmap_texture_array);
+            glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, absoluteChunkMemoryIndex, 
+                            (TERRAIN_CELLS_PER_EDGE + 1), (TERRAIN_CELLS_PER_EDGE + 1), 1,
+                            GL_RED, GL_UNSIGNED_BYTE, heightmap);
+            glBindTexture(GL_TEXTURE_2D_ARRAY, terrainGenState->normals_texture_array);
+            glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, absoluteChunkMemoryIndex, 
+                            (TERRAIN_CELLS_PER_EDGE + 1), (TERRAIN_CELLS_PER_EDGE + 1), 1,
+                            GL_RGB, GL_FLOAT, normals);
+            glBindTexture(GL_TEXTURE_2D_ARRAY, terrainGenState->detailmap_texture_array);
+            glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, absoluteChunkMemoryIndex, 
+                            (TERRAIN_CELLS_PER_EDGE + 1), (TERRAIN_CELLS_PER_EDGE + 1), 1,
+                            GL_RED, GL_UNSIGNED_BYTE, detailmap);
+            glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
 
-	terrainGenState->instanceModelMatrices[absoluteChunkMemoryIndex] = Translate(worldChunkX, 0, worldChunkZ);
-	glBindBuffer(GL_ARRAY_BUFFER, terrainGenState->instanceBufferID);
-	glBufferData(GL_ARRAY_BUFFER, TERRAIN_TOTAL_CHUNK_COUNT * sizeof(M4), 
-			terrainGenState->instanceModelMatrices, GL_DYNAMIC_DRAW);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-};
+            terrainGenState->instanceModelMatrices[absoluteChunkMemoryIndex] = Translate(worldChunkX, 0, worldChunkZ);
+            glBindBuffer(GL_ARRAY_BUFFER, terrainGenState->instanceBufferID);
+            glBufferData(GL_ARRAY_BUFFER, TERRAIN_TOTAL_CHUNK_COUNT * sizeof(M4), 
+                         terrainGenState->instanceModelMatrices, GL_DYNAMIC_DRAW);
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+        };
 
 #endif

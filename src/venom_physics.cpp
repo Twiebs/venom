@@ -35,11 +35,25 @@ Plane ComputePlane(V3 a, V3 b, V3 c)
   return result;
 }
 
-V3 ClosestPointOnPlane(Point a, Plane p)
+static inline
+int IntersectsPlane(V3 line_begin, V3 line_end, Plane plane, V3* intersection_point)
 {
-  float t = Dot(p.normal, a) - p.distance;
-  V3 result = a - (t * p.normal);
-  return result;
+    V3 line_vector = line_end - line_begin;
+    float t = (plane.distance - Dot(plane.normal, line_begin)) / Dot(plane.normal, line_vector);
+
+    if (t >= 0.0f && t <= 1.0f)
+    {
+        *intersection_point = line_begin + (t * line_vector);
+        return 1;
+    }
+    return 0;
+}
+
+V3 ClosestPointOnPlane(V3 a, Plane p)
+{
+    float t = Dot(p.normal, a) - p.distance;
+    V3 result = a - (t * p.normal);
+    return result;
 };
 
 //==========  Intersection Tests  ================

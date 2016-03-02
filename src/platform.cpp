@@ -68,9 +68,11 @@ static inline UserConfig GetUserConfig()
 		result.screen_width = 1280;
 		result.screen_height = 720;
 		//TODO(Torin) Remove this 
-		//
-//		result.screen_width = 1792;
-//		result.screen_height = 1008;
+
+#if 0
+		result.screen_width = 1792;
+		result.screen_height = 1008;
+#endif
 
 		result.is_fullscreen = false;
 		result.memory_size = GIGABYTES(2);

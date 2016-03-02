@@ -11,14 +11,13 @@
 #endif
 
 /*
-	TODO(Torin)
-	- Camera fusturm culling of the terrain
-	- Move the terrain generation system to a multicore generator
-	- Make the terrain system use SIMD perlin noise
+  TODO(Torin)
+  - Camera fusturm culling of the terrain
+  - Move the terrain generation system to a multicore generator
+  - Make the terrain system use SIMD perlin noise
 */
 
 #include "platform.h"
-
 
 #include "venom_module.cpp"
 #include "venom_physics.cpp"
@@ -38,6 +37,7 @@
 
 #include "venom_noise.cpp"
 #include "math_procedural.cpp"
+
 #include "terrain.cpp"
 #include "opengl_glsl.cpp"
 
@@ -48,263 +48,263 @@
 
 extern "C" void GameStartup(GameMemory *memory)
 {
-	RenderState *rs = &memory->renderState;
-	GameAssets *assets = &memory->assets;
-	SystemInfo *sys = &memory->systemInfo;	
-	imgui_init(memory);
+    RenderState *rs = &memory->renderState;
+    GameAssets *assets = &memory->assets;
+    SystemInfo *sys = &memory->systemInfo;	
+    imgui_init(memory);
 
-	//TODO(Torin) Remove this ImGui Code out into its own procedure
-	// or remove the boilerplate gui / debug code into the venom_module file
-	//and have it manage the way that works!
-	U8* pixels;
-	int width, height;
-	ImGuiIO& io = ImGui::GetIO();
-	io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-	GLuint textureID;
-	glGenTextures(1, &textureID);
-	glBindTexture(GL_TEXTURE_2D, textureID);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glGenerateMipmap(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, 0);
-	memory->renderState.imguiFontTexture = textureID;
-	io.Fonts->TexID = (void *)(size_t)memory->renderState.imguiFontTexture;
+    //TODO(Torin) Remove this ImGui Code out into its own procedure
+    // or remove the boilerplate gui / debug code into the venom_module file
+    //and have it manage the way that works!
+    U8* pixels;
+    int width, height;
+    ImGuiIO& io = ImGui::GetIO();
+    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+    GLuint textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_2D, textureID);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    memory->renderState.imguiFontTexture = textureID;
+    io.Fonts->TexID = (void *)(size_t)memory->renderState.imguiFontTexture;
 
-	float far_plane_distance = (TERRAIN_CHUNK_PER_EDGE*0.5)* TERRAIN_CHUNK_SIZE;
-	InitializeCamera(&rs->camera, 45.0f * DEG2RAD, 0.1f, far_plane_distance);
-	InitializeCamera(&rs->debugCamera, 45.0f * DEG2RAD, 0.1f, far_plane_distance);
+    float far_plane_distance = (TERRAIN_CHUNK_PER_EDGE*0.5)* TERRAIN_CHUNK_SIZE;
+    InitializeCamera(&rs->camera, 45.0f * DEG2RAD, 0.1f, far_plane_distance);
+    InitializeCamera(&rs->debugCamera, 45.0f * DEG2RAD, 0.1f, far_plane_distance);
 
-	rs->camera.position = V3(0.0f, 1.0f, 0.0f);
-	rs->debugCamera.position = V3(75.0f, 30.0f, -110.0f);
-	rs->debugCamera.front = V3(-0.7f, 0.0f, 0.7f);
+    rs->camera.position = V3(0.0f, 1.0f, 0.0f);
+    rs->debugCamera.position = V3(75.0f, 30.0f, -110.0f);
+    rs->debugCamera.front = V3(-0.7f, 0.0f, 0.7f);
 
-	//Initalize RenderState
-	InitSubBlock("vertex_block", &rs->vertexBlock, MEGABYTES(128), &memory->mainBlock);
-	InitSubBlock("intex_block", &rs->indexBlock, MEGABYTES(128), &memory->mainBlock);
+    //Initalize RenderState
+    InitSubBlock("vertex_block", &rs->vertexBlock, MEGABYTES(128), &memory->mainBlock);
+    InitSubBlock("intex_block", &rs->indexBlock, MEGABYTES(128), &memory->mainBlock);
 
-	GameEntities *entities = &memory->entities;
-	entities->player.pos = V3(TERRAIN_ORIGIN_TO_CENTER_CHUNK_OFFSET*TERRAIN_CHUNK_SIZE, 0.001,
-		TERRAIN_ORIGIN_TO_CENTER_CHUNK_OFFSET*TERRAIN_CHUNK_SIZE);
+    GameEntities *entities = &memory->entities;
+    entities->player.pos = V3(TERRAIN_ORIGIN_TO_CENTER_CHUNK_OFFSET*TERRAIN_CHUNK_SIZE, 0.001,
+                              TERRAIN_ORIGIN_TO_CENTER_CHUNK_OFFSET*TERRAIN_CHUNK_SIZE);
 
-	{ //@Terrain @Init
-		TerrainGenerationState *terrainGenState = &memory->terrainGenState;
+    { //@Terrain @Init
+        TerrainGenerationState *terrainGenState = &memory->terrainGenState;
 #if 0
-		static const U32 maxTerrainVertexCount = TERRAIN_VERTEX_COUNT_PER_CHUNK * TERRAIN_TOTAL_CHUNK_COUNT;
-		static const U32 maxTerrainIndexCount = TERRAIN_INDEX_COUNT_PER_CHUNK * TERRAIN_TOTAL_CHUNK_COUNT;
-		size_t terrain_detail_map_memory_requirement = TERRAIN_VERTEX_COUNT_PER_CHUNK * TERRAIN_TOTAL_CHUNK_COUNT;
-		size_t requiredTerrainMemory =  (sizeof(Vertex3D) * maxTerrainVertexCount) +
-										(sizeof(U32) * maxTerrainIndexCount) +
-										(sizeof(TerrainEntity) * TERRAIN_ENTITY_MAX) +
-										(terrain_detail_map_memory_requirement);
+        static const U32 maxTerrainVertexCount = TERRAIN_VERTEX_COUNT_PER_CHUNK * TERRAIN_TOTAL_CHUNK_COUNT;
+        static const U32 maxTerrainIndexCount = TERRAIN_INDEX_COUNT_PER_CHUNK * TERRAIN_TOTAL_CHUNK_COUNT;
+        size_t terrain_detail_map_memory_requirement = TERRAIN_VERTEX_COUNT_PER_CHUNK * TERRAIN_TOTAL_CHUNK_COUNT;
+        size_t requiredTerrainMemory =  (sizeof(Vertex3D) * maxTerrainVertexCount) +
+            (sizeof(U32) * maxTerrainIndexCount) +
+            (sizeof(TerrainEntity) * TERRAIN_ENTITY_MAX) +
+            (terrain_detail_map_memory_requirement);
 
 
-		InitSubBlock("TerrainMemory", &terrainGenState->memory, requiredTerrainMemory, &memory->mainBlock);
-		terrainGenState->verticesBase = ReserveArray(Vertex3D, maxTerrainVertexCount, &terrainGenState->memory);
-		terrainGenState->indicesBase  = ReserveArray(U32, maxTerrainIndexCount, &terrainGenState->memory);
-		terrainGenState->entityBase   = ReserveArray(TerrainEntity, TERRAIN_ENTITY_MAX, &terrainGenState->memory);
-		terrainGenState->detail_map_base = PushSize(terrain_detail_map_memory_requirement, &terrainGenState->memory);
+        InitSubBlock("TerrainMemory", &terrainGenState->memory, requiredTerrainMemory, &memory->mainBlock);
+        terrainGenState->verticesBase = ReserveArray(Vertex3D, maxTerrainVertexCount, &terrainGenState->memory);
+        terrainGenState->indicesBase  = ReserveArray(U32, maxTerrainIndexCount, &terrainGenState->memory);
+        terrainGenState->entityBase   = ReserveArray(TerrainEntity, TERRAIN_ENTITY_MAX, &terrainGenState->memory);
+        terrainGenState->detail_map_base = PushSize(terrain_detail_map_memory_requirement, &terrainGenState->memory);
 
-		CreateIndexedVertexArray3D(&terrainGenState->vertexArray,
-			maxTerrainVertexCount, maxTerrainIndexCount, nullptr, nullptr, GL_DYNAMIC_DRAW); 
+        CreateIndexedVertexArray3D(&terrainGenState->vertexArray,
+                                   maxTerrainVertexCount, maxTerrainIndexCount, nullptr, nullptr, GL_DYNAMIC_DRAW); 
 #else
-		size_t requiredTerrainMemory = (TERRAIN_TOTAL_VERTEX_COUNT) + //heightmap
-									   (TERRAIN_TOTAL_VERTEX_COUNT) + //detailmap
-									   ((TERRAIN_TOTAL_VERTEX_COUNT) * sizeof(V3)) + //normals
-									   (TERRAIN_ENTITIES_PER_CHUNK * TERRAIN_TOTAL_CHUNK_COUNT * sizeof(TerrainEntity));
+        size_t requiredTerrainMemory = (TERRAIN_TOTAL_VERTEX_COUNT) + //heightmap
+            (TERRAIN_TOTAL_VERTEX_COUNT) + //detailmap
+            ((TERRAIN_TOTAL_VERTEX_COUNT) * sizeof(V3)) + //normals
+            (TERRAIN_ENTITIES_PER_CHUNK * TERRAIN_TOTAL_CHUNK_COUNT * sizeof(TerrainEntity));
 
-		InitSubBlock("TerrainMemory", &terrainGenState->memory, requiredTerrainMemory, &memory->mainBlock);
-		terrainGenState->heightmap_base = ReserveArray(U8, TERRAIN_TOTAL_VERTEX_COUNT, &terrainGenState->memory);
-		terrainGenState->detailmap_base = ReserveArray(U8, TERRAIN_TOTAL_VERTEX_COUNT, &terrainGenState->memory);
-		terrainGenState->normals_base   = ReserveArray(V3, TERRAIN_TOTAL_VERTEX_COUNT, &terrainGenState->memory); 
-		terrainGenState->entityBase 	= ReserveArray(TerrainEntity, TERRAIN_ENTITIES_PER_CHUNK * TERRAIN_TOTAL_CHUNK_COUNT, &terrainGenState->memory);
+        InitSubBlock("TerrainMemory", &terrainGenState->memory, requiredTerrainMemory, &memory->mainBlock);
+        terrainGenState->heightmap_base = ReserveArray(U8, TERRAIN_TOTAL_VERTEX_COUNT, &terrainGenState->memory);
+        terrainGenState->detailmap_base = ReserveArray(U8, TERRAIN_TOTAL_VERTEX_COUNT, &terrainGenState->memory);
+        terrainGenState->normals_base   = ReserveArray(V3, TERRAIN_TOTAL_VERTEX_COUNT, &terrainGenState->memory); 
+        terrainGenState->entityBase 	= ReserveArray(TerrainEntity, TERRAIN_ENTITIES_PER_CHUNK * TERRAIN_TOTAL_CHUNK_COUNT, &terrainGenState->memory);
 
-		terrainGenState->heightmap_texture_array = CreateTextureArray(
-				TERRAIN_CELLS_PER_EDGE + 1, TERRAIN_CELLS_PER_EDGE + 1, TERRAIN_TOTAL_CHUNK_COUNT, 
-				GL_R8, GL_REPEAT, GL_LINEAR); 
-		terrainGenState->detailmap_texture_array = CreateTextureArray(
-				TERRAIN_CELLS_PER_EDGE + 1, TERRAIN_CELLS_PER_EDGE + 1, TERRAIN_TOTAL_CHUNK_COUNT, 
-				GL_R8, GL_REPEAT, GL_LINEAR); 
-		terrainGenState->normals_texture_array = CreateTextureArray(
-				TERRAIN_CELLS_PER_EDGE + 1, TERRAIN_CELLS_PER_EDGE + 1, TERRAIN_TOTAL_CHUNK_COUNT, 
-				GL_RGB16F, GL_REPEAT, GL_LINEAR);
+        terrainGenState->heightmap_texture_array = CreateTextureArray(
+            TERRAIN_CELLS_PER_EDGE + 1, TERRAIN_CELLS_PER_EDGE + 1, TERRAIN_TOTAL_CHUNK_COUNT, 
+            GL_R8, GL_REPEAT, GL_LINEAR); 
+        terrainGenState->detailmap_texture_array = CreateTextureArray(
+            TERRAIN_CELLS_PER_EDGE + 1, TERRAIN_CELLS_PER_EDGE + 1, TERRAIN_TOTAL_CHUNK_COUNT, 
+            GL_R8, GL_REPEAT, GL_LINEAR); 
+        terrainGenState->normals_texture_array = CreateTextureArray(
+            TERRAIN_CELLS_PER_EDGE + 1, TERRAIN_CELLS_PER_EDGE + 1, TERRAIN_TOTAL_CHUNK_COUNT, 
+            GL_RGB16F, GL_REPEAT, GL_LINEAR);
 
-		//TODO(Torin) Creating the terrain base mesh should probably be moved out somewhere else
-		//beacause in release mode it will just be baked into the executable as static data
-		//so having the code here is not representative of the actualy runtime characteristics of the application
+        //TODO(Torin) Creating the terrain base mesh should probably be moved out somewhere else
+        //beacause in release mode it will just be baked into the executable as static data
+        //so having the code here is not representative of the actualy runtime characteristics of the application
 
-		V2* vertices = terrainGenState->vertices;
-		U32* indices = terrainGenState->indices;
+        V2* vertices = terrainGenState->vertices;
+        U32* indices = terrainGenState->indices;
 
-		U32 currentVertexIndex = 0;
-		for (U32 z = 0; z < TERRAIN_CELLS_PER_EDGE + 1; z++) 
-		{
-			for (U32 x = 0; x < TERRAIN_CELLS_PER_EDGE + 1; x++) 
-			{
-				V2 *vertex = &vertices[currentVertexIndex];
-				vertex->x =  ((float)x * (float)TERRAIN_CELL_SIZE);
-				vertex->y =  ((float)z * (float)TERRAIN_CELL_SIZE);
-				currentVertexIndex++;
-			}
-		}
-
-
-		U32 currentIndex = 0;
-		for (U32 z = 0; z < TERRAIN_CELLS_PER_EDGE; z++) 
-		{
-			for (U32 x = 0; x < TERRAIN_CELLS_PER_EDGE; x++) 
-			{
-				indices[currentIndex++] = ((z + 0) * (TERRAIN_CELLS_PER_EDGE + 1)) + (x + 0);
-				indices[currentIndex++] = ((z + 1) * (TERRAIN_CELLS_PER_EDGE + 1)) + (x + 0); 
-				indices[currentIndex++] = ((z + 1) * (TERRAIN_CELLS_PER_EDGE + 1)) + (x + 1);
-				indices[currentIndex++] = ((z + 0) * (TERRAIN_CELLS_PER_EDGE + 1)) + (x + 0);
-				indices[currentIndex++] = ((z + 1) * (TERRAIN_CELLS_PER_EDGE + 1)) + (x + 1);
-				indices[currentIndex++] = ((z + 0) * (TERRAIN_CELLS_PER_EDGE + 1)) + (x + 1);
-			}
-		}
-
-		for(U32 i = 0; i < TERRAIN_TOTAL_CHUNK_COUNT; i++)
-		{
-			terrainGenState->instanceModelMatrices[i] = M4Identity();
-		}
+        U32 currentVertexIndex = 0;
+        for (U32 z = 0; z < TERRAIN_CELLS_PER_EDGE + 1; z++) 
+        {
+            for (U32 x = 0; x < TERRAIN_CELLS_PER_EDGE + 1; x++) 
+            {
+                V2 *vertex = &vertices[currentVertexIndex];
+                vertex->x =  ((float)x * (float)TERRAIN_CELL_SIZE);
+                vertex->y =  ((float)z * (float)TERRAIN_CELL_SIZE);
+                currentVertexIndex++;
+            }
+        }
 
 
-		glGenVertexArrays(1, &terrainGenState->base_mesh.vertexArrayID);
-		glBindVertexArray(terrainGenState->base_mesh.vertexArrayID);
+        U32 currentIndex = 0;
+        for (U32 z = 0; z < TERRAIN_CELLS_PER_EDGE; z++) 
+        {
+            for (U32 x = 0; x < TERRAIN_CELLS_PER_EDGE; x++) 
+            {
+                indices[currentIndex++] = ((z + 0) * (TERRAIN_CELLS_PER_EDGE + 1)) + (x + 0);
+                indices[currentIndex++] = ((z + 1) * (TERRAIN_CELLS_PER_EDGE + 1)) + (x + 0); 
+                indices[currentIndex++] = ((z + 1) * (TERRAIN_CELLS_PER_EDGE + 1)) + (x + 1);
+                indices[currentIndex++] = ((z + 0) * (TERRAIN_CELLS_PER_EDGE + 1)) + (x + 0);
+                indices[currentIndex++] = ((z + 1) * (TERRAIN_CELLS_PER_EDGE + 1)) + (x + 1);
+                indices[currentIndex++] = ((z + 0) * (TERRAIN_CELLS_PER_EDGE + 1)) + (x + 1);
+            }
+        }
+
+        for(U32 i = 0; i < TERRAIN_TOTAL_CHUNK_COUNT; i++)
+        {
+            terrainGenState->instanceModelMatrices[i] = M4Identity();
+        }
+
+
+        glGenVertexArrays(1, &terrainGenState->base_mesh.vertexArrayID);
+        glBindVertexArray(terrainGenState->base_mesh.vertexArrayID);
 		
-		glGenBuffers(1, &terrainGenState->base_mesh.vertexBufferID);
-		glBindBuffer(GL_ARRAY_BUFFER, terrainGenState->base_mesh.vertexBufferID);
-		glBufferData(GL_ARRAY_BUFFER, 
-				TERRAIN_VERTEX_COUNT_PER_CHUNK * sizeof(V2),	vertices, GL_STATIC_DRAW);
+        glGenBuffers(1, &terrainGenState->base_mesh.vertexBufferID);
+        glBindBuffer(GL_ARRAY_BUFFER, terrainGenState->base_mesh.vertexBufferID);
+        glBufferData(GL_ARRAY_BUFFER, 
+                     TERRAIN_VERTEX_COUNT_PER_CHUNK * sizeof(V2),	vertices, GL_STATIC_DRAW);
 
-		glGenBuffers(1, &terrainGenState->base_mesh.indexBufferID);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, terrainGenState->base_mesh.indexBufferID);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, 
-				TERRAIN_INDEX_COUNT_PER_CHUNK * sizeof(U32), indices, GL_STATIC_DRAW);
+        glGenBuffers(1, &terrainGenState->base_mesh.indexBufferID);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, terrainGenState->base_mesh.indexBufferID);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, 
+                     TERRAIN_INDEX_COUNT_PER_CHUNK * sizeof(U32), indices, GL_STATIC_DRAW);
 
-		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(V2), (GLvoid*)0);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(V2), (GLvoid*)0);
 
-		glGenBuffers(1, &terrainGenState->instanceBufferID);
-		glBindBuffer(GL_ARRAY_BUFFER, terrainGenState->instanceBufferID);
-		glBufferData(GL_ARRAY_BUFFER, TERRAIN_TOTAL_CHUNK_COUNT * sizeof(M4), 
-				terrainGenState->instanceModelMatrices, GL_DYNAMIC_DRAW);
+        glGenBuffers(1, &terrainGenState->instanceBufferID);
+        glBindBuffer(GL_ARRAY_BUFFER, terrainGenState->instanceBufferID);
+        glBufferData(GL_ARRAY_BUFFER, TERRAIN_TOTAL_CHUNK_COUNT * sizeof(M4), 
+                     terrainGenState->instanceModelMatrices, GL_DYNAMIC_DRAW);
 
-		glEnableVertexAttribArray(1);
-		glEnableVertexAttribArray(2);
-		glEnableVertexAttribArray(3);
-		glEnableVertexAttribArray(4);
-		glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(M4), (GLvoid*)(sizeof(V4) * 0));
-		glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(M4), (GLvoid*)(sizeof(V4) * 1));
-		glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(M4), (GLvoid*)(sizeof(V4) * 2));
-		glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(M4), (GLvoid*)(sizeof(V4) * 3));
-		glVertexAttribDivisor(1, 1);
-		glVertexAttribDivisor(2, 1);
-		glVertexAttribDivisor(3, 1);
-		glVertexAttribDivisor(4, 1);
-		glBindVertexArray(0);
+        glEnableVertexAttribArray(1);
+        glEnableVertexAttribArray(2);
+        glEnableVertexAttribArray(3);
+        glEnableVertexAttribArray(4);
+        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(M4), (GLvoid*)(sizeof(V4) * 0));
+        glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(M4), (GLvoid*)(sizeof(V4) * 1));
+        glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(M4), (GLvoid*)(sizeof(V4) * 2));
+        glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(M4), (GLvoid*)(sizeof(V4) * 3));
+        glVertexAttribDivisor(1, 1);
+        glVertexAttribDivisor(2, 1);
+        glVertexAttribDivisor(3, 1);
+        glVertexAttribDivisor(4, 1);
+        glBindVertexArray(0);
 	
 #endif	
-		terrainGenState->lastGenerationTriggerX = entities->player.pos.x;
-		terrainGenState->lastGenerationTriggerZ = entities->player.pos.z;
+        terrainGenState->lastGenerationTriggerX = entities->player.pos.x;
+        terrainGenState->lastGenerationTriggerZ = entities->player.pos.z;
 
-		//TODO(Torin) Add terrain generation parameters and different biomes for the 
-		//terrain generation system.  Perhaps we can do an inhabited style solar system
-		TerrainGenerationParameters *terrainGenParams = &memory->terrainGenParams;
-		terrainGenParams->seed = 0;
-		//TODO(Torin) Make the terrain chunks consider their neighors when calculating
-		//the surface normals for each of the edge vertices
-	} //Terrain Init
+        //TODO(Torin) Add terrain generation parameters and different biomes for the 
+        //terrain generation system.  Perhaps we can do an inhabited style solar system
+        TerrainGenerationParameters *terrainGenParams = &memory->terrainGenParams;
+        terrainGenParams->seed = 0;
+        //TODO(Torin) Make the terrain chunks consider their neighors when calculating
+        //the surface normals for each of the edge vertices
+    } //Terrain Init
 
-	{ //@Skydome Init
-		static const int skydomeResolution = 8;
-		MeshData skydomeMeshData;
-		GetSubdiviedCubeVertexAndIndexCount(skydomeResolution, &skydomeMeshData.vertexCount, &skydomeMeshData.indexCount);
-		skydomeMeshData.vertices = ReserveArray(Vertex3D, skydomeMeshData.vertexCount, &memory->mainBlock);
-		skydomeMeshData.indices = ReserveArray(U32, skydomeMeshData.indexCount, &memory->mainBlock);
-		GenerateSubdiviedCubeMeshData(&skydomeMeshData,skydomeResolution);
-		for (U32 i = 0; i < skydomeMeshData.vertexCount; i++) {
-			skydomeMeshData.vertices[i].position = Normalize(skydomeMeshData.vertices[i].position);
-		}
-		CreateIndexedVertexArray3D(&memory->skydomeVertexArray, &skydomeMeshData);
-		memory->skydomeIndexCount = skydomeMeshData.indexCount;
-	}
+    { //@Skydome Init
+        static const int skydomeResolution = 8;
+        MeshData skydomeMeshData;
+        GetSubdiviedCubeVertexAndIndexCount(skydomeResolution, &skydomeMeshData.vertexCount, &skydomeMeshData.indexCount);
+        skydomeMeshData.vertices = ReserveArray(Vertex3D, skydomeMeshData.vertexCount, &memory->mainBlock);
+        skydomeMeshData.indices = ReserveArray(U32, skydomeMeshData.indexCount, &memory->mainBlock);
+        GenerateSubdiviedCubeMeshData(&skydomeMeshData,skydomeResolution);
+        for (U32 i = 0; i < skydomeMeshData.vertexCount; i++) {
+            skydomeMeshData.vertices[i].position = Normalize(skydomeMeshData.vertices[i].position);
+        }
+        CreateIndexedVertexArray3D(&memory->skydomeVertexArray, &skydomeMeshData);
+        memory->skydomeIndexCount = skydomeMeshData.indexCount;
+    }
 
-	{ //@Shadow @CSM
-		glGenFramebuffers(1, &rs->depth_map_framebuffer);
-		glBindFramebuffer(GL_FRAMEBUFFER, rs->depth_map_framebuffer);
-		glDrawBuffer(GL_NONE);
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    { //@Shadow @CSM
+        glGenFramebuffers(1, &rs->depth_map_framebuffer);
+        glBindFramebuffer(GL_FRAMEBUFFER, rs->depth_map_framebuffer);
+        glDrawBuffer(GL_NONE);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-		glGenTextures(1, &rs->depth_map_texture);
-		glBindTexture(GL_TEXTURE_2D_ARRAY, rs->depth_map_texture);
-		glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_DEPTH_COMPONENT,
-			SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION, 
-			SHADOW_MAP_CASCADE_COUNT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-		glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glGenTextures(1, &rs->depth_map_texture);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, rs->depth_map_texture);
+        glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_DEPTH_COMPONENT,
+                     SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION, 
+                     SHADOW_MAP_CASCADE_COUNT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-		for (U32 i = 0; i < SHADOW_MAP_CASCADE_COUNT; i++)
-		{
-			rs->csm_cascade_frustums[i].aspect_ratio = sys->screen_width / sys->screen_height;
-			rs->csm_cascade_frustums[i].field_of_view = rs->camera.fov + 0.2f;
-		}
-	}
+        for (U32 i = 0; i < SHADOW_MAP_CASCADE_COUNT; i++)
+        {
+            rs->csm_cascade_frustums[i].aspect_ratio = sys->screen_width / sys->screen_height;
+            rs->csm_cascade_frustums[i].field_of_view = rs->camera.fov + 0.2f;
+        }
+    }
 	
-	{ //@Graphics 
-		rs->imguiRenderGroup = CreateImGuiRenderGroup();
-		rs->solidDebugGroup = CreateDebugRenderGroup();
-		rs->lineDebugGroup = CreateDebugRenderGroup();
+    { //@Graphics 
+        rs->imguiRenderGroup = CreateImGuiRenderGroup();
+        rs->solidDebugGroup = CreateDebugRenderGroup();
+        rs->lineDebugGroup = CreateDebugRenderGroup();
 
-		rs->debugShader = GetShaderProgram(assets, ShaderID_Debug);
-		rs->singleColorShader = GetShaderProgram(assets, ShaderID_SingleColor);
-		rs->imguiRenderGroupShader = GetShaderProgram(assets, ShaderID_Sprite);
-		rs->debugNormalsShader = GetShaderProgram(assets, ShaderID_debug_normals);
+        rs->debugShader = GetShaderProgram(assets, ShaderID_Debug);
+        rs->singleColorShader = GetShaderProgram(assets, ShaderID_SingleColor);
+        rs->imguiRenderGroupShader = GetShaderProgram(assets, ShaderID_Sprite);
+        rs->debugNormalsShader = GetShaderProgram(assets, ShaderID_debug_normals);
 		
-		rs->terrain_shader = GetShaderProgram(assets, ShaderID_terrain);
-		rs->skydome_shader = GetShaderProgram(assets, ShaderID_skydome);
-		rs->depth_map_shader = GetShaderProgram(assets, ShaderID_depth_map);
-		rs->material_opaque_shader = GetShaderProgram(assets, ShaderID_material_opaque);
-		rs->material_transparent_shader = GetShaderProgram(assets, ShaderID_material_transparent);
+        rs->terrain_shader = GetShaderProgram(assets, ShaderID_terrain);
+        rs->skydome_shader = GetShaderProgram(assets, ShaderID_skydome);
+        rs->depth_map_shader = GetShaderProgram(assets, ShaderID_depth_map);
+        rs->material_opaque_shader = GetShaderProgram(assets, ShaderID_material_opaque);
+        rs->material_transparent_shader = GetShaderProgram(assets, ShaderID_material_transparent);
 
-		rs->debug_depth_map_shader = GetShaderProgram(assets, ShaderID_debug_depth_map);
+        rs->debug_depth_map_shader = GetShaderProgram(assets, ShaderID_debug_depth_map);
 
-		const Camera& camera = rs->camera;
+        const Camera& camera = rs->camera;
 
-		rs->lightingState.directionalLights[0].direction = V3(0.2f, 0.9f, 0.0f);
-		rs->lightingState.directionalLights[0].color = V3(0.9f, 0.9f, 0.9f);
-		rs->lightingState.directionalLightCount = 1;
-	}
+        rs->lightingState.directionalLights[0].direction = V3(0.2f, 0.9f, 0.0f);
+        rs->lightingState.directionalLights[0].color = V3(0.9f, 0.9f, 0.9f);
+        rs->lightingState.directionalLightCount = 1;
+    }
 
-	//Initalize Game
+    //Initalize Game
 	
 #if 0
-	RNGSeed seed(0);
-	InitalizeEntityArray(ParticleSystem, 64, &entities->ParticleSystemArray, &memory->mainBlock);
-	InitalizeEntityArray(DebugEntity, 10000, &entities->DebugEntityArray, &memory->mainBlock);
+    RNGSeed seed(0);
+    InitalizeEntityArray(ParticleSystem, 64, &entities->ParticleSystemArray, &memory->mainBlock);
+    InitalizeEntityArray(DebugEntity, 10000, &entities->DebugEntityArray, &memory->mainBlock);
 
-	const V3 spawn_min = V3(0.0f, 0.0f, 0.0f);
-	const V3 spawn_max = V3(100.0f, 100.0f, 100.0f);
-	const V3 bounds_min = V3(0.2);
-	const V3 bounds_max = V3(3.0);
-	for (size_t i = 0; i < 10000; i++)
-	{
-		DebugEntity *entity = CreateEntity(DebugEntity, &entities->DebugEntityArray);
-		entity->position = RandomInRange(seed, spawn_min, spawn_max);
-		entity->color = RandomSolidColor(seed);
-		entity->size = { RandomInRange(seed, bounds_min, bounds_max), 
-			RandomInRange(seed, bounds_min, bounds_max) };
-	}
+    const V3 spawn_min = V3(0.0f, 0.0f, 0.0f);
+    const V3 spawn_max = V3(100.0f, 100.0f, 100.0f);
+    const V3 bounds_min = V3(0.2);
+    const V3 bounds_max = V3(3.0);
+    for (size_t i = 0; i < 10000; i++)
+    {
+        DebugEntity *entity = CreateEntity(DebugEntity, &entities->DebugEntityArray);
+        entity->position = RandomInRange(seed, spawn_min, spawn_max);
+        entity->color = RandomSolidColor(seed);
+        entity->size = { RandomInRange(seed, bounds_min, bounds_max), 
+                         RandomInRange(seed, bounds_min, bounds_max) };
+    }
 #endif
 	
-	//TODO(Torin) This should NOT happen in the game code!
-	assert(memory->mainBlock.size > memory->mainBlock.used);
-	U64 remainingBlockMemory = memory->mainBlock.size - memory->mainBlock.used;
-	InitSubBlock("AssetCache", &memory->assets.memory, remainingBlockMemory, &memory->mainBlock);
+    //TODO(Torin) This should NOT happen in the game code!
+    assert(memory->mainBlock.size > memory->mainBlock.used);
+    U64 remainingBlockMemory = memory->mainBlock.size - memory->mainBlock.used;
+    InitSubBlock("AssetCache", &memory->assets.memory, remainingBlockMemory, &memory->mainBlock);
 }
 
 
