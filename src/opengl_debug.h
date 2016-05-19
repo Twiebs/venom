@@ -269,9 +269,10 @@ inline void PushLine(RenderGroup *group, const V3& from, const V3& to, const V4&
 	PushArray(U32, 2, INDICES, &group->indexBlock);
 }
 
-#if 0
-inline void DEBUGRenderCube() 
-{
+#if 1
+
+
+inline void DEBUGRenderCube() {
 	static GLuint cubeVAO = 0;
 	static GLuint cubeVBO = 0;
 	if (cubeVAO == 0) {

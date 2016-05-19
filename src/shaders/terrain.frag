@@ -33,8 +33,7 @@ void main()
 	fragment.color = fragment_color;
 
 	out_color = ApplyLighting(fragment);
-	out_color.xyz *= (1.0 - shadow_calaculate(vec4(fs_in.position, 1.0)));
-
+	out_color.xyz *= CalculateShadowScalar(vec4(fs_in.position, 1.0));
 	out_color = mix(vec4(0.2f, 0.4f, 0.9f, 1.0), out_color, fs_in.visibility);
 
 #if 0
@@ -47,4 +46,5 @@ void main()
 	if (gl_FragCoord.z < u_shadow_cascade_distance[0])
 		out_color = vec4(1.0f, 0.0f, 0.0f, 1.0f);
 #endif
+
 }

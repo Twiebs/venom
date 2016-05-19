@@ -1,32 +1,30 @@
-
-enum LogLevel 
-{
+enum LogLevel {
 	LogLevel_ERROR,
+  LogLevel_WARNING,
 	LogLevel_INFO,
 	LogLevel_DEBUG,
 };
-static const char *LOGLEVEL_TAG[] = 
-{
+
+static const char *LOGLEVEL_TAG[] = {
 	"[ERROR]",
+  "[WARNING]",
 	"[INFO]",
 	"[DEBUG]"
 };
 
-struct LogEntry
-{
+struct LogEntry {
 	LogLevel level;
 	char *text;
 };
 
-static const V4 LOGLEVEL_COLOR[] =
-{
+static const V4 LOGLEVEL_COLOR[] = {
 	V4(1.0f, 0.0f, 0.0f, 1.0f),
+  V4(1.0f, 1.0f, 0.0f, 1.0f),
 	V4(1.0f, 1.0f, 1.0f, 1.0f),
 	V4(0.6f, 0.6f, 0.6f, 1.0f),
 };
 
-struct DebugLog
-{
+struct DebugLog {
 	static const U32 OPENGL_ID_COUNT_MAX = 64;
 	static const U32 ENTRY_COUNT_MAX = 4096;
 	static const U32 ENTRY_BUFFER_SIZE = MEGABYTES(2);

@@ -4,45 +4,62 @@
 	_(SingleColor, "debug_shader.vert", "single_color.frag", "") \
 	_(Sprite, "basic_sprite.vert", "basic_sprite.frag", "") \
 	_(terrain, "terrain_instanced.vert", "terrain.frag", "") \
-	_(debug_normals, "debug_normals.vert", "debug_normals.frag", "grass.geom") \
+	_(debug_normals, "debug_normals.vert", "debug_normals.frag", "debug_normals.geom") \
 	_(material_opaque, "material_opaque.vert", "material_opaque.frag", "") \
 	_(material_transparent, "material_transparent.vert", "material_transparent.frag", "") \
 	_(skydome, "skydome.vert", "skydome.frag", "") \
 	_(depth_map, "depth_map.vert", "depth_map.frag", "") \
 	_(debug_depth_map, "vertexarray_quad.vert", "debug_depth_map.frag", "")\
+  _(depth_cubemap, "depth_cubemap.vert", "depth_cubemap.frag", "depth_cubemap.geom") \
+  _(GBuffer, "gbuffer.vert", "gbuffer.frag", "") \
+  _(DeferredMaterial, "vertexarray_quad.vert", "material_deferred.frag", "")
 
 #define DebugModelList       \
 	_(rock00, "dumb_rock.dae") \
 	_(bamboo, "foliage/bamboo/model.fbx") \
 	_(bush,   "foliage/bush/model.fbx")   \
 	_(white_flower, "foliage/white_flower/model.fbx") \
-	_(player, "dumb_player.dae") \
+	_(player, "dumb_player.fbx") \
+  _(SmallBarrel, "containers/SmallBarrel/barrel.fbx")\
+  _(Lamp, "lamp.fbx") \
+  _(Stairs, "Stairs/Stairs.fbx")
 
-#define DebugMaterialList \
-	_(dirt,  "materials/dirt/diffuse.tga", "", "", MaterialFlag_REPEAT)	 \
-	_(rock00,  "materials/rock00/diffuse.tga", "", "", MaterialFlag_REPEAT)  \
-	_(grass00, "materials/grass00/diffuse.tga", "", "", MaterialFlag_REPEAT) \
-	_(grass01, "materials/grass01/diffuse.tga", "", "", MaterialFlag_REPEAT) \
+constexpr U64 StringHashDJB2(const char* str) {
+  U64 hash = 5381;
+  while(*str) {
+    hash = ((hash << 5) + hash) + *str;
+    str++;
+  }
+  return hash;
+} 
 
 
-struct AssetDataCache
-{
+struct MaterialAsset {
+  U32 flags;
+  MaterialData data;
+  MaterialDrawable drawable;
+  const char* filenames[MaterialTextureType_COUNT];
+};
+
+struct MaterialAssetList {
+  MaterialAsset* materials;
+  U64 materialCount;
+};
+
+struct AssetDataCache {
 	MemoryBlock memory;
 };
 
-struct DEBUGShaderInfo
-{
+struct DEBUGShaderInfo {
 	const char *filenames[4];
 };
 
 
-struct DEBUGModelInfo
-{
+struct DEBUGModelInfo {
 	const char *filename;
 };
 
-struct DEBUGLoadedShader
-{
+struct DEBUGLoadedShader {
 	const char *filenames[4];
 	U64 lastWriteTimes[4];
 	GLuint programHandle;
@@ -54,38 +71,11 @@ struct SoundAssetSlot
 	SoundData data;
 };
 
-struct LoadedModel
-{
+struct DEBUGLoadedModel {
 	ModelData data;
+  AABB aabb;
 	IndexedVertexArray vertexArray;
 	ModelDrawable drawable;
-};
-
-struct DEBUGMaterialAsset
-{
-	const char *name;
-	const char *filenames[3];
-	U32 flags;
-
-	MaterialData data;
-	MaterialDrawable drawable;
-};
-
-struct DEBUGLoadedModel
-{
-	ModelData data;
-	IndexedVertexArray vertexArray;
-	ModelDrawable drawable;
-};
-
-
-
-enum DEBUGMaterialID
-{
-#define _(name,d,n,s,f) DEBUGMaterialID_##name,
-	DebugMaterialList
-#undef _
-	DEBUGMaterialID_COUNT
 };
 
 static DEBUGShaderInfo DEBUG_SHADER_INFOS[] =
@@ -126,6 +116,6 @@ struct GameAssets
 
 	DEBUGLoadedShader loadedShaders[DEBUGShaderID_COUNT];
 	DEBUGLoadedModel loadedModels[DEBUGModelID_COUNT];
-	DEBUGMaterialAsset materials[DEBUGMaterialID_COUNT];
+  MaterialAssetList materialAssetList;
 };
 

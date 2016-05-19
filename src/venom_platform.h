@@ -1,4 +1,3 @@
-
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -36,8 +35,6 @@ typedef double   F64;
 #define ARRAY_COUNT(array) (sizeof(array) / sizeof(*array))
 #define static_strlen(string) ((sizeof(string)) - 1)
 
-#define fori(countMinusOne) for(decltype(countMinusOne) i = 0; i < countMinusOne; i++)
-
 #ifndef _DEBUG
 #define strict_assert(expr)
 #else
@@ -59,22 +56,23 @@ struct MemoryBlock
 #endif
 };
 
+#define PushStruct(structType, memblock) (structType*)PushSize(sizeof(structType), memblock)
 #define PushArray(ElementType, ElementCount, Elements,Arena) memcpy(PushSize(sizeof(ElementType) * ElementCount, Arena), Elements, sizeof(ElementType) * ElementCount)
 #define ReserveArray(elementType, elementCount, memoryBlock) ((elementType *)PushSize(sizeof(elementType) * elementCount, memoryBlock))
 #define AquireArrayMemory(elements, count, memory) elements = ((decltype(elements)) PushSize(sizeof(*elements) * count, memory))
 #define InitSubBlock(name, block, size, parent) _SetBlockName(block, name); _SubBlock(block, size, parent)
 
 #include "venom_math.h"
-#include "glcorearb.h"
-#include "opengl_resources.h"
-#include "venom_audio.h"
-#include "venom_asset.h"
 #include "venom_render.h"
+#include "venom_audio.h"
+#include "venom_physics.h"
+#include "venom_asset.h"
+
 #include "terrain.h"
 #include "imgui.h"
-#undef VENOM_RELEASE
+
 #ifndef VENOM_RELEASE
-#include "engine_debug.h"
+#include "venom_debug.h"
 
 struct DebugMemory 
 {
@@ -89,6 +87,10 @@ struct DebugMemory
 	EngineAPI(DebugMemory*, GetDebugMemory) \
 
 	//EngineAPI(ModelData, ImportExternalModelData, const char*, MemoryBlock)
+
+#define fori(lim) for(int64_t i = 0; i < lim; i++)
+
+#define LogWarning(...) { sprintf(GetDebugMemory()->debugLog.temp_buffer, __VA_ARGS__); PushLogEntry(&GetDebugMemory()->debugLog, LogLevel_WARNING); }
 
 #define LOG_ERROR(...) { sprintf(GetDebugMemory()->debugLog.temp_buffer, __VA_ARGS__); PushLogEntry(&GetDebugMemory()->debugLog, LogLevel_ERROR); }
 #define LOG_DEBUG(...) { sprintf(GetDebugMemory()->debugLog.temp_buffer, __VA_ARGS__); PushLogEntry(&GetDebugMemory()->debugLog, LogLevel_DEBUG); }
@@ -108,9 +110,9 @@ struct DebugMemory
 #endif
 
 #define EngineAPIList				              \
-	EngineAPI(GLuint, GetShaderProgram, GameAssets*, DEBUGShaderID) \
-	EngineAPI(const ModelDrawable&, GetModelDrawable, GameAssets*, DEBUGModelID)\
-	EngineAPI(const MaterialDrawable&, GetMaterial, GameAssets *, DEBUGMaterialID)\
+	EngineAPI(GLuint, GetShaderProgram, DEBUGShaderID, GameAssets*) \
+	EngineAPI(const ModelDrawable&, GetModelDrawable, DEBUGModelID, GameAssets*)\
+	EngineAPI(const MaterialDrawable&, GetMaterial, U32, GameAssets*)\
 	EngineDEBUGAPI
 
 #ifdef VENOM_HOTLOAD
@@ -125,16 +127,15 @@ EngineAPIList
 #undef EngineAPI
 #endif
 
-inline U8 *PushSize(size_t size, MemoryBlock *block)
-{
+
+inline U8 *PushSize(size_t size, MemoryBlock *block) {
 	assert(block->used + size <= block->size);
 	U8 *result = block->base + block->used;
 	block->used += size;
 	return result;
 }
 
-inline void _SubBlock(MemoryBlock *child, size_t size, MemoryBlock *parent)
-{	
+inline void _SubBlock(MemoryBlock *child, size_t size, MemoryBlock *parent) {	
 	child->size = size;
 	child->base = PushSize(size, parent);
 	child->used = 0;
@@ -144,13 +145,11 @@ inline void _SubBlock(MemoryBlock *child, size_t size, MemoryBlock *parent)
 #endif
 }
 
-inline void _SetBlockName(MemoryBlock *block, const char *name)
-{
+inline void _SetBlockName(MemoryBlock *block, const char *name) {
 	block->name = name;
 }
 
-struct SystemInfo 
-{
+struct SystemInfo {
 	int opengl_major_version;
 	int opengl_minor_version;
 	U64 virtual_memory_size;
@@ -159,17 +158,14 @@ struct SystemInfo
 	float screen_height;
 };
 
-struct DebugControls
-{
+struct DebugControls {
 	bool toggle_debug_mode;
 };
 
-struct InputState
-{
+struct InputState {
 	B8 isKeyDown[255];
 	int keycodes[255];
 	U8 keysPressedCount;
-
 	int cursorPosX;
 	int cursorPosY;
 	int cursorDeltaX;
@@ -181,14 +177,12 @@ struct InputState
 #endif
 };
 
-struct DebugGameplaySettings
-{
+struct DebugGameplaySettings {
 	bool use_debug_camera;
 	bool disable_terrain_generation;
 };
 
-struct GameState
-{
+struct GameState {
 	B8 isRunning;
 	F32 deltaTime;
 
@@ -197,32 +191,7 @@ struct GameState
 #endif
 };
 
-struct Camera
-{
-	V3 position;
-	V3 front;
-	float fov;
-	float yaw, pitch;
-	float near_clip;
-	float far_clip;
-
-	M4 view;
-	M4 projection;
-};
-
-struct RenderGroup
-{
-	GLuint vao;
-	GLuint vbo;
-	GLuint ebo;
-	MemoryBlock vertexBlock;
-	MemoryBlock indexBlock;
-	size_t current_vertex_count;
-	size_t current_index_count;
-};
-
-struct DebugRenderSettings
-{
+struct DebugRenderSettings {
 	bool is_wireframe_enabled;
 	bool render_debug_normals;
 	bool render_from_directional_light;
@@ -230,27 +199,19 @@ struct DebugRenderSettings
 	int draw_shadow_map_index;
 };
 
-struct Quad
-{
+struct Quad {
 	V3 bottom_left;
 	V3 top_left;
 	V3 top_right;
 	V3 bottom_right;
 };
 
-struct Frustum
-{
-	float field_of_view;
-	float aspect_ratio;
-	float near_plane_distance;
-	float far_plane_distance;
-	V3 points[8];
-};
-
-struct RenderState
-{
+struct RenderState {
 	Camera camera;
+  GBuffer gbuffer;
 	Lighting lightingState;
+
+  VenomDrawList drawList;
 
 	GLuint terrain_shader;
 	GLuint skydome_shader;
@@ -261,10 +222,11 @@ struct RenderState
 	GLuint depth_map_shader;
 	GLuint depth_map_framebuffer;
 	GLuint depth_map_texture;
-	Frustum csm_cascade_frustums[4];
 
-	GLuint quad_vao;
-	GLuint quad_vbo;
+  CascadedShadowMap csm;
+  OmnidirectionalShadowMap osm[4];
+
+	GLuint quadVao;
 
 	MemoryBlock vertexBlock;
 	MemoryBlock indexBlock;
@@ -274,13 +236,15 @@ struct RenderState
 
 	GLuint debug_depth_map_shader;
 
-	DebugRenderSettings debugSettings;
+  VenomDebugRenderSettings debugRenderSettings;
+  VenomDebugRenderInfo debugRenderInfo;
+
+
 	RenderGroup lineDebugGroup;
 	RenderGroup solidDebugGroup;
 	GLuint debugShader;
 	GLuint singleColorShader;
 	GLuint debugNormalsShader;
-
 
 	RenderGroup imguiRenderGroup;
 	GLuint imguiRenderGroupShader;
@@ -298,15 +262,14 @@ struct EngineAPI
 EngineAPIList
 #undef EngineAPI
 #define _(signature, name) signature name;
-#include "opengl_procs.h"
+#include "opengl_procedures.h"
 #undef _ 
 };
 #endif
 
 
 #include "entity.h"
-struct GameMemory
-{
+struct GameMemory {
 	SystemInfo systemInfo;
 	GameState gameState;
 	InputState inputState;
@@ -315,6 +278,8 @@ struct GameMemory
 	MemoryBlock mainBlock;
 	GameAssets assets;
 	AudioState audioState;
+
+  void *userdata;
 
 	TerrainGenerationState terrainGenState;
 	TerrainGenerationParameters terrainGenParams;

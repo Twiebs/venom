@@ -7,8 +7,7 @@ layout (location = 2) uniform mat4 projection;
 
 out vec4 frag_color;
 
-void main()
-{
+void main() {
 	gl_Position = projection * view * model * vec4(position, 1.0);
 	frag_color = color;
 }

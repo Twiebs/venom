@@ -2,35 +2,22 @@ struct V2;
 struct V3;
 struct V4;
 
-struct V2
-{
-	float x;
-	float y;
+struct V2 {
+	float x, y;
 	V2() {}
 	V2(float x, float y) : x(x), y(y) {}
 	V2(float s) : x(s), y(s) {}
 };
 
-struct V3
-{
-	union 
-	{
-		struct 
-		{
-			float x;
-			float y;
-			float z;	
-		};
-		float m[3];
-	};
+struct V3 {
+  float x, y, z;
 	V3() : x(0), y(0), z(0) {}
 	V3(float v) : x(v), y(v), z(v) {}
 	V3(float x, float y, float z) : x(x), y(y), z(z) {}
+  V3(const V3& v) : x(v.x), y(v.y), z(v.z) {}
 };
 
-
-struct V4
-{
+struct V4 {
 	float x;
 	float y;
 	float z;
@@ -38,13 +25,10 @@ struct V4
 	V4() {}
 	V4(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
 	V4(float v) : x(v), y(v), z(v), w(v) {}
-	V4(const struct V3& v, float w);
+	V4(const struct V3& v, float w) : x(v.x), y(v.y), z(v.z), w(w) {}
 };
-V4::V4(const V3& v, float w) : x(v.x), y(v.y), z(v.z), w(w) {}
 
-
-
-inline V4 operator-(const V4& a, const V4& b)
+inline V4 operator-(const V4& a, const V4& b) 
 {
 	V4 result;
 	result.x = a.x - b.x;
@@ -239,13 +223,11 @@ inline float MagnitudeSquared(const V2& v)
 	return result;
 }
 
-
 inline float Magnitude(const V3& v)
 {
 	float result = sqrtf((v.x * v.x) + (v.y * v.y) + (v.z *v.z));
 	return result;
 }
-
 
 inline V2 Normalize(const V2& v)
 {
@@ -280,4 +262,21 @@ inline float Dot(const V3& a, const V3& b)
 	float result = (a.x * b.x) + (a.y * b.y) + (a.z * b.z);
 	return result;
 }
+
+inline B32 Equals(const V3& a, const V3& b, const F32 epsilon = 0.001f) {
+	if (std::abs(b.x - a.x) > epsilon) return false;
+	if (std::abs(b.y - a.y) > epsilon) return false;
+	if (std::abs(b.z - a.z) > epsilon) return false;
+	return true;
+}
+
+inline B32 Equals(const V4& a, const V4& b, const F32 epsilon) {
+	if (std::abs(b.x - a.x) > epsilon) return false;
+	if (std::abs(b.y - a.y) > epsilon) return false;
+	if (std::abs(b.z - a.z) > epsilon) return false;
+	if (std::abs(b.w - a.w) > epsilon) return false;
+	return true;
+}
+
+
 

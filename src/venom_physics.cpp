@@ -1,9 +1,3 @@
-struct AABB
-{
-  V3 min;
-  V3 max;
-};
-
 struct Sphere
 {
   V3 center;
@@ -86,15 +80,12 @@ B32 Intersects(Capsule a, Sphere b)
 
 //================================================
 
-Sphere ComputeBoundingSphere(MeshData data)
-{
+Sphere ComputeBoundingSphere(MeshData data) {
   Sphere result = {};
-
-  float max_distance_squared = 0;
-  fori(data.vertexCount)
-  {
-	auto vertex = data.vertices[i];
-	max_distance_squared = std::abs(MagnitudeSquared(vertex.position));	
+  F32 max_distance_squared = 0;
+  for (U32 i = 0; i < data.vertexCount; i++) {
+    auto vertex = data.vertices[i];
+    max_distance_squared = std::abs(MagnitudeSquared(vertex.position));	
   }
 
   result.center = V3(0.0f);
@@ -103,9 +94,17 @@ Sphere ComputeBoundingSphere(MeshData data)
 }
 
 
-AABB ComputeAABB(const MeshData& data)
-{
+AABB ComputeAABB(const MeshData* data) {
   AABB result = {};
+  for (size_t i = 0; i < data->vertexCount; i++) {
+    const Vertex3D& vertex = data->vertices[i];
+    result.min.x = Min(result.min.x, vertex.position.x);
+    result.min.y = Min(result.min.y, vertex.position.y);
+    result.min.z = Min(result.min.z, vertex.position.z);
+    result.max.x = Max(result.max.x, vertex.position.x);
+    result.max.y = Max(result.max.y, vertex.position.y);
+    result.max.z = Max(result.max.z, vertex.position.z);
+  }
   return result;
 }
   

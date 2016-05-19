@@ -1,3 +1,6 @@
+struct GameEntities { int foo; };
+
+#if 0
 #pragma once
 
 #define EntityTypeList \
@@ -74,10 +77,14 @@ struct Player
 	bool is_grounded = false;
 };
 
+
 #define ENTITY_COUNT 20000
 struct GameEntities
 {
 	Player player;
+
+  IndexedVertexArray structures[16];
+  U64 structureCount;
 
 	union
 	{
@@ -90,3 +97,5 @@ struct GameEntities
 		EntityArray entityArrays[EntityType_COUNT];
 	};
 };
+
+#endif

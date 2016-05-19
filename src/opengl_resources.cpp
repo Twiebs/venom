@@ -1,4 +1,5 @@
 
+
 void CreateIndexedVertex3DArray(GLuint *vertexArray, GLuint *vertexBuffer, GLuint *indexBuffer,
 	U32 vertexCount, U32 indexCount, const Vertex3D *vertices, const U32 *indices, GLenum drawMode)
 {
@@ -72,12 +73,12 @@ GLuint CreateTextureWithMipmaps(const U8* pixels, U16 width, U16 height, GLenum 
 }
 
 
-GLuint CreateTextureWithoutMipmaps(const U8* pixels, U16 width, U16 height, GLenum internal_format, GLenum format, GLenum wrapMode, GLenum filterMode)
-{
+GLuint CreateTextureWithoutMipmaps(const U8* pixels, U16 width, U16 height, GLenum internal_format, GLenum format, GLenum wrapMode, GLenum filterMode) {
 	GLuint textureID;
 	glGenTextures(1, &textureID);
 	glBindTexture(GL_TEXTURE_2D, textureID);
-	glTexImage2D(GL_TEXTURE_2D, 0, internal_format, width, height, 0, format, GL_UNSIGNED_BYTE, pixels);
+	glTexImage2D(GL_TEXTURE_2D, 0, internal_format, 
+    width, height, 0, format, GL_UNSIGNED_BYTE, pixels);
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrapMode);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrapMode);
@@ -104,24 +105,44 @@ GLuint CreateTextureArray(U16 width, U16 height, U32 depth, GLenum internal_form
 	return textureID;
 }
 
+MaterialDrawable CreateMaterialDrawable(MaterialData *data) {
+	MaterialDrawable drawable = {};
+	drawable.flags = data->flags;
+	U8 *pixels_to_read = data->textureData;
+	GLenum wrap_mode = GL_CLAMP_TO_EDGE;
+	//if (data->flags & MaterialFlag_REPEAT) 
+    wrap_mode = GL_REPEAT;
 
+	if (data->flags & MaterialFlag_TRANSPARENT) {
+		drawable.diffuse_texture_id = CreateTextureWithMipmaps(pixels_to_read,
+      data->textureWidth, data->textureHeight, GL_RGBA8, GL_RGBA, wrap_mode);
+		pixels_to_read += (data->textureWidth * data->textureHeight * 4);
+	} else {
+		drawable.diffuse_texture_id = CreateTextureWithMipmaps(pixels_to_read,
+      data->textureWidth, data->textureHeight, GL_RGB8, GL_RGB, wrap_mode);
+		pixels_to_read += (data->textureWidth * data->textureHeight * 3);
+	}
 
-//TODO(Torin) What the fuck?
+	if (data->flags & MaterialFlag_NORMAL) {
+		drawable.normal_texture_id = CreateTextureWithMipmaps(pixels_to_read,
+      data->textureWidth, data->textureHeight, GL_RGB8, GL_RGB, wrap_mode);
+		pixels_to_read += (data->textureWidth * data->textureHeight * 3);
+	}
 
-#if 0
-GLuint CreateMaterial(const MaterialData *data)
-{
-	GLuint textureArrayID;
-	glGenTextures(1, &textureArrayID);
-	glBindTexture(GL_TEXTURE_2D_ARRAY, textureArrayID);
-	//glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_RGB, data->textureWidth, data->textureHeight, 3);
-	glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGB, data->textureWidth, data->textureHeight, 3, 0, GL_RGB, GL_UNSIGNED_BYTE, data->textureData);
-	//glTexImage3D(GL_TEXTURE_2D_ARRAY, 1, GL_RGB, data->textureWidth, data->textureHeight, 0, 0, GL_RGB, GL_UNSIGNED_BYTE, data->textureData);
-	//glTexImage3D(GL_TEXTURE_2D_ARRAY, 2, GL_RGB, data->textureWidth, data->textureHeight, 0, 0, GL_RGB, GL_UNSIGNED_BYTE, data->textureData);	
-	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	return textureArrayID;
+	if (data->flags & MaterialFlag_SPECULAR) {
+		drawable.specular_texture_id = CreateTextureWithMipmaps(pixels_to_read,
+      data->textureWidth, data->textureHeight, GL_RGB8, GL_RGB, wrap_mode);
+	}
+
+	return drawable;
 }
-#endif
+
+void DestroyMaterialDrawable(MaterialDrawable* drawable) {
+  if (drawable->diffuse_texture_id)
+    glDeleteTextures(1, &drawable->diffuse_texture_id);
+  if (drawable->specular_texture_id)
+    glDeleteTextures(1, &drawable->specular_texture_id);
+  if (drawable->normal_texture_id)
+    glDeleteTextures(1, &drawable->normal_texture_id);
+  drawable->flags = 0;
+}
