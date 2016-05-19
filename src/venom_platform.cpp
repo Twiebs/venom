@@ -13,35 +13,18 @@
 #include "venom_platform.h"
 
 #ifndef VENOM_RELEASE
-global_variable DebugMemory* g_debug_memory;
+static DebugMemory* g_debug_memory;
 DebugMemory *GetDebugMemory() { return g_debug_memory; }
 #endif //NOTE(Torin) GetDebugMemory is used to access the DebugLog
 //In error loging functions in development builds
 
-#if 1
-#define _(signature, name) static signature name;
-#include "opengl_procedures.h"
-#undef _ 
-#endif
-
-#include "renderer_data.cpp"
-#include "offline_asset_tools.h"
-
-//TODO(Torin) Make the single translation unit compiling
-//a bit more modular and configurable
 #ifdef VENOM_SINGLE_TRANSLATION_UNIT
-#ifndef VENOM_RELEASE
 #include "venom_debug.cpp"
-#include "offline_asset_tools.cpp"
-#endif
-
-#include "opengl_glsl.cpp"
-#include "opengl_resources.cpp"
-
+#include "venom_render.cpp"
 #include "venom_physics.cpp"
 #include "venom_asset.cpp"
 #include "venom_audio.cpp"
-#endif
+#endif//VENOM_SINGLE_TRANSLATION_UNIT
 
 #ifndef VENOM_DEFAULT_SCREEN_WIDTH
 #define VENOM_DEFAULT_SCREEN_WIDTH 1280
@@ -61,7 +44,7 @@ global_variable VenomModuleUpdateProc VenomModuleUpdate;
 global_variable VenomModuleRenderProc VenomModuleRender;
 #define LoadGameCode() InternalLoadGameCode()
 #else
-#include VENOM_HOTLOAD_MODULE_FILE 
+#include VENOM_MODULE_FILE 
 #define LoadGameCode()
 #endif
 

@@ -26,7 +26,7 @@ struct IndexedVertexArray {
 	GLuint vertexArrayID;
 	GLuint vertexBufferID;
 	GLuint indexBufferID;
-  U32 vertexCount, indexCount;
+    U32 vertexCount, indexCount;
 };
 
 void CreateIndexedVertex3DArray(GLuint *vertexArray, GLuint *vertexBuffer, GLuint *indexBuffer,

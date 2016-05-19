@@ -11,6 +11,26 @@
 #endif
 
 
+
+#ifdef VENOM_HOTLOAD
+#include "venom_platform.h"
+#include "imgui.cpp"
+#include "imgui_draw.cpp"
+#include "imgui_demo.cpp"
+#include "venom_render.cpp"
+
+#include "game.h"
+
+#define _(returnType, name, ...) static name##Proc name;
+EngineAPIList
+#undef _
+#endif//VENOM_HOTLOAD
+
+void VenomModuleStart(GameMemory* memory);
+void VenomModuleLoad(GameMemory* memory);
+void VenomModuleUpdate(GameMemory* memory);
+void VenomModuleRender(GameMemory* memory);
+
 #define _(name, flags) MaterialID_##name,
 enum MaterialID { 
 #ifdef VENOM_MATERIAL_LIST_FILE
@@ -27,19 +47,7 @@ const char *MATERIAL_NAMES[] {
 #endif//VENOM_MATERIAL_LIST_FILE
 }; 
 #undef _
-#ifndef VENOM_RELEASE
 
-#define EngineAPI(returnType, name, ...) static name##Proc name;
-EngineAPIList
-#undef EngineAPI
-
-#ifdef VENOM_HOTLOAD
-#include "imgui.cpp"
-#include "imgui_draw.cpp"
-#include "imgui_demo.cpp"
-#endif
-
-#include "venom_render.cpp"
 #include "debug_imgui.cpp"
 #include "game.h"
 
@@ -143,29 +151,25 @@ imgui_update_state(GameMemory *memory) {
 	memcpy(io.KeysDown, input->isKeyDown, 256);
 }
 
-#endif
-
-void VenomModuleStart(GameMemory* memory);
-void VenomModuleLoad(GameMemory* memory);
-void VenomModuleUpdate(GameMemory* memory);
-void VenomModuleRender(GameMemory* memory);
 
 extern "C" 
 void _VenomModuleStart(GameMemory* memory) {
-#define EngineAPI(returnType, name, ...) name = memory->engineAPI.name;
+#ifdef VENOM_HOTLOAD
+#define _(returnType, name, ...) name = memory->engineAPI.name;
 EngineAPIList
-#undef EngineAPI
+#undef _
 #define _(signature, name) name = memory->engineAPI.name;
 #include "opengl_procedures.h"
 #undef _ 
+#endif//VENOM_HOTLOAD
 
   InitalizeVenomDebugData(memory);
-InitalizeRenderState(&memory->renderState);
+  InitalizeRenderState(&memory->renderState);
 
   U8* pixels;
   int width, height;
   ImGuiIO& io = ImGui::GetIO();
-  io.Fonts->AddFontFromFileTTF("/usr/share/fonts/TTF/DejaVuSans.ttf", 14);
+  //io.Fonts->AddFontFromFileTTF("/usr/share/fonts/TTF/DejaVuSans.ttf", 14);
   io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
   GLuint textureID;
   glGenTextures(1, &textureID);
@@ -181,6 +185,11 @@ InitalizeRenderState(&memory->renderState);
   memory->renderState.imguiFontTexture = textureID;
   io.Fonts->TexID = (void *)(size_t)memory->renderState.imguiFontTexture;
   VenomModuleStart(memory);
+
+  assert(memory->mainBlock.size > memory->mainBlock.used);
+  U64 remainingBlockMemory = memory->mainBlock.size - memory->mainBlock.used;
+  InitSubBlock("AssetCache", &memory->assets.memory,
+    remainingBlockMemory, &memory->mainBlock);
 }
 
 void LoadMaterialList(MaterialAssetList* list) {
@@ -221,12 +230,14 @@ void LoadMaterialList(MaterialAssetList* list) {
 
 
 extern "C" void _VenomModuleLoad(GameMemory *memory) {
-#define EngineAPI(returnType, name, ...) name = memory->engineAPI.name;
+#ifdef VENOM_HOTLOAD
+#define _(returnType, name, ...) name = memory->engineAPI.name;
 EngineAPIList
-#undef EngineAPI
+#undef _
 #define _(signature, name) name = memory->engineAPI.name;
 #include "opengl_procedures.h"
 #undef _ 
+#endif//VENOM_HOTLOAD
 	
 	ImGuiIO& io = ImGui::GetIO();
   
@@ -247,7 +258,7 @@ EngineAPIList
 
   U8* pixels;
   int width, height, components;
-  io.Fonts->AddFontFromFileTTF("/usr/share/fonts/TTF/DejaVuSans.ttf", 14);
+  //io.Fonts->AddFontFromFileTTF("/usr/share/fonts/TTF/DejaVuSans.ttf", 14);
   io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height, &components);
 	io.Fonts->TexID = (void *)(size_t)memory->renderState.imguiFontTexture;
 
@@ -272,7 +283,7 @@ extern "C" void _VenomModuleUpdate(GameMemory* memory) {
       &memory->inputState, memory->gameState.deltaTime);
   }
   ShowCameraInfo(&memory->renderState.debugCamera);
-  ImGui::ShowTestWindow();
+  //ImGui::ShowTestWindow();
 }
 
 extern "C"

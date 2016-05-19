@@ -5,7 +5,6 @@ namespace UniformLocation {
 	static const U32 view = 1;
 	static const U32 projection = 2;
 	static const U32 light_space = 3;
-
 };
 
 struct VenomDrawCommand {
@@ -52,7 +51,7 @@ struct DirectionalLight {
 struct PointLight {
 	V3 position;
 	V3 color;
-  F32 radius;
+	F32 radius;
 };
 
 struct Frustum {
@@ -69,7 +68,7 @@ struct Camera {
 	F32 fov;
 	F32 yaw, pitch;
 	F32 near_clip, far_clip;
-  F32 viewportWidth, viewportHeight;
+	F32 viewportWidth, viewportHeight;
 	M4 view, projection;
 };
 
@@ -155,5 +154,6 @@ UpdateCamera(Camera *camera) {
 #include "glcorearb.h"
 #include "opengl_resources.h"
 #include "opengl_render.h"
+#include "offline_asset_tools.h"
 #endif//VENOM_OPENGL
 

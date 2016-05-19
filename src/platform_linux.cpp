@@ -10,7 +10,7 @@ typedef struct __GLXFBConfigRec *GLXFBConfig;
 typedef XID GLXDrawable;
 typedef XID GLXFBConfigID;
 
-U64 GetPerformanceCounter() {
+U64 GetPerformanceCounterTime() {
 	struct timespec Timespec;
 	clock_gettime(CLOCK_MONOTONIC, &Timespec);
 	U64 result = Timespec.tv_nsec;
@@ -243,13 +243,7 @@ int LinuxMain() {
   LoadVenomModule(&module, "../build/game_module.so");
   if (module.handle != NULL) {
     VenomModuleStart(memory);
-    assert(memory->mainBlock.size > memory->mainBlock.used);
-    U64 remainingBlockMemory = memory->mainBlock.size - memory->mainBlock.used;
-    InitSubBlock("AssetCache", &memory->assets.memory, 
-        remainingBlockMemory, &memory->mainBlock);
-    U64 terrainBlockEnd = (U64)(memory->terrainGenState.memory.base 
-      + memory->terrainGenState.memory.used);
-    assert(terrainBlockEnd < (U64)memory->assets.memory.base);
+
     VenomModuleLoad(memory);
   } else {
     return 1;

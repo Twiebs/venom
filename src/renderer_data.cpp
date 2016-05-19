@@ -1,10 +1,5 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
-struct DebugMaterialInfo {
-  const char *filenames[MaterialTextureType_COUNT];
-	V3 diffuse_color;
-	V3 specular_color;
-};
 
 void CreateMaterialDataFromTextureFiles(MaterialData* data, const char* diffuse_filename,
 	const char* normal_filename, const char* specular_filename, MemoryBlock *memblock)
@@ -58,7 +53,7 @@ void CreateMaterialData(MaterialData* data,
 				data->flags |= 1 << i;
 			}
 		} else {
-			map_data[i] = null;
+			map_data[i] = nullptr;
 		}
 	}
 
@@ -78,7 +73,7 @@ void CreateMaterialData(MaterialData* data,
 		fori((U32)MaterialTextureType_COUNT) {
 			if (map_components[i] == 4 && i == 0)
 				data->flags |= MaterialFlag_TRANSPARENT;
-			if (map_data[i] == null) continue;
+			if (map_data[i] == nullptr) continue;
 
 			assert(map_width[i] == map_width[0]);
 			assert(map_height[i] == map_height[0]);
@@ -91,7 +86,7 @@ void CreateMaterialData(MaterialData* data,
     data->textureData = (U8*)malloc(required_memory_size);
 		uintptr_t write_offset = 0;
 		for (int i = 0; i < MaterialTextureType_COUNT; i++) {
-			if (map_data[i] == null) continue;
+			if (map_data[i] == nullptr) continue;
 			size_t write_size = map_width[i] * map_height[i] * map_components[i];
 			memcpy(data->textureData + write_offset, map_data[i], write_size);
       write_offset += write_size;

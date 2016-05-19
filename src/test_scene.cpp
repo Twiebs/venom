@@ -1,6 +1,4 @@
 #define VENOM_MATERIAL_LIST_FILE "asset_list.h"
-
-#include "venom_platform.h"
 #include "venom_module.cpp"
 
 #include "math_procedural.cpp"
@@ -52,8 +50,10 @@ struct EntityArray {
   Entity entities[ENTITY_CAPACITY];
 };
 
+#define INVALID_ENTITY_ID (1LL << 32)
+
 U64 CreateEntity(EntityType type, EntityArray* array) {
-  U64 entityID = (1L << 32); 
+	U64 entityID = INVALID_ENTITY_ID;
   for (U64 i = 0; i < ENTITY_CAPACITY; i++) {
     if ((array->flags[i] & EntityFlag_ACTIVE) == 0) {
       entityID = i;
@@ -61,7 +61,7 @@ U64 CreateEntity(EntityType type, EntityArray* array) {
     }
   }
 
-  if (entityID != (1L << 32)) {
+  if (entityID != INVALID_ENTITY_ID) {
     array->flags[entityID] |= EntityFlag_ACTIVE;
     Entity& entity = array->entities[entityID];
     entity.type = type;
@@ -417,7 +417,7 @@ void VenomModuleUpdate(GameMemory* memory) {
   ImGui::Begin("Entities");
   ImGui::Columns(2);
   ImGui::Separator();
-  static U64 selectedIndex = (1L << 32);
+  static U64 selectedIndex = INVALID_ENTITY_ID;
   ImGui::BeginChild("EntityList");
   for (size_t i = 0; i < ENTITY_CAPACITY; i++) {
     if (entityArray->flags[i] & EntityFlag_ACTIVE) {
@@ -433,7 +433,7 @@ void VenomModuleUpdate(GameMemory* memory) {
   ImGui::EndChild();
   ImGui::NextColumn();
   ImGui::BeginChild("Info");
-  if (selectedIndex != (1L << 32)) {
+  if (selectedIndex != INVALID_ENTITY_ID) {
     Entity& entity = entityArray->entities[selectedIndex];
     ImGui::DragFloat3("Position", &entity.position.x, 0.1f);
   }
@@ -448,7 +448,6 @@ void VenomModuleLoad(GameMemory* memory) {
 
 
   if(!data->initalized) {
-
     U64 id = CreateEntity(EntityType_PointLight, &data->entityArray);
     Entity& entity = data->entityArray.entities[id];
     entity.position = V3 {4, 3.0, 3 };
@@ -460,8 +459,8 @@ void VenomModuleLoad(GameMemory* memory) {
     {
       U64 id = CreateEntity(EntityType_PointLight, &data->entityArray);
       Entity& entity = data->entityArray.entities[id];
-      entity.position = V3 {1.5, 6, 2.0 };
-      entity.pointLight.color = V3 { 0.9, 0.9, 1.0 };
+      entity.position = V3 {1.5f, 6.0f, 2.0f };
+      entity.pointLight.color = V3 { 0.9F, 0.9F, 1.0F };
       entity.pointLight.radius = 20.0f;
       entity.modelID = DEBUGModelID_Lamp;
     }

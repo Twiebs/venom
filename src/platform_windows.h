@@ -9,6 +9,7 @@
 #define KEYCODE_SHIFT 0x10 
 #define KEYCODE_CTRL 0x11
 #define KEYCODE_ALT 0x12
+#define KEYCODE_CAPSLOCK 0x14
 
 #define KEYCODE_LEFT 0x25
 #define KEYCODE_RIGHT 0x27

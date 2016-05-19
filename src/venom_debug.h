@@ -1,3 +1,5 @@
+
+
 enum LogLevel {
 	LogLevel_ERROR,
   LogLevel_WARNING,
@@ -67,6 +69,12 @@ struct ProfileData
 	U32 explicitEntryCount;
 	U32 persistantWriteIndex;
 };
+
+struct DebugMemory {
+	DebugLog debugLog;
+	ProfileData profileData;
+};
+
 
 void PushLogEntry(DebugLog *log, LogLevel level);//, const char *message, ...);
 

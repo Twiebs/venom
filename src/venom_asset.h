@@ -15,15 +15,16 @@
   _(DeferredMaterial, "vertexarray_quad.vert", "material_deferred.frag", "")
 
 #define DebugModelList       \
-	_(rock00, "dumb_rock.dae") \
-	_(bamboo, "foliage/bamboo/model.fbx") \
-	_(bush,   "foliage/bush/model.fbx")   \
-	_(white_flower, "foliage/white_flower/model.fbx") \
-	_(player, "dumb_player.fbx") \
+  _(rock00, "dumb_rock.dae") \
+  _(bamboo, "foliage/bamboo/model.fbx") \
+  _(bush,   "foliage/bush/model.fbx")   \
+  _(white_flower, "foliage/white_flower/model.fbx") \
+  _(player, "dumb_player.fbx") \
   _(SmallBarrel, "containers/SmallBarrel/barrel.fbx")\
   _(Lamp, "lamp.fbx") \
   _(Stairs, "Stairs/Stairs.fbx")
 
+#if 0
 constexpr U64 StringHashDJB2(const char* str) {
   U64 hash = 5381;
   while(*str) {
@@ -32,6 +33,7 @@ constexpr U64 StringHashDJB2(const char* str) {
   }
   return hash;
 } 
+#endif
 
 
 struct MaterialAsset {

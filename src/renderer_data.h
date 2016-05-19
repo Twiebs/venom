@@ -88,3 +88,9 @@ struct AnimatedModelData {
 	MaterialData *materialDataPerMesh;
 	U32 *indexCountPerMesh;
 };
+
+struct DebugMaterialInfo {
+	const char *filenames[MaterialTextureType_COUNT];
+	V3 diffuse_color;
+	V3 specular_color;
+};

@@ -81,8 +81,6 @@ void InitOmnidirectionalShadowMap(OmnidirectionalShadowMap* osm) {
   glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);  
 }
 
-
-
 static inline
 void UpdateCSMFustrums(CascadedShadowMap* csm, Camera* camera) 
 {
@@ -110,6 +108,7 @@ void BindMaterial(const MaterialDrawable& material) {
   glBindTexture(GL_TEXTURE_2D, material.specular_texture_id);
 };
 
+#if 0
 static inline 
 void DrawTerrainGeometry(TerrainGenerationState *terrainGenState) {
   glActiveTexture(GL_TEXTURE5);
@@ -126,6 +125,7 @@ void DrawTerrainGeometry(TerrainGenerationState *terrainGenState) {
   glBindTexture(GL_TEXTURE_2D, 0);
   glBindVertexArray(0);
 };
+#endif
 
 inline RenderGroup CreateDebugRenderGroup() {
 	RenderGroup result = {};
@@ -512,7 +512,7 @@ void VenomRenderScene(GameMemory* memory, Camera* camera) {
   }
 #endif
 
-#if 1
+#if 0
   glViewport(0, 0, sys->screen_width, sys->screen_height);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
   glClearColor(0.0f, 0.0f, 0.0f, 1.0f);

@@ -17,20 +17,18 @@ U64 GetFileLastWriteTime(const char *filename)
 	return result;
 }
 
-U64 GetPerformanceCounterTime()
-{
-	LARGE_INTEGER counter;
-	QueryPerformanceCounter(&counter);
-	U64 result = (U64)counter.QuadPart;
-	return result;
+U64 GetPerformanceCounterTime() {
+  LARGE_INTEGER counter;
+  QueryPerformanceCounter(&counter);
+  U64 result = (U64)counter.QuadPart;
+  return result;
 }
 
-U64 GetPerformanceCounterFrequency()
-{
-	LARGE_INTEGER frequency;
-	QueryPerformanceFrequency(&frequency);
-	U64 result = (U64)frequency.QuadPart;
-	return result;
+U64 GetPerformanceCounterFrequency() {
+  LARGE_INTEGER frequency;
+  QueryPerformanceFrequency(&frequency);
+  U64 result = (U64)frequency.QuadPart;
+  return result;
 }
 
 #ifdef VENOM_VULKAN
@@ -121,7 +119,7 @@ U64 GetPerformanceFrequency()
 	return counterFrequency.QuadPart;
 }
 
-int WindowsPlatformMain()
+int WindowsPlatformMain() 
 {
 	//NOTE(Torin) This will be read in from disk
 	//If the serialized file does not exist then we
@@ -254,7 +252,6 @@ int WindowsPlatformMain()
 		wglChosePixelFormatARB = (PROCwglChoosePixelFormatARB)
 			wglGetProcAddress("wglChoosePixelFormatARB");
 
-#if 0
 		static const U32 WGL_DRAW_TO_WINDOW_ARB = 0x2001;
 		static const U32 WGL_SUPPORT_OPENGL_ARB = 0x201;
 		static const U32 WGL_DOUBLE_BUFFER_ARB = 0x2011;
@@ -264,14 +261,13 @@ int WindowsPlatformMain()
 		static const U32 WGL_STENCIL_BITS_ARB = 0x2023;
 		static const U32 WGL_TYPE_RGBA_ARB = 0x202B;
 
-		const int pixel_format_attribs[] =
-		{
+		const int pixel_format_attribs[] = {
 			WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
 			WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
 			WGL_DOUBLE_BUFFER_ARB, GL_TRUE,
 			WGL_PIXEL_TYPE_ARB, WGL_TYPE_RGBA_ARB,
 			WGL_COLOR_BITS_ARB, 32,
-			WGL_DEPTH_BITS_ARB, 24,
+			WGL_DEPTH_BITS_ARB, 32,
 			WGL_STENCIL_BITS_ARB, 8,
 			0,
 		};
@@ -279,7 +275,6 @@ int WindowsPlatformMain()
 		int pixel_format;
 		UINT num_formats;
 		wglChosePixelFormatARB(hdc, pixel_format_attribs, NULL, 1, &pixel_format, &num_formats);
-#endif
 
 		static const U32 WGL_CONTEXT_MAJOR_VERSION_ARB = 0x2091;
 		static const U32 WGL_CONTEXT_MINOR_VERSION_ARB = 0x2092;
@@ -322,10 +317,10 @@ int WindowsPlatformMain()
 
 	//Set the inital @GameState
 	HMODULE libgl = LoadLibraryA("opengl32.dll");
-#define OpenGLProc(signature, name) name = (signature)wglGetProcAddress(#name); \
+#define _(signature, name) name = (signature)wglGetProcAddress(#name); \
 	if (name == nullptr) name = (signature)GetProcAddress(libgl, #name);
-#include "opengl_procs.h"
-#undef OpenGLProc
+#include "opengl_procedures.h"
+#undef _
 	FreeLibrary(libgl);
 
 
@@ -345,10 +340,7 @@ int WindowsPlatformMain()
 	//NOTE(Torin) the main memory block is initalized in InitalizeGameMemory
 	//by incrementing the pointer past the GameMemory struct. So the avaible memory
 	//for the game to use is actutaly config.memorysize - sizeof(GameMemory)
-	GameMemory *memory = (GameMemory *)malloc(config.memory_size);
-	memset(memory, 0, config.memory_size);
-	InitalizeGameMemory(memory, &config);
-
+	GameMemory *memory = AllocateGameMemory(&config);
 	GameState *gameState = &memory->gameState;
 	RenderState *renderState = &memory->renderState;
 	InputState *input = &memory->inputState;
@@ -360,9 +352,8 @@ int WindowsPlatformMain()
 	sys->cpu_core_count = win32SystemInfo.dwNumberOfProcessors;
 
 
-
 #ifndef VENOM_RELEASE
-	opengl_enable_debug(&memory->debug_memory.debugLog);
+	OpenGLEnableDebug(&memory->debug_memory.debugLog);
 #endif
 
 #ifdef VENOM_HOTLOAD
@@ -391,14 +382,12 @@ int WindowsPlatformMain()
 	ShowWindow(window, SW_SHOWNORMAL);
 	UpdateWindow(window);
 
-	//@GameInitalization
-	GameStartup(memory);
-
-
+	_VenomModuleStart(memory);
+	_VenomModuleLoad(memory);
 
 	//XXX REMOVE THIS TEST CODE
-	SoundData musicData = LoadOGG("../assets/music.ogg");
-	PlaySound(&memory->audioState, 100, musicData.sampleCount, musicData.samples);
+	//SoundData musicData = LoadOGG("../assets/music.ogg");
+	//PlaySound(&memory->audioState, 100, musicData.sampleCount, musicData.samples);
 
 	while (gameState->isRunning) {
 		QueryPerformanceCounter((LARGE_INTEGER *)&currentTicks);
@@ -425,52 +414,6 @@ int WindowsPlatformMain()
 			profileData->persistantWriteIndex = 0;
 #endif
 
-#ifdef VENOM_HOTLOAD
-
-		{ //@Compile changed Game Files
-			static bool should_compile = false;
-			static U64 lastWriteTime = GetFileLastWriteTime("../src/main.cpp");
-			U64 currentLastWriteTime = GetFileLastWriteTime("../src/main.cpp");
-
-			if (should_compile)
-			{
-				char buffer[1024];
-				size_t write_index = 0;
-				FILE *stream = _popen("call \"../src/build_dll.bat\" ../src/main.cpp", "rb");
-				while (fgets(&buffer[write_index], 1024 - write_index, stream))
-				{
-					write_index += strlen(&buffer[write_index]);
-					assert(write_index < ARRAY_COUNT(buffer));
-				};
-
-				buffer[write_index] = 0;
-				LOG_ERROR(buffer);
-				_pclose(stream);
-				lastWriteTime = currentLastWriteTime;
-				should_compile = false;
-				LOG_DEBUG("Compilation Complete");
-			}
-
-			if (lastWriteTime != currentLastWriteTime)
-			{
-				should_compile = true;
-				LOG_DEBUG("Compiling Game Module...");
-			}
-		}
-
-		FILETIME lastWriteTime = GetLastWriteTime(HOTLOAD_TRIGGER_DLL);
-		if (CompareFileTime(&g_code.lastWriteTime, &lastWriteTime) != 0)
-		{
-			FreeLibrary(g_code.module);
-			InternalLoadGameCode();
-			OnModuleLoad(memory);
-			g_code.lastWriteTime = GetLastWriteTime(HOTLOAD_TRIGGER_DLL);
-			LOG_DEBUG("Game Module Hotloaded");
-		}
-
-		HotloadShaders(&memory->assets);
-#endif
-		
 		MSG message;
 		while (PeekMessage(&message, window, 0, 0, PM_REMOVE)) {
 			switch (message.message) {
@@ -526,11 +469,11 @@ int WindowsPlatformMain()
 
 		BEGIN_TIMED_BLOCK("GameTick");
 		BEGIN_TIMED_BLOCK("GameUpdate");
-		GameUpdate(memory);
+		_VenomModuleUpdate(memory);
 		END_TIMED_BLOCK("GameUpdate");
 
 		BEGIN_TIMED_BLOCK("GameRender");
-		GameRender(memory);
+		_VenomModuleRender(memory);
 		END_TIMED_BLOCK("GameRender");
 		END_TIMED_BLOCK("GameTick");
 		
@@ -545,7 +488,7 @@ int WindowsPlatformMain()
 
 		AudioState *audioState = &memory->audioState;
 
-#if 1
+#if 0
 		{ //@AudioUpdate
 			DWORD playCursor, writeCursor;
 			secondaryBuffer->GetCurrentPosition(&playCursor, &writeCursor);
