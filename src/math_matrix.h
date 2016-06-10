@@ -392,15 +392,17 @@ inline M4 Translate(float x, float y, float z)
 	return m;
 }
 
+#if 1
 inline M4 Scale(float x, float y, float z)
 {
 	M4 m;
-	m[0][0] = x;    m[1][0] = 0.0f; m[2][0] = 0.0f; m[3][0] = x;
-	m[0][1] = 0.0f; m[1][1] = y;    m[2][1] = 0.0f; m[3][1] = y;
-	m[0][2] = 0.0f; m[1][2] = 0.0f; m[2][2] = z;    m[3][2] = z;
+	m[0][0] = x;    m[1][0] = 0.0f; m[2][0] = 0.0f; m[3][0] = 0.0f;
+	m[0][1] = 0.0f; m[1][1] = y;    m[2][1] = 0.0f; m[3][1] = 0.0f;
+	m[0][2] = 0.0f; m[1][2] = 0.0f; m[2][2] = z;    m[3][2] = 0.0f;
 	m[0][3] = 0.0f; m[1][3] = 0.0f; m[2][3] = 0.0f; m[3][3] = 1.0f;
 	return m;
 }
+#endif
 
 inline M4 Rotate(float x, float y, float z)
 {
@@ -425,20 +427,10 @@ inline M4 Rotate(float x, float y, float z)
 	return result;
 }
 
-inline M4 Translate(const V3& v)
-{
-	return Translate(v.x, v.y, v.z);
-}
-
-inline M4 Rotate(const V3& v)
-{
-	return Rotate(v.x, v.y, v.z);
-}
-
-inline M4 Scale(const V3& v)
-{
-	return Scale(v.x, v.y, v.z);
-}
+inline M4 Translate(const V3& v) { return Translate(v.x, v.y, v.z); }
+inline M4 Rotate(const V3& v) { return Rotate(v.x, v.y, v.z); }
+inline M4 Scale(const V3 v) { return Scale(v.x, v.y, v.z); }
+inline M4 Scale(const float s) { return Scale(s, s, s); }
 
 inline M4 Orthographic(float left, float right, float bottom, float top,
 	float near_clip, float far_clip, float up)

@@ -1,25 +1,13 @@
-#if 0
-struct Rectangle
-{
-	V2 min;
-	V2 max;
+struct Rectangle {
+  F32 minX, minY;
+  F32 maxX, maxY; 
 };
 
-struct Box
-{
-	V3 min;
-	V3 max;
-};
-
-struct Circle
-{
-	V2 center;
-	float radius;
-};
-
-struct Sphere
-{
-	V3 center;
-	float radius;
-};
-#endif
+inline V2 
+Center(const Rectangle& rectangle) {
+  F32 width = rectangle.maxX - rectangle.minX;
+  F32 length = rectangle.maxY - rectangle.minY;
+  V2 result = { rectangle.minX + (width * 0.5F),
+    rectangle.minY + (length * 0.5F) };
+  return result; 
+}

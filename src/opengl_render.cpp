@@ -1,89 +1,20 @@
 inline void 
-InitGBuffer(GBuffer* gbuffer, const U32 viewportWidth, const U32 viewportHeight) {
-  glGenFramebuffers(1, &gbuffer->framebuffer);
-  glBindFramebuffer(GL_FRAMEBUFFER, gbuffer->framebuffer);
-  
-  glGenTextures(1, &gbuffer->positionDepth);
-  glBindTexture(GL_TEXTURE_2D, gbuffer->positionDepth);
-  glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, viewportWidth, viewportHeight);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+InitalizeRenderState(RenderState* rs, SystemInfo* sys) {
+  glGenVertexArrays(1, &rs->quadVao);
+  InitGBuffer(&rs->gbuffer, sys->screen_width, sys->screen_height);
+  SSAOInit(&rs->ssao, sys->screen_width, sys->screen_height);
+  InitCascadedShadowMaps(&rs->csm, sys->screen_width, sys->screen_height, 45.0f*DEG2RAD);
+  for (size_t i = 0; i < SHADOW_CASTING_POINT_LIGHT_MAX; i++) {
+    InitOmnidirectionalShadowMap(&rs->osm[i]);
+  } 
 
-  glGenTextures(1, &gbuffer->normal);
-  glBindTexture(GL_TEXTURE_2D, gbuffer->normal);
-  glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, viewportWidth, viewportHeight);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  
-  glGenTextures(1, &gbuffer->albedoSpecular);
-  glBindTexture(GL_TEXTURE_2D, gbuffer->albedoSpecular);
-  glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, viewportWidth, viewportHeight);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, 
-    GL_TEXTURE_2D, gbuffer->positionDepth, 0);
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, 
-    GL_TEXTURE_2D, gbuffer->normal, 0);
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, 
-    GL_TEXTURE_2D, gbuffer->albedoSpecular, 0);
-
-  GLuint attachments[3] = { 
-    GL_COLOR_ATTACHMENT0, 
-    GL_COLOR_ATTACHMENT1, 
-    GL_COLOR_ATTACHMENT2
-  };
-
-  glDrawBuffers(3, attachments);
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
-  glBindTexture(GL_TEXTURE_2D, 0);
-}
-
-
-void InitCascadedShadowMaps(CascadedShadowMap* csm, 
-  F32 viewportWidth, F32 viewportHeight, F32 fieldOfView) 
-{ 
-  glGenFramebuffers(1, &csm->framebuffer);
-  glBindFramebuffer(GL_FRAMEBUFFER, csm->framebuffer);
-  glDrawBuffer(GL_NONE);
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-  glGenTextures(1, &csm->depthTexture);
-  glBindTexture(GL_TEXTURE_2D_ARRAY, csm->depthTexture);
-  glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_DEPTH_COMPONENT,
-               SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION, 
-               SHADOW_MAP_CASCADE_COUNT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-  for (U32 i = 0; i < SHADOW_MAP_CASCADE_COUNT; i++) {
-    csm->cascadeFrustums[i].aspect_ratio = 
-      viewportWidth / viewportHeight;
-    csm->cascadeFrustums[i].field_of_view = fieldOfView + 0.2f;
-  }
-}
-static const U32 OMNI_SHADOW_MAP_RESOLUTION = 4096;
-
-void InitOmnidirectionalShadowMap(OmnidirectionalShadowMap* osm) {
-  glGenTextures(1, &osm->depthCubemap);
-  glBindTexture(GL_TEXTURE_CUBE_MAP, osm->depthCubemap);
-  for (size_t i = 0; i < 6; i++)
-    glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_DEPTH_COMPONENT,
-      OMNI_SHADOW_MAP_RESOLUTION, OMNI_SHADOW_MAP_RESOLUTION, 0, 
-      GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-  
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);  
+#ifndef VENOM_RELEASE
+  CreateDebugRenderResources(&rs->debugRenderResources);
+#endif//VENOM_RELEASE
 }
 
 static inline
-void UpdateCSMFustrums(CascadedShadowMap* csm, Camera* camera) 
-{
+void UpdateCSMFustrums(CascadedShadowMap* csm, Camera* camera) {
   Frustum *f = csm->cascadeFrustums;
   float clip_plane_distance_ratio = camera->far_clip / camera->near_clip;
   f[0].near_plane_distance = camera->near_clip;
@@ -126,62 +57,6 @@ void DrawTerrainGeometry(TerrainGenerationState *terrainGenState) {
   glBindVertexArray(0);
 };
 #endif
-
-inline RenderGroup CreateDebugRenderGroup() {
-	RenderGroup result = {};
-
-	glGenVertexArrays(1, &result.vao);
-	glGenBuffers(1, &result.vbo);
-	glGenBuffers(1, &result.ebo);
-
-	glBindVertexArray(result.vao);
-	glBindBuffer(GL_ARRAY_BUFFER, result.vbo);
-	glEnableVertexAttribArray(0);
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(V3) + sizeof(V4), (GLvoid*)0);
-	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(V3) + sizeof(V4), (GLvoid*)sizeof(V3));
-	return result;
-}
-
-inline RenderGroup CreateImGuiRenderGroup() {
-	RenderGroup result = {};
-	glGenVertexArrays(1, &result.vao);
-	glGenBuffers(1, &result.vbo);
-	glGenBuffers(1, &result.ebo);
-
-	glBindVertexArray(result.vao);
-	glBindBuffer(GL_ARRAY_BUFFER, result.vbo);
-
-	glEnableVertexAttribArray(0);
-	glEnableVertexAttribArray(1);
-	glEnableVertexAttribArray(2);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(ImDrawVert), (GLvoid*)offsetof(ImDrawVert, pos));
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(ImDrawVert), (GLvoid*)offsetof(ImDrawVert, uv));
-	glVertexAttribPointer(2, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(ImDrawVert), (GLvoid*)offsetof(ImDrawVert, col));
-	glBindVertexArray(0);
-	return result;
-}
-
-inline void FreeRenderGroup(RenderGroup *group) {
-	glDeleteBuffers(1, &group->vao);
-	glDeleteBuffers(1, &group->ebo);
-	glDeleteVertexArrays(1, &group->vao);
-}
-#if 0
-void DrawIndexedVertexArray(IndexedVertexArray* vertexArray) {
-  assert(vertexArray->vertexArrayID != 0);
-  assert(vertexArray->indexCount != 0);
-  glBindVertexArray(vertexArray->vertexArrayID);
-  glDrawElements(GL_TRIANGLES, vertexArray->indexCount, GL_UNSIGNED_INT, 0);
-}
-#endif
-
-void PushDrawCommand(IndexedVertexArray* vertexArray, VenomDrawList* drawList) {
-  assert(drawList->drawCommandCount + 1 < ARRAY_COUNT(drawList->drawCommands));
-  VenomDrawCommand* drawCommand = &drawList->drawCommands[drawList->drawCommandCount++];
-  drawCommand->vertexArrayID = vertexArray->vertexArrayID;
-  drawCommand->indexCount = vertexArray->indexCount;
-}
 
 static inline
 void SetLightingUniforms(const VenomDrawList* drawList, const Camera& camera) {
@@ -234,39 +109,99 @@ void SetLightingUniforms(const VenomDrawList* drawList, const Camera& camera) {
   }
 }
 
-
-static VenomDebugRenderInfo* _debugRenderInfo;
-
 static inline
-void RenderDrawList(VenomDrawList* drawList, GameAssets* assets) {
-#if 1
+void RenderDrawListWithGeometry(VenomDrawList* drawList, AssetManifest* manifest) {
   for (size_t i = 0; i < drawList->drawCommandCount; i++) {
     VenomDrawCommand* drawCmd = &drawList->drawCommands[i];
     glBindVertexArray(drawCmd->vertexArrayID);
     glDrawElements(GL_TRIANGLES, drawCmd->indexCount, GL_UNSIGNED_INT, 0);
   }
-#endif
 
   for (size_t i = 0; i < drawList->modelDrawComandCount; i++) {
     VenomModelDrawCommand* drawCmd = &drawList->modelDrawCommands[i];
     const ModelDrawable& drawable = 
-      GetModelDrawable((DEBUGModelID)drawCmd->modelID, assets);
+      GetModelDrawable(drawCmd->modelID, manifest);
     glUniformMatrix4fv(0, 1, GL_FALSE, &drawCmd->modelMatrix[0][0]);
-   U64 currentIndexOffset = 0;
+    U64 currentIndexOffset = 0;
     glBindVertexArray(drawable.vertexArrayID);
     for (U64 j = 0; j < drawable.meshCount; j++) {
-      const MaterialDrawable &material = drawable.materials[j];
-      BindMaterial(material);
       glDrawElements(GL_TRIANGLES, drawable.indexCountPerMesh[j], 
         GL_UNSIGNED_INT, (GLvoid*)(sizeof(U32)*currentIndexOffset));
       currentIndexOffset += drawable.indexCountPerMesh[j];
     }
   }
 
-#if 1
   for (size_t i = 0; i < drawList->meshDrawCommandCount; i++) {
     VenomMeshDrawCommand* cmd = &drawList->meshDrawCommands[i];
-    const MaterialDrawable& material = GetMaterial(cmd->materialID, assets);
+    M4 model = M4Identity();
+    glUniformMatrix4fv(0, 1, GL_FALSE, &model[0][0]);
+    glBindVertexArray(cmd->vertexArrayID);
+    glDrawElements(GL_TRIANGLES, cmd->indexCount, 
+      GL_UNSIGNED_INT, (GLvoid*)(cmd->indexOffset * sizeof(U32)));
+  }
+
+#ifndef VENOM_RELEASE
+  auto frameInfo = GetDebugRenderFrameInfo();
+  frameInfo->totalDrawListsRendered++;
+  frameInfo->totalDrawListCommandsExecuted += drawList->drawCommandCount;
+#endif//VENOM_RELEASE
+}
+
+static inline
+void DrawModelWithMaterialsGBuffer(const ModelDrawable& drawable, const M4& modelMatrix){
+  glUniformMatrix4fv(0, 1, GL_FALSE, &modelMatrix[0][0]);
+  U64 currentIndexOffset = 0;
+  glBindVertexArray(drawable.vertexArrayID);
+  for(size_t j = 0; j < drawable.meshCount; j++){
+    static const U32 NORMALMAP_PRESENT_LOCATION = 3;
+    static const U32 SPECULARMAP_PRESENT_LOCATION = 4;
+    const MaterialDrawable &material = drawable.materials[j];
+    glUniform1i(NORMALMAP_PRESENT_LOCATION, material.flags & MaterialFlag_NORMAL);
+    glUniform1i(SPECULARMAP_PRESENT_LOCATION, material.flags & MaterialFlag_SPECULAR);
+    BindMaterial(material);
+    glDrawElements(GL_TRIANGLES, drawable.indexCountPerMesh[j], 
+      GL_UNSIGNED_INT, (GLvoid*)(sizeof(U32)*currentIndexOffset));
+    currentIndexOffset += drawable.indexCountPerMesh[j];
+  }
+}
+
+
+static inline
+void DrawModelWithMaterialsFoward(const ModelDrawable& drawable, const M4& modelMatrix){
+  glUniformMatrix4fv(0, 1, GL_FALSE, &modelMatrix[0][0]);
+  U64 currentIndexOffset = 0;
+  glBindVertexArray(drawable.vertexArrayID);
+  for(size_t j = 0; j < drawable.meshCount; j++){
+    static const U32 NORMALMAP_PRESENT_LOCATION = 8;
+    static const U32 SPECULARMAP_PRESENT_LOCATION = 999999999;
+    const MaterialDrawable &material = drawable.materials[j];
+    glUniform1i(NORMALMAP_PRESENT_LOCATION, material.flags & MaterialFlag_NORMAL);
+    glUniform1i(SPECULARMAP_PRESENT_LOCATION, material.flags & MaterialFlag_SPECULAR);
+    BindMaterial(material);
+    glDrawElements(GL_TRIANGLES, drawable.indexCountPerMesh[j], 
+      GL_UNSIGNED_INT, (GLvoid*)(sizeof(U32)*currentIndexOffset));
+    currentIndexOffset += drawable.indexCountPerMesh[j];
+  }
+}
+
+static inline
+void RenderDrawListWithMaterials(VenomDrawList* drawList, AssetManifest* manifest) {
+  for (size_t i = 0; i < drawList->drawCommandCount; i++) {
+    VenomDrawCommand* drawCmd = &drawList->drawCommands[i];
+    glBindVertexArray(drawCmd->vertexArrayID);
+    glDrawElements(GL_TRIANGLES, drawCmd->indexCount, GL_UNSIGNED_INT, 0);
+  }
+
+  for(size_t i = 0; i < drawList->modelDrawComandCount; i++){
+    VenomModelDrawCommand* drawCmd = &drawList->modelDrawCommands[i];
+    const ModelDrawable& drawable = 
+      GetModelDrawable(drawCmd->modelID, manifest);
+    DrawModelWithMaterialsGBuffer(drawable, drawCmd->modelMatrix);
+  }
+
+  for (size_t i = 0; i < drawList->meshDrawCommandCount; i++) {
+    VenomMeshDrawCommand* cmd = &drawList->meshDrawCommands[i];
+    const MaterialDrawable& material = GetMaterial(cmd->materialID, manifest);
     BindMaterial(material);
     M4 model = M4Identity();
     glUniformMatrix4fv(0, 1, GL_FALSE, &model[0][0]);
@@ -274,37 +209,17 @@ void RenderDrawList(VenomDrawList* drawList, GameAssets* assets) {
     glDrawElements(GL_TRIANGLES, cmd->indexCount, 
       GL_UNSIGNED_INT, (GLvoid*)(cmd->indexOffset * sizeof(U32)));
   }
-#endif
 
 #ifndef VENOM_RELEASE
-  _debugRenderInfo->totalDrawListsRendered++;
-  _debugRenderInfo->totalDrawListCommandsExecuted += drawList->drawCommandCount;
-#endif
+  auto frameInfo = GetDebugRenderFrameInfo();
+  frameInfo->totalDrawListsRendered++;
+  frameInfo->totalDrawListCommandsExecuted += drawList->drawCommandCount;
+#endif//VENOM_RELEASE
 }
-
-void PushMeshDrawCommand(U32 vertexArrayID, U32 materialID, 
-  U32 indexCount, U32 indexOffset, VenomDrawList* drawList) 
-{
-  assert(drawList->meshDrawCommandCount + 1 < ARRAY_COUNT(drawList->meshDrawCommands));
-  VenomMeshDrawCommand& cmd = drawList->meshDrawCommands[drawList->meshDrawCommandCount++];
-  cmd.vertexArrayID = vertexArrayID;
-  cmd.materialID = materialID;
-  cmd.indexCount = indexCount;
-  cmd.indexOffset = indexOffset;
-}
-
-void PushModelDrawCommand(DEBUGModelID modelID, V3 position, VenomDrawList* drawList) {
-  assert(drawList->modelDrawComandCount + 1 < ARRAY_COUNT(drawList->modelDrawCommands));
-  VenomModelDrawCommand& cmd = 
-    drawList->modelDrawCommands[drawList->modelDrawComandCount++];
-  cmd.modelID = modelID;
-  cmd.modelMatrix = Translate(position);
-}
-
 
 static inline
 void RenderCSM(CascadedShadowMap* csm, Camera* camera, 
-  DirectionalLight* light, VenomDrawList* drawList, GameAssets* assets) 
+  DirectionalLight* light, VenomDrawList* drawList, AssetManifest* manifest) 
 {
 	M4 light_view = LookAt(V3(0.0f), -light->direction, V3(-1.0f, 0.0f, 0.0f));
 	for (U32 i = 0; i < SHADOW_MAP_CASCADE_COUNT; i++) {
@@ -388,12 +303,14 @@ void RenderCSM(CascadedShadowMap* csm, Camera* camera,
 		light_transform = csm->lightProjectionMatrices[i] * light_view;
 		csm->lightSpaceTransforms[i] = light_transform;
 
+
+    static const U32 lightSpaceTransformLocation = 3;
 		glViewport(0, 0, SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION);
 		glFramebufferTextureLayer(GL_FRAMEBUFFER, 
       GL_DEPTH_ATTACHMENT, csm->depthTexture, 0, i);
 		glClear(GL_DEPTH_BUFFER_BIT);
-		glUniformMatrix4fv(UniformLocation::light_space, 1, 0, &light_transform[0][0]);
-    RenderDrawList(drawList, assets);
+		glUniformMatrix4fv(lightSpaceTransformLocation, 1, 0, &light_transform[0][0]);
+    RenderDrawListWithGeometry(drawList, manifest);
 	}
 }
 
@@ -417,8 +334,7 @@ void SetLightSpaceTransformUniforms(CascadedShadowMap* csm, GLuint programID) {
 
 void VenomRenderScene(GameMemory* memory, Camera* camera) {
   RenderState* rs = &memory->renderState;
-  _debugRenderInfo = &rs->debugRenderInfo; 
-  GameAssets* assets = &memory->assets;
+  AssetManifest* assetManifest = &memory->assetManifest;
   SystemInfo* sys = &memory->systemInfo;
   VenomDrawList* drawList = &rs->drawList;
   UpdateCamera(camera);
@@ -452,13 +368,13 @@ void VenomRenderScene(GameMemory* memory, Camera* camera) {
   }
 #endif
 
-#if 0
+#if 1
   {
     CascadedShadowMap* csm = &rs->csm;
     
     glViewport(0, 0, OMNI_SHADOW_MAP_RESOLUTION, OMNI_SHADOW_MAP_RESOLUTION);
     glBindFramebuffer(GL_FRAMEBUFFER, csm->framebuffer);
-    GLuint programID = GetShaderProgram(ShaderID_depth_cubemap, assets);
+    GLuint programID = GetShaderProgram(ShaderID_depth_cubemap, assetManifest);
     glUseProgram(programID);
 
     for (size_t i = 0; i < drawList->shadowCastingPointLightCount; i++) {
@@ -499,7 +415,7 @@ void VenomRenderScene(GameMemory* memory, Camera* camera) {
       glUniform1f(farPlaneLocation, lightFarPlane);
       M4 model = M4Identity();
       glUniformMatrix4fv(0, 1, GL_FALSE, &model[0][0]);
-      RenderDrawList(&rs->drawList, assets);
+      RenderDrawListWithGeometry(&rs->drawList, assetManifest);
     }
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -513,6 +429,7 @@ void VenomRenderScene(GameMemory* memory, Camera* camera) {
 #endif
 
 #if 0
+  //NOTE(Torin) Foward Render Pass
   glViewport(0, 0, sys->screen_width, sys->screen_height);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
   glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -528,49 +445,198 @@ void VenomRenderScene(GameMemory* memory, Camera* camera) {
   SetLightSpaceTransformUniforms(&rs->csm, opaqueShader);
   DebugEnableIf(rs->debugRenderSettings.isWireframeEnabled) 
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-  RenderDrawList(&rs->drawList, &memory->assets);
+  RenderDrawListWithMaterials(&rs->drawList, &memory->assets);
   DebugEnableIf(rs->debugRenderSettings.isWireframeEnabled) 
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-#else //Defered Renderer
+#else 
+  //NOTE(Torin) Defered Render Pass
   GBuffer* gbuffer = &rs->gbuffer;
+  SSAO* ssao = &rs->ssao;
 
-  glViewport(0, 0, sys->screen_width, sys->screen_height);
-  glBindFramebuffer(GL_FRAMEBUFFER, gbuffer->framebuffer);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+  static const U32 modelMatrixLocation = 0;
+  static const U32 viewMatrixLocation = 1;
+  static const U32 projectionMatrixLocation = 2;
 
-  GLuint gbufferProgram = GetShaderProgram(ShaderID_GBuffer, assets);
-  glUseProgram(gbufferProgram);
-  M4 model = M4Identity();
-  glUniformMatrix4fv(0, 1, GL_FALSE, &model[0][0]);
-  glUniformMatrix4fv(1, 1, GL_FALSE, &camera->view[0][0]);
-	glUniformMatrix4fv(2, 1, GL_FALSE, &camera->projection[0][0]);
-  RenderDrawList(drawList, assets);
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  { //@GBuffer 
+    glBindFramebuffer(GL_FRAMEBUFFER, gbuffer->framebuffer);
+    glViewport(0, 0, sys->screen_width, sys->screen_height);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glUseProgram(GetShaderProgram(ShaderID_GBuffer, assetManifest));
+    M4 model = M4Identity();
+    glUniformMatrix4fv(0, 1, GL_FALSE, &model[0][0]);
+    glUniformMatrix4fv(1, 1, GL_FALSE, &camera->view[0][0]);
+    glUniformMatrix4fv(2, 1, GL_FALSE, &camera->projection[0][0]);
+    RenderDrawListWithMaterials(drawList, assetManifest);
+  }
 
-  //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  GLuint deferredMaterialShader = GetShaderProgram(ShaderID_DeferredMaterial, assets);
-  glUseProgram(deferredMaterialShader);
-  //SetLightingUniforms(drawList, *camera);
-  glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_2D, gbuffer->positionDepth);
-  glActiveTexture(GL_TEXTURE1);
-  glBindTexture(GL_TEXTURE_2D, gbuffer->normal);
-  glActiveTexture(GL_TEXTURE2);
-  glBindTexture(GL_TEXTURE_2D, gbuffer->albedoSpecular);
-
-  glBindBuffer(GL_ARRAY_BUFFER, rs->quadVao);
-  glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+  
+#if 0
+  { //@SSAO 
+    glBindFramebuffer(GL_FRAMEBUFFER, ssao->framebuffer);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glUseProgram(GetShaderProgram(ShaderID_SSAO, assetManifest));
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, gbuffer->positionDepth);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, gbuffer->normal);
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, ssao->noiseTexture);
+    static const U32 SSAO_VIEW_LOCATION = 0;
+    static const U32 SSAO_PROJECTION_LOCATION = 1;
+    static const U32 SSAO_SAMPLE_LOCATION = 2;
+    glUniformMatrix4fv(SSAO_VIEW_LOCATION, 
+      1, GL_FALSE, &camera->view[0][0]);
+    glUniformMatrix4fv(SSAO_PROJECTION_LOCATION, 
+      1, GL_FALSE, &camera->projection[0][0]);
+    for (size_t i = 0; i < SSAO_SAMPLE_COUNT; i++) {
+      glUniform3fv(SSAO_SAMPLE_LOCATION + i, 1, &ssao->kernelSamples[i].x);
+    }
+    glBindVertexArray(rs->quadVao);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+  }
 #endif
 
+  {
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+    GLuint deferredMaterialShader = GetShaderProgram(ShaderID_DeferredMaterial, assetManifest);
+    glUseProgram(deferredMaterialShader);
+    SetLightingUniforms(drawList, *camera);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, gbuffer->positionDepth);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, gbuffer->normal);
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, gbuffer->albedoSpecular);
+    glActiveTexture(GL_TEXTURE3);
+    glBindTexture(GL_TEXTURE_2D, ssao->bufferTexture);
+    glBindVertexArray(rs->quadVao);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+  }
+#endif
+
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, gbuffer->framebuffer);
+  glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+  glBlitFramebuffer(0, 0, sys->screen_width, sys->screen_height,
+    0, 0, sys->screen_width, sys->screen_height, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+  glUseProgram(GetShaderProgram(ShaderID_material_opaque, assetManifest));
+  glUniformMatrix4fv(viewMatrixLocation, 1, GL_FALSE, &camera->view[0][0]);
+  glUniformMatrix4fv(projectionMatrixLocation, 1, GL_FALSE, &camera->projection[0][0]);
+  SetLightingUniforms(&rs->drawList, *camera);
+  {
+    //NOTE(Torin) Draw Outlined Objects
+    const S32 ZERO = 0; 
+    glEnable(GL_STENCIL_TEST);
+    glStencilMask(0xFF);
+    glClearBufferiv(GL_STENCIL, 0, &ZERO);
+    glStencilOp(GL_KEEP, GL_REPLACE, GL_REPLACE);
+    glStencilMask(0xFF);
+    
+#if 1
+    glStencilFunc(GL_ALWAYS, 1, 0xFF);
+    for(size_t i = 0; i < drawList->outlinedModelDrawCommandCount; i++){
+      VenomModelDrawCommand* drawCmd = &drawList->outlinedModelDrawCommands[i];
+      const ModelDrawable& drawable = 
+        GetModelDrawable(drawCmd->modelID, assetManifest);
+      DrawModelWithMaterialsFoward(drawable, drawCmd->modelMatrix);
+    }
+#endif
+
+#if 1
+    glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+    glStencilMask(0x00);
+    glDisable(GL_DEPTH_TEST);
+    static const U32 colorUniformLocation = 3;
+    const V4 outlineColor = { 1.0, 0.0, 1.0, 1.0 };
+    glUseProgram(GetShaderProgram(ShaderID_SingleColor, assetManifest));
+    glUniformMatrix4fv(viewMatrixLocation, 1, GL_FALSE, &camera->view[0][0]);
+    glUniformMatrix4fv(projectionMatrixLocation, 1, GL_FALSE, &camera->projection[0][0]);
+    glUniform4fv(colorUniformLocation, 1, &outlineColor.x);
+    
+    for(size_t i = 0; i < drawList->outlinedModelDrawCommandCount; i++){
+      VenomModelDrawCommand* drawCmd = &drawList->outlinedModelDrawCommands[i];
+      const ModelDrawable& drawable = 
+        GetModelDrawable(drawCmd->modelID, assetManifest);
+      M4 model = Translate(drawCmd->position) * 
+        Rotate(drawCmd->rotation) * Scale(V3(1.1));
+      DrawModelWithMaterialsFoward(drawable, model);
+    }
+
+    glEnable(GL_DEPTH_TEST);
+    glDisable(GL_STENCIL_TEST);
+#endif
+  }
+
+  //@Physics @Colliders @Draw
+  DebugEnableIf(GetDebugRenderSettings()->drawPhysicsColliders){ 
+    const DebugRenderResources& debugResources = rs->debugRenderResources;
+    const U32 modelMatrixLocation = 0;
+    const U32 viewMatrixLocation = 1;
+    const U32 projectionMatrixLocation = 2;
+    const U32 colorLocation = 3;
+    //TODO(Torin) Quick and diry hack for line drawing
+    const U32 lineSegmentPositionsLocation = 4;
+    const U32 useLinePosLocation = 6;
+
+    M4 modelMatrix = M4Identity();
+    glUseProgram(GetShaderProgram(ShaderID_DebugShape, assetManifest));
+    glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, &modelMatrix[0][0]); 
+    glUniformMatrix4fv(viewMatrixLocation, 1, GL_FALSE, &camera->view[0][0]);
+    glUniformMatrix4fv(projectionMatrixLocation, 1, GL_FALSE, &camera->projection[0][0]);
+    glBindVertexArray(debugResources.vao);
+    for(size_t i = 0; i < drawList->debugCommandCount; i++) {
+      DebugRenderCommand* cmd = &drawList->debugCommands[i];
+      if(cmd->isSolid == false) { 
+        glDisable(GL_CULL_FACE);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+      }
+
+      glUniform4fv(colorLocation, 1, &cmd->color.x);
+      switch(cmd->type) {
+        case DebugRenderCommandType_Box: {
+          V3 boundsSize = Abs(cmd->max - cmd->min);
+          modelMatrix = Translate(cmd->min + (boundsSize * 0.5f)) * Scale(boundsSize); 
+          glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, &modelMatrix[0][0]); 
+          glDrawElements(GL_TRIANGLES, debugResources.cubeIndexCount, 
+            GL_UNSIGNED_INT, (void*)(uintptr_t)debugResources.cubeIndexOffset);
+        } break;
+
+        case DebugRenderCommandType_Sphere: {
+          modelMatrix = Translate(cmd->center) * Scale(cmd->radius);
+          glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, &modelMatrix[0][0]); 
+          glDrawElements(GL_TRIANGLES, debugResources.sphereIndexCount, 
+            GL_UNSIGNED_INT, (void*)(uintptr_t)debugResources.sphereIndexOffset);
+        } break;
+
+        case DebugRenderCommandType_Line: {
+          glUniform1i(useLinePosLocation, 1);
+          modelMatrix = M4Identity();
+          glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, &modelMatrix[0][0]); 
+          glUniform3fv(lineSegmentPositionsLocation, 2, (float*)cmd->lineSegmentPositions);
+          glDrawArrays(GL_LINES, 0, 2);
+          glUniform1i(useLinePosLocation, 0);
+        } break;
+      }
+
+      cmd->duration -= memory->deltaTime;
+      glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+      glEnable(GL_CULL_FACE);
+    }
+  }
+
+
 #if 0
+
   DebugEnableIf(rs->debugRenderSettings.renderDebugNormals) {
     GLuint shader = GetShaderProgram(ShaderID_debug_normals, assets);
     glUseProgram(shader);
     glUniformMatrix4fv(1, 1, GL_FALSE, &camera->view[0][0]);
     glUniformMatrix4fv(2, 1, GL_FALSE, &camera->projection[0][0]);
-    RenderDrawList(&rs->drawList, assets);
+    RenderDrawListWithGeometry(&rs->drawList, assets);
 		glUseProgram(0);
   }
 
@@ -587,13 +653,27 @@ void VenomRenderScene(GameMemory* memory, Camera* camera) {
   }
 #endif
 
-  _debugRenderInfo->pointLightCount = drawList->pointLightCount;
-  _debugRenderInfo->directionalLightCount = drawList->directionalLightCount;
-  _debugRenderInfo->shadowCastingPointLightCount = drawList->shadowCastingPointLightCount;
   drawList->drawCommandCount = 0;
   drawList->modelDrawComandCount = 0;
   drawList->meshDrawCommandCount = 0;
+  drawList->outlinedModelDrawCommandCount = 0;
   drawList->pointLightCount = 0;
   drawList->directionalLightCount = 0;
   drawList->shadowCastingPointLightCount = 0;
+
+  size_t newDebugCommandCount = 0;
+  for(size_t i = 0; i < drawList->debugCommandCount; i++){
+    if(drawList->debugCommands[i].duration > 0) {
+      drawList->debugCommands[newDebugCommandCount] = drawList->debugCommands[i];
+      newDebugCommandCount++;
+    }
+  }
+  drawList->debugCommandCount = newDebugCommandCount;
+
+#ifndef VENOM_RELEASE
+  auto frameInfo = GetDebugRenderFrameInfo();
+  frameInfo->pointLightCount = drawList->pointLightCount;
+  frameInfo->directionalLightCount = drawList->directionalLightCount;
+  frameInfo->shadowCastingPointLightCount = drawList->shadowCastingPointLightCount;
+#endif//VENOM_RELEASE
 }

@@ -1,5 +1,7 @@
+layout (location = 3) uniform vec4 uColor;
+
 out vec4 out_color;
 
 void main() {
-	out_color = vec4(1.0f, 0.0f, 0.0f, 1.0f);
+	out_color = uColor; 
 }

@@ -1,12 +1,5 @@
 #include "renderer_data.h"
 
-namespace UniformLocation {
-	static const U32 model = 0;
-	static const U32 view = 1;
-	static const U32 projection = 2;
-	static const U32 light_space = 3;
-};
-
 struct VenomDrawCommand {
   U32 vertexArrayID;
   U32 indexCount;
@@ -15,6 +8,10 @@ struct VenomDrawCommand {
 struct VenomModelDrawCommand {
   U32 modelID;
   M4 modelMatrix;
+  //TODO(Torin: May 31, 2016) Remove these when done testing
+  V3 position;
+  V3 rotation;
+  V3 scale;
 };
 
 struct VenomMeshDrawCommand {
@@ -24,16 +21,44 @@ struct VenomMeshDrawCommand {
   U32 indexOffset;
 };
 
-struct VenomDebugRenderSettings {
-  bool isWireframeEnabled;
-  bool isDebugCameraActive;
-  bool disableCascadedShadowMaps;
-  bool renderDebugNormals;
-  bool renderFromDirectionalLight;
-  bool drawDepthMap;
+//TODO(Torin) Consider adding a debug draw list
+#ifndef VENOM_RELEASE
+
+enum DebugRenderCommandType {
+  DebugRenderCommandType_Box,
+  DebugRenderCommandType_Sphere,
+  DebugRenderCommandType_Line,
 };
 
-struct VenomDebugRenderInfo {
+struct DebugRenderCommand {
+  DebugRenderCommandType type;
+  bool isSolid;
+  V4 color;
+  F32 duration;
+
+  union {
+    struct { 
+      V3 min, max; 
+    };
+    struct { 
+      V3 center; 
+      F32 radius;
+    };
+    V3 lineSegmentPositions[2];
+  };
+};
+
+struct VenomDebugRenderSettings {
+  B8 isWireframeEnabled;
+  B8 isDebugCameraActive;
+  B8 disableCascadedShadowMaps;
+  B8 renderDebugNormals;
+  B8 renderFromDirectionalLight;
+  B8 drawPhysicsColliders;
+  B8 drawDepthMap;
+}; 
+
+struct VenomDebugRenderFrameInfo {
   U64 totalVerticesDrawn;
   U64 totalDrawCalls;
   U64 totalDrawListCommandsExecuted;
@@ -43,34 +68,7 @@ struct VenomDebugRenderInfo {
   U64 shadowCastingPointLightCount;
 };
 
-struct DirectionalLight {
-	V3 direction;
-	V3 color;
-};
-
-struct PointLight {
-	V3 position;
-	V3 color;
-	F32 radius;
-};
-
-struct Frustum {
-	F32 field_of_view;
-	F32 aspect_ratio;
-	F32 near_plane_distance;
-	F32 far_plane_distance;
-	V3 points[8];
-};
-
-struct Camera {
-	V3 position;
-	V3 front;
-	F32 fov;
-	F32 yaw, pitch;
-	F32 near_clip, far_clip;
-	F32 viewportWidth, viewportHeight;
-	M4 view, projection;
-};
+#endif//VENOM_RELEASE
 
 struct VenomDrawList {
   U32 drawCommandCount;
@@ -79,6 +77,8 @@ struct VenomDrawList {
   VenomModelDrawCommand modelDrawCommands[1000];
   U32 meshDrawCommandCount;
   VenomMeshDrawCommand meshDrawCommands[1000];
+  U32 outlinedModelDrawCommandCount;
+  VenomModelDrawCommand outlinedModelDrawCommands[8]; 
 
   U32 directionalLightCount;
   DirectionalLight directionalLights[DIRECTIONAL_LIGHTS_MAX];
@@ -86,6 +86,9 @@ struct VenomDrawList {
   PointLight pointLights[POINT_LIGHTS_MAX];
   U32 shadowCastingPointLightCount;
   PointLight shadowCastingPointLights[SHADOW_CASTING_POINT_LIGHT_MAX];
+
+  U32 debugCommandCount;
+  DebugRenderCommand debugCommands[1000];
 };
 
 inline void 
@@ -116,17 +119,9 @@ AddDirectionalLight(const V3 direction, const V3 color, VenomDrawList* list) {
   light.color = color;
 }
 
-struct Lighting {
-	DirectionalLight directionalLights[DIRECTIONAL_LIGHTS_MAX];
-	PointLight pointLights[POINT_LIGHTS_MAX];
-	U32 directionalLightCount;
-	U32 pointLightCount;
-};
-
 inline void 
 InitializeCamera(Camera *camera, float fov, 
-  float near_clip, float far_clip,
-  float viewportWidth, float viewportHeight)
+  float near_clip, float far_clip, float viewportWidth, float viewportHeight) 
 {
 	camera->position = V3(0.0f, 0.0f, 0.0f);
 	camera->front = V3(0.0f, 0.0f, 0.0f);
@@ -137,8 +132,8 @@ InitializeCamera(Camera *camera, float fov,
 	camera->far_clip = far_clip;
   camera->projection = Perspective(camera->fov, viewportWidth, viewportHeight,
     camera->near_clip, camera->far_clip);
-  camera->viewportWidth = viewportWidth;
-  camera->viewportHeight = viewportHeight;
+  //camera->viewportWidth = viewportWidth;
+  //camera->viewportHeight = viewportHeight;
 }
 
 inline void 
@@ -147,7 +142,8 @@ UpdateCamera(Camera *camera) {
 	camera->front.y = sinf(camera->pitch);
 	camera->front.z = sin(camera->yaw) * cos(camera->pitch);
 	camera->front = Normalize(camera->front);
-  camera->view = LookAt(camera->position, camera->front + camera->position, V3(0.0f, 1.0f, 0.0f));
+  camera->view = LookAt(camera->position, 
+    camera->front + camera->position, V3(0.0f, 1.0f, 0.0f));
 }
 
 #ifdef VENOM_OPENGL

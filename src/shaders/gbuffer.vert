@@ -6,6 +6,7 @@ layout (location = 3) in vec2 inTexcoord;
 out VertexShaderOut {
   vec3 position;
   vec3 normal;
+  vec3 tangent;
   vec2 texcoord;
 } vsOut;
 
@@ -14,9 +15,20 @@ layout (location = 1) uniform mat4 uViewMatrix;
 layout (location = 2) uniform mat4 uProjectionMatrix;
 
 void main() {
-  vec4 worldPosition = uModelMatrix * vec4(inPosition, 1.0);
-  vsOut.position = worldPosition.xyz;
-  vsOut.normal = inNormal;
+  //mat4 modelViewMatrix = uViewMatrix * uModelMatrix;
+  //vec4 viewspacePosition = modelViewMatrix * vec4(inPosition, 1.0);
+  //vec3 viewspaceNormal = mat3(modelViewMatrix) * inNormal;
+  //vsOut.position = viewspacePosition.xyz;
+  //vsOut.normal = viewspaceNormal.xyz;
+
+
+  mat4 normalMatrix = transpose(inverse(uModelMatrix));
+  vec4 worldspacePosition = uModelMatrix * vec4(inPosition,1.0);
+  vsOut.position = worldspacePosition.xyz;
+  vsOut.normal = vec3(normalMatrix * vec4(inNormal, 1.0));
+
+  vsOut.tangent = inTangent;
   vsOut.texcoord = inTexcoord;
-  gl_Position = uProjectionMatrix * uViewMatrix * worldPosition;
+  gl_Position = uProjectionMatrix * uViewMatrix * worldspacePosition; 
+  //gl_Position = uProjectionMatrix * viewspacePosition;
 }

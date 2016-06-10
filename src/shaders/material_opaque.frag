@@ -32,12 +32,17 @@ void main() {
 	FragmentInfo fragment;
 	fragment.position = fs_in.position;
 	fragment.normal = fs_in.normal;
-  fragment.normal = normal; 
-	fragment.color = diffuse_color;
-  fragment.specularExponent = int(specularScalar * 512); 
+  fragment.color = vec3(1.0);
+  fragment.specularExponent = 1;
+
+  //fragment.normal = normal; 
+
+	//fragment.color = diffuse_color;
+  //fragment.specularExponent = int(specularScalar * 512); 
   //fragment.specularExponent = 1;
 
   out_color = ApplyLighting(fragment);
+  out_color = vec4(diffuse_color, 1.0);
   //out_color = vec4(vec3(specularScalar), 1.0);
   //out_color = vec4(normal, 1.0);
 
@@ -51,7 +56,7 @@ void main() {
 		out_color = vec4(0.0f, 1.0f, 1.0f, 1.0f);
 	if (gl_FragCoord.z < u_shadow_cascade_distance[1])
 		out_color = vec4(1.0f, 1.0f, 0.0f, 1.0f);
-	if (gl_FragCoord.z < u_shadow_cascade_distance[0])
+if (gl_FragCoord.z < u_shadow_cascade_distance[0])
 		out_color = vec4(1.0f, 0.0f, 0.0f, 1.0f);
 #endif
 }

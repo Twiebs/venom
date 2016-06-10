@@ -1,6 +1,62 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+void CreateMaterialData(const char **filenames, 
+    U32 flags, MaterialData *data, RGB8 diffuseTint = {}) 
+{
+  if(flags == 0) {
+    data->flags = MaterialFlag_DIFFUSE;
+    data->textureWidth = 1;
+    data->textureHeight = 1;
+    data->textureData = (uint8_t *)malloc(3);
+    data->textureData[0] = diffuseTint.r;
+    data->textureData[1] = diffuseTint.g;
+    data->textureData[2] = diffuseTint.b;
+    return;
+  }
+
+
+  int materialTextureWidth = 0;
+  int materialTextureHeight = 0;
+  int materialTextureCount = 0;
+  uint8_t *materialTextureData[MaterialTextureType_COUNT] = {};
+  for(size_t i = 0; i < MaterialTextureType_COUNT; i++){
+    if((flags & (1 << i)) == 0) continue;
+    int textureWidth = 0;
+    int textureHeight = 0;
+    int textureComponents = 0;
+    materialTextureData[i] = stbi_load(filenames[i],
+      &textureWidth, &textureHeight, &textureComponents, 3);
+    if(materialTextureWidth == 0) materialTextureWidth = textureWidth;
+    if(materialTextureHeight == 0) materialTextureHeight = textureHeight;
+    if(materialTextureWidth != textureWidth ||
+       materialTextureHeight != textureHeight) {
+      LogWarning("Materials must specificy texture of the same size");
+    }
+    materialTextureCount++;
+    assert(textureComponents == 3);
+  }
+
+
+  data->flags = flags;
+  data->textureWidth = materialTextureWidth;
+  data->textureHeight = materialTextureHeight;
+  size_t sizePerTexture = data->textureWidth * data->textureHeight * 3;
+  data->textureData = (uint8_t *)malloc(sizePerTexture * materialTextureCount);
+  uint8_t *textureWrite = data->textureData;
+  for(size_t i = 0; i < MaterialTextureType_COUNT; i++){
+    if((flags & (1 << i)) == 0) continue;
+    memcpy(textureWrite, materialTextureData[i], sizePerTexture);
+    textureWrite += sizePerTexture; 
+  }
+
+  for(size_t i = 0; i < MaterialTextureType_COUNT; i++){
+    if((flags & (1 << i)) == 0) continue;
+    free(materialTextureData[i]);
+  }
+}
+
+#if 0
 void CreateMaterialDataFromTextureFiles(MaterialData* data, const char* diffuse_filename,
 	const char* normal_filename, const char* specular_filename, MemoryBlock *memblock)
 {
@@ -35,10 +91,10 @@ void CreateMaterialDataFromTextureFiles(MaterialData* data, const char* diffuse_
 void CreateMaterialData(MaterialData* data, 
     DebugMaterialInfo *info, MemoryBlock *memblock) 	{
 	
-  U8 *map_data[MaterialTextureType_COUNT];
-	int map_width[MaterialTextureType_COUNT];
-	int map_height[MaterialTextureType_COUNT];
-	int map_components[MaterialTextureType_COUNT];
+  U8 *map_data[MaterialTextureType_COUNT] = {};
+	int map_width[MaterialTextureType_COUNT] = {};
+	int map_height[MaterialTextureType_COUNT] = {};
+	int map_components[MaterialTextureType_COUNT] = {};
 
 	for (int i = 0; i < MaterialTextureType_COUNT; i++) {
 		if (info->filenames[i] != 0 && 
@@ -104,6 +160,7 @@ void CreateMaterialData(MaterialData* data,
 		data->textureData[2] = (U8)(info->diffuse_color.z * 255);
 	}
 }
+#endif
 
 void DestroyMaterialData(MaterialData* data) {
   assert(data->textureData != 0);
@@ -112,4 +169,11 @@ void DestroyMaterialData(MaterialData* data) {
   data->textureWidth = 0;
   data->textureHeight = 0;
   data->flags = 0;
+}
+
+void DestroyModelData(ModelData* data){
+  fori(data->meshCount){
+    DestroyMaterialData(&data->materialDataPerMesh[i]);
+  }
+  free(data->indexCountPerMesh);
 }

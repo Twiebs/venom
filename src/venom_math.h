@@ -1,15 +1,20 @@
-#pragma once 
-
 static const float PI32 = 3.141592653589793238462643383f;
 static const float DEG2RAD = (PI32 / 180.0f);
 static const float RAD2DEG = (180.0f / PI32);
 
 #include <math.h>
-
 #include "math_vector.h"
 #include "math_matrix.h"
 #include "math_geometry.h"
 #include "math_procedural.h"
+
+template<typename T>
+inline void Swap(T* a, T* b){
+  T t = *a;
+  *a = *b;
+  *b = t;
+}
+
 
 inline F32 Clamp(F32 value, F32 min, F32 max) {
 	if (value > max) return max;

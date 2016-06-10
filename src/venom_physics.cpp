@@ -1,5 +1,4 @@
-struct Sphere
-{
+struct Sphere {
   V3 center;
   float radius;
 };
@@ -15,14 +14,13 @@ struct ConvexHull
 {
 };
 
-struct Plane
-{
+struct Plane {
   V3 normal;
   float distance;
 };
 
-Plane ComputePlane(V3 a, V3 b, V3 c)
-{
+static Plane 
+ComputePlane(V3 a, V3 b, V3 c) {
   Plane result;
   result.normal = Normalize(Cross(b - a, c - a));
   result.distance = Dot(result.normal, a);
@@ -50,18 +48,124 @@ V3 ClosestPointOnPlane(V3 a, Plane p)
     return result;
 };
 
-//==========  Intersection Tests  ================
-//=================================================
-
-B32 Intersects(AABB a, AABB b)
-{
+static B32 
+Intersects(AABB a, AABB b) {
   if (a.max.x < b.min.x || a.min.x > b.max.x) return 0;
   if (a.max.y < b.min.y || a.min.y > b.max.y) return 0;
   if (a.max.z < b.min.z || a.min.z > b.max.z) return 0;
   return 1;
 }
 
-B32 Intersects(Sphere a, Sphere b)
+#if 0
+static int
+IntersectRayAABB(V3 origin, V3 direction, AABB aabb) {
+  float tmin = (aabb.min.x - origin.x) / direction.x;
+  float tmax = (aabb.max.x - origin.x) / direction.x;
+  if (tmin > tmax) Swap(tmin, tmax);
+
+  float tymin = (aabb.min.y - origin.y) / direction.y;
+  float tymax = (aabb.max.y - origin.y) / direction.y;
+  if (tymin > tymax) Swap(tymin, tymax);
+
+  if ((tmin > tymax) || (tymin > tmax)) return 0;
+  
+  if (tymin > tmin) tmin = tymin;
+  if (tymax < tmax) tmax = tymax;
+
+  float tzmin = (aabb.min.z - origin.z) / direction.z;
+  float tzmax = (aabb.max.z - origin.z) / direction.z;
+  if (tzmin > tzmax) Swap(tzmin, tzmax);
+  
+  if ((tmin > tzmax) || (tzmin > tmax)) return 0;
+  if (tzmin > tmin) tmin = tzmin;
+  if (tzmax < tmax) tmax = tzmax;
+
+  return 1; 
+}
+#endif
+
+#if 0
+static int
+IntersectRayAABB(V3 origin, V3 direction, AABB aabb) {
+  float tx0 = (aabb.min.x - origin.x) / direction.x;
+  float tx1 = (aabb.max.x - origin.x) / direction.x;
+  if(tx0 > tx1) Swap(tx0, tx1);
+
+  float ty0 = (aabb.min.y - origin.y) / direction.y;
+  float ty1 = (aabb.max.y - origin.y) / direction.y;
+  if(ty0 > ty1) Swap(ty0, ty1);
+
+  float tmin = tx0, tmax = tx1;
+  if((tmin > ty1) || (ty0 > tmax)) return 0;
+
+  if(ty0 > tmin) tmin = ty0;
+  if(ty1 > tmax) tmax = ty1;
+
+  float tz0 = (aabb.min.z - origin.z) / direction.z;
+  float tz1 = (aabb.max.z - origin.z) / direction.z;
+  if(tz0 > tz1) Swap(tz0, tz1);
+
+  if((tmin > tz1) || (tz0 > tmax)) return 0;
+  return 1;  
+}
+#endif
+
+int IntersectRayAABB(V3 p, V3 d, AABB a, float &tmin, V3 &q)
+{
+  tmin = 0.0f;
+  // set to -FLT_MAX to get first hit on line
+  float tmax = FLT_MAX;
+  // set to max distance ray can travel (for segment)  
+  // For all three slabs
+  for (int i = 0; i < 3; i++) {
+    if (abs(d[i]) < FLT_EPSILON) {
+    // Ray is parallel to slab. No hit if origin not within slab
+    if (p[i] < a.min[i] || p[i] > a.max[i]) return 0;
+    } else {
+    // Compute intersection t value of ray with near and far plane of slab
+    float ood = 1.0f / d[i];
+    float t1 = (a.min[i] - p[i]) * ood;
+    float t2 = (a.max[i] - p[i]) * ood;
+    // Make t1 be intersection with near plane, t2 with far plane
+    if (t1 > t2) Swap(&t1, &t2);
+    // Compute the intersection of slab intersection intervals
+    if (t1 > tmin) tmin = t1;
+    if (t2 < tmax) tmax = t2;
+    // Exit with no collision as soon as slab intersection becomes empty
+    if (tmin > tmax) return 0;
+    }
+  }
+  // Ray intersects all 3 slabs. Return point (q) and intersection t value (tmin)
+  q = p + d * tmin;
+  return 1;
+}
+
+#if 0
+static B32
+IntersectRayAABB(V3 rayOrigin, V3 rayDirection, AABB aabb)
+{
+  float tmin = 0.0f;
+  float tmax = FLT_MAX;
+  for (U64 i = 0; i < 3; i++) {
+    if (abs(rayDirection[i]) < FLT_EPSILON) {
+      if (rayOrigin[i] < aabb.min[i] || rayOrigin[i] > aabb.max[i]) return 0;
+    } else {
+      F32 ood = 1.0f / rayDirection[i];
+      F32 t1 = (aabb.min[i] - rayOrigin[i]) * ood;
+      F32 t2 = (aabb.max[i] - rayOrigin[i]) * ood;
+      if(t1 > t2) Swap(t1, t2);
+      if(t1 > tmin) tmin = t1;
+      if(t2 > tmax) tmax = t2;
+      if(tmin > tmax) return 0;
+    }
+  }
+  return 1;
+}
+#endif
+
+
+static B32 
+Intersects(Sphere a, Sphere b)
 {
   V3 displacement = a.center - b.center;
   float distance_squared = Dot(displacement, displacement);
@@ -73,14 +177,17 @@ B32 Intersects(Sphere a, Sphere b)
   return result; 
 }
 
-B32 Intersects(Capsule a, Sphere b)
+static B32 
+Intersects(Capsule a, Sphere b) 
 {
   return 1;
 }
 
 //================================================
 
-Sphere ComputeBoundingSphere(MeshData data) {
+static Sphere 
+ComputeBoundingSphere(MeshData data) 
+{
   Sphere result = {};
   F32 max_distance_squared = 0;
   for (U32 i = 0; i < data.vertexCount; i++) {
@@ -94,7 +201,9 @@ Sphere ComputeBoundingSphere(MeshData data) {
 }
 
 
-AABB ComputeAABB(const MeshData* data) {
+AABB 
+ComputeAABB(const MeshData* data) 
+{
   AABB result = {};
   for (size_t i = 0; i < data->vertexCount; i++) {
     const Vertex3D& vertex = data->vertices[i];
@@ -108,8 +217,8 @@ AABB ComputeAABB(const MeshData* data) {
   return result;
 }
   
-ConvexHull ComputeConvexHull(const MeshData& data)
-{
+static ConvexHull 
+ComputeConvexHull(const MeshData& data) {
   ConvexHull result = {};
   return result;
 } 

@@ -23,7 +23,7 @@ F64 RandomInRange(F32 min, F32 max, RNGSeed& seed) {
   return result;
 }
 
-U64 RandomInt01(RNGSeed& seed) {
+U64 Random01U64 (RNGSeed& seed) {
   U64 result = RandomU64(seed) / (UINT64_MAX / 2);
   return result; 
 }
@@ -44,4 +44,3 @@ inline V3 RandomInRange(const V3& min, const V3& max, RNGSeed& seed) {
 	result.z = RandomInRange(min.z, max.z, seed);
 	return result;
 }
-

@@ -1,9 +1,10 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+
 #include <time.h>
 #include <dlfcn.h>
 #include <sys/stat.h>
-
+#include <signal.h>
 
 typedef struct __GLXcontextRec *GLXContext;
 typedef struct __GLXFBConfigRec *GLXFBConfig;
@@ -17,7 +18,7 @@ U64 GetPerformanceCounterTime() {
 	return result;
 }
 
-U64 GetPerformanceFrequency() {
+U64 GetPerformanceCounterFrequency() {
 	struct timespec Timespec;
 	clock_getres(CLOCK_MONOTONIC, &Timespec);
 	U64 result = Timespec.tv_nsec;
@@ -33,37 +34,41 @@ U64 GetFileLastWriteTime(const char *filename) {
 	return result;
 }
 
-
-
-
 #ifdef VENOM_HOTLOAD
+
+static inline
 void LoadVenomModule(VenomModule* module, const char* path) {
 	module->handle = dlopen(path, RTLD_LAZY | RTLD_GLOBAL);
 	if (module->handle != NULL) {
-		VenomModuleLoad   = (VenomModuleLoadProc)dlsym(module->handle, "_VenomModuleLoad");
-		VenomModuleStart  = (VenomModuleStartProc)dlsym(module->handle, "_VenomModuleStart");
-		VenomModuleUpdate = (VenomModuleUpdateProc)dlsym(module->handle, "_VenomModuleUpdate");
-		VenomModuleRender = (VenomModuleRenderProc)dlsym(module->handle, "_VenomModuleRender");
+		_VenomModuleLoad = (VenomModuleLoadProc)
+      dlsym(module->handle, "_VenomModuleLoad");
+		_VenomModuleStart = (VenomModuleStartProc)
+      dlsym(module->handle, "_VenomModuleStart");
+		_VenomModuleUpdate = (VenomModuleUpdateProc)
+      dlsym(module->handle, "_VenomModuleUpdate");
+		_VenomModuleRender = (VenomModuleRenderProc)
+      dlsym(module->handle, "_VenomModuleRender");
 	} else { 
-    LOG_ERROR("Could not find game module");
+    LogError("Failed to open shared object %s", path);
 	} 
 }
 
 void UnloadVenomModule(VenomModule* module) {
   assert(module->handle != NULL);
   dlclose(module->handle);
-  VenomModuleLoad = 0;
-  VenomModuleStart = 0;
-  VenomModuleUpdate = 0;
-  VenomModuleRender = 0;
+  _VenomModuleLoad = 0;
+  _VenomModuleStart = 0;
+  _VenomModuleUpdate = 0;
+  _VenomModuleRender = 0;
 }
 #endif
+
 static inline
 void* LoadOpenglAndGetVisualInfo(Display* display, 
     XVisualInfo** out_vi, GLXFBConfig** out_fbc) {
 	void *libgl = dlopen("libGL.so", RTLD_LAZY | RTLD_GLOBAL);
   if (libgl == nullptr) {
-    LOG_ERROR("Could not find libGL.so");
+    LogError("Could not find libGL.so");
     return libgl;
   }
 
@@ -178,7 +183,7 @@ GLXContext CreateOpenglContext(Display* display, Window window,
 
 
 int LinuxMain() {
-	Display *display = XOpenDisplay(NULL);
+        Display *display = XOpenDisplay(NULL);
 	if (display == NULL) {
 		return 1;
 	}
@@ -235,22 +240,36 @@ int LinuxMain() {
 #endif
 
 	GameMemory *memory = AllocateGameMemory(&config);
-	GameState *gameState = &memory->gameState;
 	InputState *input = &memory->inputState;
-	opengl_enable_debug(&memory->debug_memory.debugLog);
+	OpenGLEnableDebug(&memory->debugData.debugLog);
 
+#ifndef VENOM_RELEASE
+  //NOTE(Torin) Signal handlers to make sure the current leveldata or
+  //asset information is backed up if the engine crashes in debug builds
+  signal(SIGFPE, VenomSignalHandler);
+  signal(SIGILL, VenomSignalHandler);
+  signal(SIGINT, VenomSignalHandler);
+  signal(SIGSEGV, VenomSignalHandler);
+  signal(SIGTERM, VenomSignalHandler); 
+  signal(SIGKILL, VenomSignalHandler);
+#endif//VENOM_RELEASE
+
+#ifdef VENOM_HOTLOAD
   VenomModule module = {};
-  LoadVenomModule(&module, "../build/game_module.so");
-  if (module.handle != NULL) {
-    VenomModuleStart(memory);
-
-    VenomModuleLoad(memory);
-  } else {
+  LoadVenomModule(&module, VENOM_MODULE_FILENAME);
+  if (module.handle == NULL) {
+    LOG_ERROR("FAILED TO LOAD GAME MODULE YO");
     return 1;
   }
+#endif
+
+  _VenomModuleStart(memory);
+  _VenomModuleLoad(memory);
 		
-	while (gameState->isRunning) {
-		platform_independent_tick(memory, &module);
+	while (memory->isRunning) {
+#ifdef VENOM_HOTLOAD
+		PlatformDebugUpdate(memory, &module);
+#endif
 
 		//TODO(Torin) Do somthing about when the pointer goes out of the screen bounds?
 		Window rootReturn, childReturn;
@@ -265,8 +284,6 @@ int LinuxMain() {
 		input->cursorDeltaY = input->cursorPosY - winYReturn;
 		input->cursorPosX = winXReturn;
 		input->cursorPosY = winYReturn;
-
-		input->keysPressedCount = 0;
 		
 		XEvent event;
 		int currentEventCount = XPending(display);
@@ -290,22 +307,24 @@ int LinuxMain() {
 				} break;
 
 				case KeyPress: {
-					input->isKeyDown[event.xkey.keycode] = true;
-					input->keycodes[input->keysPressedCount++] = event.xkey.keycode;
-					platform_keyevent_proc(memory, event.xkey.keycode, 1);
+          int keysym = XLookupKeysym(&event.xkey, event.xkey.state & ShiftMask);
+					PlatformKeyEventHandler(memory, event.xkey.keycode, keysym, 1);
 				} break;
 				case KeyRelease: {
-					input->isKeyDown[event.xkey.keycode] = false;
-					platform_keyevent_proc(memory, event.xkey.keycode, 0);
+          int keysym = XLookupKeysym(&event.xkey, event.xkey.state & ShiftMask);
+					PlatformKeyEventHandler(memory, event.xkey.keycode, keysym, 0);
 				} break;
 
 			}
 			currentEventCount--;
 		}
 
-		VenomModuleUpdate(memory);
-		VenomModuleRender(memory);
+    BeginProfileEntry("Frame Time");
+		_VenomModuleUpdate(memory);
+		_VenomModuleRender(memory);
 		glXSwapBuffers(display, window);
+    EndProfileEntry("Frame Time");
+
 		platform_frame_end_proc(memory);
 	}
 

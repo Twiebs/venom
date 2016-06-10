@@ -1,3 +1,4 @@
+#pragma clang diagnostic error "-Wreturn-type" //FUCK YOU C++
 #pragma clang diagnostic warning "-Wall"
 #pragma clang diagnostic warning "-Wextra"
 #pragma clang diagnostic ignored "-Wformat-security"
@@ -12,20 +13,37 @@
 
 #include "venom_platform.h"
 
+
+#define _(rettype, name, ...) rettype name(__VA_ARGS__);
+EngineAPIList
+#undef _
+
 #ifndef VENOM_RELEASE
-static DebugMemory* g_debug_memory;
-DebugMemory *GetDebugMemory() { return g_debug_memory; }
-#endif //NOTE(Torin) GetDebugMemory is used to access the DebugLog
-//In error loging functions in development builds
+//NOTE(Torin) GetDebugMemory is used to access the DebugLog
+//in development builds to keep logging and profiling simple
+//NOTE(Torin) These globals are used in debug builds for easy inter program
+//introspection and allowing the signal handler to serialize unsaved engine data
+//in the event of a engine crash
+static GameMemory* _venomEngineData;
+static VenomDebugData* _debugData;
+VenomDebugData *GetDebugData() { return _debugData; }
+GameMemory* GetVenomEngineData() { return _venomEngineData; };
+#endif//VENOM_RELEASE
 
 #ifdef VENOM_SINGLE_TRANSLATION_UNIT
+//NOTE(Torin)These files are the core functionality
+//of venom and may include additional .cpp files however;
+//that is the extend that includes are allowed to go
 #include "venom_debug.cpp"
 #include "venom_render.cpp"
 #include "venom_physics.cpp"
 #include "venom_asset.cpp"
 #include "venom_audio.cpp"
+#include "venom_serializer.cpp"
 #endif//VENOM_SINGLE_TRANSLATION_UNIT
 
+//NOTE(Torin) Set default configuration macros if 
+//they were left unspecified 
 #ifndef VENOM_DEFAULT_SCREEN_WIDTH
 #define VENOM_DEFAULT_SCREEN_WIDTH 1280
 #endif//VENOM_DEFAULT_SCREEN_WIDTH
@@ -38,16 +56,19 @@ typedef void (*VenomModuleLoadProc)(GameMemory*);
 typedef void (*VenomModuleStartProc)(GameMemory*);
 typedef void (*VenomModuleUpdateProc)(GameMemory*);
 typedef void (*VenomModuleRenderProc)(GameMemory*);
-global_variable VenomModuleLoadProc VenomModuleLoad;
-global_variable VenomModuleStartProc VenomModuleStart;
-global_variable VenomModuleUpdateProc VenomModuleUpdate;
-global_variable VenomModuleRenderProc VenomModuleRender;
-#define LoadGameCode() InternalLoadGameCode()
-#else
-#include VENOM_MODULE_FILE 
-#define LoadGameCode()
-#endif
+static VenomModuleLoadProc _VenomModuleLoad;
+static VenomModuleStartProc _VenomModuleStart;
+static VenomModuleUpdateProc _VenomModuleUpdate;
+static VenomModuleRenderProc _VenomModuleRender;
+#else//!VENOM_HOTLOAD
+#include VENOM_MODULE_SOURCE_FILENAME
+#endif//VENOM_HOTLOAD
 
+//========================================================================================
+//========================================================================================
+//========================================================================================
+
+//NOTE(Torin) Represented in a file stored on the users device 
 struct UserConfig {
 	U16 screen_width;
 	U16 screen_height;
@@ -59,11 +80,31 @@ struct VenomModule {
   void *handle;
 };
 
-void LoadVenomModule(VenomModule* module, const char* path);
-void UnloadVenomModule(VenomModule* module);
+static inline void LoadVenomModule(VenomModule* module, const char* path);
+static inline void UnloadVenomModule(VenomModule* module);
 
-static inline UserConfig GetUserConfig()
-{
+static inline
+void BeginProfileEntryHook(const char* name){
+  VenomDebugData* debugData = GetDebugData();
+  __BeginProfileEntry(&debugData->profileData, name);
+}
+
+static inline 
+void EndProfileEntryHook(const char* name){
+  VenomDebugData* debugData = GetDebugData();
+  __EndProfileEntry(&debugData->profileData, name);
+}
+
+#ifndef VENOM_DISABLE_PROFILER
+#define BeginProfileEntry(name) BeginProfileEntryHook(name) 
+#define EndProfileEntry(name) EndProfileEntryHook(name) 
+#else//VENOM_DISABLE_PROFILER
+#define BeginProfileEntry(name)
+#define EndProfileEntry(name)
+#endif//VENOM_DISABLE_PROFILER
+
+static inline 
+UserConfig GetUserConfig() {
 	UserConfig result = {};
 	FILE *file = fopen(VENOM_USER_CONFIG_PATH, "rb");
 	if (file != NULL) {
@@ -104,8 +145,8 @@ static const char* ModuleFileNames[] = {
 #undef _
 };
 
-static inline void platform_independent_tick(GameMemory *memory, VenomModule* module)
-{
+static inline 
+void PlatformDebugUpdate(GameMemory *memory, VenomModule* module) {
 
 #ifdef _MSC_VER
 #define popen _popen
@@ -128,7 +169,7 @@ static inline void platform_independent_tick(GameMemory *memory, VenomModule* mo
 		char buffer[1024*256];
 		size_t write_index = 0;
 		FILE *stream = popen("sh ../src/build_game.sh 2>&1", "r");
-		assert(stream != null);
+		assert(stream != NULL);
 		
 		while (fgets(&buffer[write_index], ARRAY_COUNT(buffer) - write_index, stream)) {
 			write_index += strlen(&buffer[write_index]);
@@ -145,28 +186,40 @@ static inline void platform_independent_tick(GameMemory *memory, VenomModule* mo
 		LOG_DEBUG("Game Module Compilation Complete");
 
     UnloadVenomModule(module);
-    LoadVenomModule(module, "../build/game_module.so");
-    VenomModuleLoad(memory);
+    LoadVenomModule(module, VENOM_MODULE_FILENAME);
+    _VenomModuleLoad(memory);
 	}
 #endif
-
-	HotloadShaders(&memory->assets);
 }
 
-static inline void platform_keyevent_proc(GameMemory *memory, int keycode, int is_down) {
-  if (is_down) {
+static inline 
+void PlatformKeyEventHandler(GameMemory *memory, int keycode, int keysym, int isDown) {
+  InputState* input = &memory->inputState;
+  input->isKeyDown[keycode] = isDown;
+
+  if (isDown) {
 	  switch(keycode) {
 		case KEYCODE_CAPSLOCK: {
-			memory->inputState.toggleDebugModePressed = true;
 		} break;  
+
+    case KEYCODE_TILDA: {
+      memory->debugData.triggerToggleConsole = true;
+    } break;
 	  } 
+  }
+
+  if(memory->keyEventCallback != 0) {
+    memory->keyEventCallback(keycode, keysym, isDown);
   }
 }
 
-static inline void platform_frame_end_proc(GameMemory *memory)
-{
+static inline void platform_frame_end_proc(GameMemory *memory){
 	InputState *input = &memory->inputState;
-	input->toggleDebugModePressed = false;
+}
+
+static void
+VenomSignalHandler(int signal){
+  //WriteAssetManifestFile("assets.manifest", &GetVenomEngineData()->assetManifest);
 }
 
 //TODO(Torin) Make this procedure take a availible system memory
@@ -177,14 +230,12 @@ GameMemory* AllocateGameMemory(UserConfig* config) {
   U8* rawMemory = (U8*)calloc(1, config->memory_size);
   GameMemory* memory = (GameMemory*)rawMemory;
 
-  //TODO(Torin)Make sure this is aligned on an 16byte boundry
+  //TODO(Torin)Make sure this is aligned on an 8byte boundry
   memory->mainBlock.base = (U8*)(memory + 1);
 	memory->mainBlock.size = config->memory_size - sizeof(GameMemory);
 	memory->mainBlock.used = 0;
-
-  GameState* gameState = &memory->gameState;
-	gameState->isRunning = true;
-	gameState->deltaTime = 1.0f / 60.0f;
+  memory->isRunning = true;
+  memory->deltaTime = 1.0f / 60.0f;
 
   //TODO(Torin) Move out these opengl specific routines
   SystemInfo* sys = &memory->systemInfo;  
@@ -194,7 +245,7 @@ GameMemory* AllocateGameMemory(UserConfig* config) {
 	glGetIntegerv(GL_MINOR_VERSION, &sys->opengl_minor_version);
 
 #ifdef VENOM_HOTLOAD
-#define EngineAPI(returnType, name, ...) memory->engineAPI.name = name;
+#define _(returnType, name, ...) memory->engineAPI.name = name;
   EngineAPIList
 #undef _
 #define _(signature, name) memory->engineAPI.name = name;
@@ -204,7 +255,8 @@ GameMemory* AllocateGameMemory(UserConfig* config) {
 
   //TODO(Torin)An Error log is also needed in release mode this should be rethought
 #ifndef VENOM_RELEASE
-	g_debug_memory = &memory->debug_memory;
+	_debugData = &memory->debugData;
+  _venomEngineData = memory;
 #endif
 
   return memory;

@@ -1,4 +1,7 @@
+#include "imgui.h"
 
+VenomDebugRenderSettings* GetDebugRenderSettings(); 
+VenomDebugRenderFrameInfo* GetDebugRenderFrameInfo(); 
 
 enum LogLevel {
 	LogLevel_ERROR,
@@ -43,8 +46,7 @@ struct DebugLog {
 };
 
 
-struct ExplicitProfilerEntry 
-{
+struct ExplicitProfilerEntry {
 	const char *name;
 	U64 elapsedCPUCycles;
 	float elapsedFrameTime;
@@ -53,31 +55,33 @@ struct ExplicitProfilerEntry
 #define PROFILER_ELAPSED_TIME_HISTORY_COUNT 128
 #define PROFILE_PERSISTANT_ENTRY_COUNT_MAX 16
 
-struct PersistantProfilerEntry
-{
-	char *name;
-	U64 elapsedCycles;
-	U64 elapsedTime;
-	float elapsedTimeHistory[PROFILER_ELAPSED_TIME_HISTORY_COUNT];
+struct PersistantProfilerEntry {
+	char* name;
+  U64 startTime;
+	float elapsedTimes[PROFILER_ELAPSED_TIME_HISTORY_COUNT];
+  U64 historyWriteIndex;
 };
 
-struct ProfileData
-{
+struct ProfileData {
 	PersistantProfilerEntry persistantEntries[PROFILE_PERSISTANT_ENTRY_COUNT_MAX];
 	ExplicitProfilerEntry explictEntries[256];
 	U32 persistantEntryCount;
 	U32 explicitEntryCount;
-	U32 persistantWriteIndex;
 };
 
-struct DebugMemory {
+struct VenomDebugData {
+  U32 unseenErrorCount;
+  U32 unseenWarningCount;
+  U32 unseenInfoCount;
+
+  B8 isConsoleVisible;
+  B8 triggerToggleConsole;
+
 	DebugLog debugLog;
 	ProfileData profileData;
 };
 
-
-void PushLogEntry(DebugLog *log, LogLevel level);//, const char *message, ...);
-
+void PushLogEntry(VenomDebugData* data, LogLevel level);//, const char *message, ...);
 void BeginPersistantProfileEntry(ProfileData *data, const char *name);
 void EndPersistantProfileEntry(ProfileData *data, const char *name);
 

@@ -2,6 +2,8 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <ctype.h>
+#include <string.h>
 #include <cmath>
 
 typedef uint8_t  U8;
@@ -12,10 +14,10 @@ typedef int8_t   S8;
 typedef int16_t  S16;
 typedef int32_t  S32;
 typedef int64_t  S64;
-typedef int8_t   B8;
 typedef int32_t  B32;
 typedef float    F32;
 typedef double   F64;
+typedef bool B8;
 
 #define KILOBYTES(x) ((x) * 1024LL)
 #define MEGABYTES(x) (KILOBYTES(x) * 1024LL)
@@ -28,12 +30,10 @@ typedef double   F64;
 #define Assert(expr) assert(expr)
 
 #include "venom_config.h"
-
-//Configuration Post-Processing
 #ifdef VENOM_RELEASE
 #undef VENOM_HOTLOAD
 #undef VENOM_PROFILER
-#endif
+#endif//VENOM_RELEASE
 
 #include "venom_memory.h"
 #include "venom_math.h"
@@ -41,194 +41,133 @@ typedef double   F64;
 #include "venom_render.h"
 #include "venom_physics.h"
 #include "venom_asset.h"
+#include "venom_entity.h"
+#ifndef VENOM_RELEASE
+#include "venom_serializer.h"
+#include "venom_debug.h"
+#include "venom_editor.h"
+#endif//VENOM_RELEASE
+
+struct GameMemory;
 
 #ifndef VENOM_RELEASE
-#include "venom_debug.h"
-#include "imgui.h"
-
 #define EngineDEBUGAPI \
   _(U64, GetPerformanceCounterTime) \
   _(U64, GetPerformanceCounterFrequency) \
   _(U64, GetFileLastWriteTime, const char *)  \
-  _(DebugMemory*, GetDebugMemory)
+  _(VenomDebugData*, GetDebugData) \
+  _(GameMemory *, GetVenomEngineData)
+
 
 #else //!VENOM_RELEASE
 #define EngineDEBUGAPI
 #endif
 
 #define EngineAPIList				              \
-  _(GLuint, GetShaderProgram, DEBUGShaderID, GameAssets*) \
-  _(const ModelDrawable&, GetModelDrawable, DEBUGModelID, GameAssets*)\
-  _(const MaterialDrawable&, GetMaterial, U32, GameAssets*)\
   EngineDEBUGAPI
+
 #ifdef VENOM_HOTLOAD
 #define _(returnType, name, ...) typedef returnType (*name##Proc)(__VA_ARGS__);
 EngineAPIList
 #undef _
-#else
-#define _(rettype, name, ...) rettype name(__VA_ARGS__);
-EngineAPIList
-#undef _
-#endif
+#endif//VENOM_HOTLOAD
 
 #define fori(lim) for(int64_t i = 0; i < lim; i++)
 
 #ifndef VENOM_RELEASE
-#define LogWarning(...) { sprintf(GetDebugMemory()->debugLog.temp_buffer, __VA_ARGS__); PushLogEntry(&GetDebugMemory()->debugLog, LogLevel_WARNING); }
-#define LOG_ERROR(...) { sprintf(GetDebugMemory()->debugLog.temp_buffer, __VA_ARGS__); PushLogEntry(&GetDebugMemory()->debugLog, LogLevel_ERROR); }
-#define LOG_DEBUG(...) { sprintf(GetDebugMemory()->debugLog.temp_buffer, __VA_ARGS__); PushLogEntry(&GetDebugMemory()->debugLog, LogLevel_DEBUG); }
+#define LogError(...) { sprintf(GetDebugData()->debugLog.temp_buffer, __VA_ARGS__); PushLogEntry(GetDebugData(), LogLevel_ERROR); }
+#define LogWarning(...) { sprintf(GetDebugData()->debugLog.temp_buffer, __VA_ARGS__); PushLogEntry(GetDebugData(), LogLevel_WARNING); }
+#define LogDebug(...) { sprintf(GetDebugData()->debugLog.temp_buffer, __VA_ARGS__); PushLogEntry(GetDebugData(), LogLevel_DEBUG); }
+
+#define LOG_ERROR(...) { sprintf(GetDebugData()->debugLog.temp_buffer, __VA_ARGS__); PushLogEntry(GetDebugData(), LogLevel_ERROR); }
+
+#define LOG_DEBUG(...) { sprintf(GetDebugData()->debugLog.temp_buffer, __VA_ARGS__); PushLogEntry(GetDebugData(), LogLevel_DEBUG); }
 #else//!VENOM_RELEASE
 #define LOG_ERROR(...)
 #define LOG_DEBUG(...)
 #endif//VENOM_RELEASE
 
-#ifdef VENOM_PROFILER 
-#define BEGIN_TIMED_BLOCK(name) BeginPeristantProfileEntry(&GetDebugMemory()->profileData, name)
-#define END_TIMED_BLOCK(name) EndPersistantProfileEntry(&GetDebugMemory()->profileData, name)
-#else
-#define BEGIN_TIMED_BLOCK(name)
-#define END_TIMED_BLOCK(name)
-#endif
+//TODO(Torin) Remove this absurd hack
+typedef void (*VenomKeyeEventCallbackPROC)(int keycode, int keysym, int keystate);
 
 struct SystemInfo {
-	int opengl_major_version;
-	int opengl_minor_version;
+	S32 opengl_major_version;
+	S32 opengl_minor_version;
 	U64 virtual_memory_size;
 	U32 cpu_core_count;
-	float screen_width;
-	float screen_height;
+	F32 screen_width;
+	F32 screen_height;
 };
 
 struct InputState {
 	B8 isKeyDown[255];
-	int keycodes[255];
-	U8 keysPressedCount;
-	int cursorPosX;
-	int cursorPosY;
-	int cursorDeltaX;
-	int cursorDeltaY;
+	S32 cursorPosX;
+	S32 cursorPosY;
+	S32 cursorDeltaX;
+	S32 cursorDeltaY;
 	B8 isButtonDown[8];
-
-#ifndef VENOM_RELEASE
-	bool toggleDebugModePressed;
-#endif
 };
 
-struct DebugGameplaySettings {
-	bool use_debug_camera;
-	bool disable_terrain_generation;
-};
-
-struct GameState {
-	B8 isRunning;
-	F32 deltaTime;
-
-#ifndef VENOM_RELEASE
-	DebugGameplaySettings debug_settings;
-#endif
-};
-
-struct DebugRenderSettings {
-	bool is_wireframe_enabled;
-	bool render_debug_normals;
-	bool render_from_directional_light;
-	bool draw_shadowmap_depth_texture;
-	int draw_shadow_map_index;
-};
-
-struct Quad {
-	V3 bottom_left;
-	V3 top_left;
-	V3 top_right;
-	V3 bottom_right;
-};
-
+//Rename to somthing better?
 struct RenderState {
-	Camera camera;
-  GBuffer gbuffer;
-	Lighting lightingState;
-
   VenomDrawList drawList;
-
-	GLuint terrain_shader;
-	GLuint skydome_shader;
-	GLuint material_opaque_shader;
-	GLuint material_transparent_shader;
-
-	//Shadow mapping
-	GLuint depth_map_shader;
-	GLuint depth_map_framebuffer;
-	GLuint depth_map_texture;
-
+  GBuffer gbuffer;
+  SSAO ssao;
   CascadedShadowMap csm;
-  OmnidirectionalShadowMap osm[4];
-
+  OmnidirectionalShadowMap osm[SHADOW_CASTING_POINT_LIGHT_MAX];
 	GLuint quadVao;
 
-	MemoryBlock vertexBlock;
-	MemoryBlock indexBlock;
-
 #ifndef VENOM_RELEASE
-	Camera debugCamera;
-
-	GLuint debug_depth_map_shader;
+  Camera debugCamera;
 
   VenomDebugRenderSettings debugRenderSettings;
-  VenomDebugRenderInfo debugRenderInfo;
+  VenomDebugRenderFrameInfo debugRenderFrameInfo;
+  DebugRenderResources debugRenderResources;
 
+  //IndexedVertexArray debugVertexArray;
 
-	RenderGroup lineDebugGroup;
-	RenderGroup solidDebugGroup;
-	GLuint debugShader;
-	GLuint singleColorShader;
-	GLuint debugNormalsShader;
-
-	RenderGroup imguiRenderGroup;
+  RenderGroup imguiRenderGroup;
 	GLuint imguiRenderGroupShader;
 	GLuint imguiFontTexture;
 
-	U32 screenMaxVertexCount;
+	//U32 screenMaxVertexCount;
+  //TODO(Torin) Remove this
 	ImDrawData *imgui_draw_data;
+
 #endif
 };
 
 #ifdef VENOM_HOTLOAD
-struct EngineAPI
-{
-#define EngineAPI(returnType, name, ...) name##Proc name;
+struct VenomAPI {
+#define _(returnType, name, ...) name##Proc name;
 EngineAPIList
-#undef EngineAPI
+#undef _ 
 #define _(signature, name) signature name;
 #include "opengl_procedures.h"
 #undef _ 
 };
 #endif
 
-
-#include "entity.h"
 struct GameMemory {
 	SystemInfo systemInfo;
-	GameState gameState;
 	InputState inputState;
 	RenderState renderState;
-	GameEntities entities;
-	MemoryBlock mainBlock;
-	GameAssets assets;
 	AudioState audioState;
+  AssetManifest assetManifest;
+	MemoryBlock mainBlock;
 
+  B8 isRunning;
+	F32 deltaTime;
   void *userdata;
 
-	//TerrainGenerationState terrainGenState;
-	//TerrainGenerationParameters terrainGenParams;
-
-	IndexedVertexArray skydomeVertexArray;
-	U32 skydomeIndexCount;
-
+  //TODO(Torin)
+  //HACKS to send keydata to the imgui io in the module translation unit
+  VenomKeyeEventCallbackPROC keyEventCallback;
 #ifdef VENOM_HOTLOAD
-	EngineAPI engineAPI;
+	VenomAPI engineAPI;
 #endif
 #ifndef VENOM_RELEASE
-	DebugMemory debug_memory;
+	VenomDebugData debugData;
 #endif
 };
 

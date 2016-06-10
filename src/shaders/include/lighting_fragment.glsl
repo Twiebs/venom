@@ -18,9 +18,8 @@ struct FragmentInfo {
 };
 
 layout (location = 4) uniform vec3 u_camera_view_position;
-
 layout (location = 5) uniform int directionalLightCount;
-layout (location = 6) uniform int pointLightCount;
+layout (location = 6) uniform int uPointLightCount;
 layout (location = 7) uniform int uShadowCastingPointLightCount;
 
 layout (location = DIRECTIONAL_LIGHT_UNIFORM_LOCATION)
@@ -33,8 +32,6 @@ uniform PointLight shadowCastingPointLights[SHADOW_CASTING_POINT_LIGHT_MAX];
 layout (binding = 3) uniform sampler2DArray depth_sampler;
 layout (binding = 4) 
 uniform samplerCube uOmniShadowMapSampler[SHADOW_CASTING_POINT_LIGHT_MAX];
-
-
 
 uniform mat4 u_light_space_matrix[4];
 uniform float u_shadow_cascade_distance[4];
@@ -56,17 +53,26 @@ vec3 ApplyPointLight(PointLight light,
   vec3 lightDisplacement = light.position - fragment.position;
   float lightDistance = length(lightDisplacement);
   vec3 lightDirection = lightDisplacement / lightDistance;
-
+  
   vec3 halfwayDirection = normalize(lightDirection + viewDirection);
   float diffuseFactor = max(dot(lightDirection, fragment.normal), 0.0);
   float specularFactor = pow(max(
     dot(fragment.normal, halfwayDirection), 0.0), fragment.specularExponent);
 
+#if 1
   float attenConstant = 1.0;
-  float attenLinear = 0.09;
-  float attenQuadratic = 0.032;
+  float attenLinear = 0.2;
+  //float attenQuadratic = 0.032;
+  float attenQuadratic = 0.004;
   float attenuationFactor = 1.0 / (attenConstant + attenLinear * lightDistance +
     attenQuadratic * (lightDistance * lightDistance));
+#else
+  float cutoffBias = 0.0001;
+  float lightIntensity = 1.0f;
+  float attenuationFactor = lightIntensity / pow((lightDistance / light.radius) + 1, 2);
+  attenuationFactor = (attenuationFactor - cutoffBias) / (1 - cutoffBias);
+  attenuationFactor = max(attenuationFactor, 0);
+#endif
 
   vec3 diffuseColor = light.color * fragment.color * diffuseFactor * attenuationFactor;
   vec3 specularColor = light.color * fragment.color * specularFactor * attenuationFactor;
@@ -113,10 +119,11 @@ float CalculateShadowScalar(vec3 position) {
 
 
 vec4 ApplyLighting(FragmentInfo fragment) {
+	vec3 viewDirection = normalize(u_camera_view_position - fragment.position);
+
+  //vec3 viewDirection = normalize(-fragment.position);
 	vec3 resultColor = vec3(0.0);
 
-	vec3 viewDirection = normalize(u_camera_view_position - fragment.position);
-#if 0
 	for (int i = 0; i < directionalLightCount; i++) {
 		vec3 fragmentColor = ApplyDirectionalLight(directionalLights[i], 
       fragment, viewDirection);
@@ -124,34 +131,22 @@ vec4 ApplyLighting(FragmentInfo fragment) {
     //fragmentColor *= 1.0 - resultLighting;
     resultColor += fragmentColor;
 	}
-#endif
 
-#if 0
-  for (int i = 0; i < pointLightCount; i++) {
+  for (int i = 0; i < uPointLightCount; i++) {
     vec3 fragmentColor = ApplyPointLight(pointLights[i], fragment, viewDirection);
     resultColor += fragmentColor;
+
   }
-#endif
 
   for (int i = 0; i < uShadowCastingPointLightCount; i++) {
     vec3 fragmentColor = ApplyPointLight(shadowCastingPointLights[i], 
       fragment, viewDirection);
     float resultLighting = CalcuateOmniShadowMapScalar(fragment.position, 
       shadowCastingPointLights[i].position, uOmniShadowMapSampler[i]);
-    //fragmentColor *= (1.0 - resultLighting) + 0.2;
+    fragmentColor *= (1.0 - resultLighting) + 0.2;
     resultColor += fragmentColor;
   }
-    //float resultLighting = CalcuateOmniShadowMapScalar(fragment.position, 
-     // pointLights[i].position, uOmniShadowMapSampler);
-    //fragmentColor *= (1.0 - resultLighting) + 0.2;
 
-#if 0 //VISUALIZE SHADOW MAP
-  vec3 fragToLight = fragment.position - pointLights[0].position;
-  //float shadowmapDepth = texture(uOmniShadowMapSampler, fragToLight).r;
-  return vec4(vec3(shadowmapDepth / 25.0), 1.0);
-#else
 	return vec4(resultColor, 1.0);
-#endif
-
 }
 

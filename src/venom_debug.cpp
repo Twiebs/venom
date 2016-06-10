@@ -7,19 +7,28 @@
 
 #include "imgui.cpp"
 #include "imgui_draw.cpp"
+#include "imgui_demo.cpp"
 
+VenomDebugRenderSettings* GetDebugRenderSettings() {
+  return &GetVenomEngineData()->renderState.debugRenderSettings;
+}
 
-void PushLogEntry(DebugLog *log, LogLevel level)
-{
+VenomDebugRenderFrameInfo* GetDebugRenderFrameInfo() {
+  return &GetVenomEngineData()->renderState.debugRenderFrameInfo;
+}
+
+void PushLogEntry(VenomDebugData *data, LogLevel level) {
+  if (level == LogLevel_ERROR) data->unseenErrorCount++;
+  else if (level == LogLevel_WARNING) data->unseenWarningCount++;
+
+  DebugLog* log = &data->debugLog;
 	size_t temp_buffer_length = strlen(log->temp_buffer);
 	printf(log->temp_buffer);
-	if (log->current_entry_count > DebugLog::ENTRY_COUNT_MAX)
-	{
+	if (log->current_entry_count > DebugLog::ENTRY_COUNT_MAX) {
 		assert(false);
 	}
 
-	if (log->log_buffer_used + temp_buffer_length > DebugLog::ENTRY_BUFFER_SIZE)
-	{
+	if (log->log_buffer_used + temp_buffer_length > DebugLog::ENTRY_BUFFER_SIZE) {
 		assert(false);
 	}
 
@@ -29,48 +38,43 @@ void PushLogEntry(DebugLog *log, LogLevel level)
 	log->current_entry_count += 1;
 }
 
-void BeginPeristantProfileEntry(ProfileData *profileData, const char *name)
-{
-	for (U32 i = 0; i < profileData->persistantEntryCount; i++)
-	{
+void __BeginProfileEntry(ProfileData *profileData, const char *name){
+	for(size_t i = 0; i < profileData->persistantEntryCount; i++){
 		PersistantProfilerEntry *entry = &profileData->persistantEntries[i];
-		if (!strcmp(name, entry->name))
-		{
-			entry->elapsedCycles = __rdtsc();
-			entry->elapsedTime = GetPerformanceCounterTime();
+		if(!strcmp(name, entry->name)){
+			entry->startTime = GetPerformanceCounterTime();
 			return;
 		}
 	}
 
 	assert(profileData->persistantEntryCount < PROFILE_PERSISTANT_ENTRY_COUNT_MAX);
-	PersistantProfilerEntry *entry = &profileData->persistantEntries[profileData->persistantEntryCount++];
+	PersistantProfilerEntry *entry = 
+    &profileData->persistantEntries[profileData->persistantEntryCount++];
+
 	//NOTE(Torin) This memory is never acounted for or cleaned up
-	//because it doesn't matter
+  //This is nessecary because the provided char* will point to garbage 
+  //if the game module is hotloaded 
 	size_t name_length = strlen(name);
 	entry->name = (char *)malloc(name_length + 1);
 	entry->name[name_length] = 0;
 	memcpy(entry->name, name, name_length);
-	entry->elapsedTime = 0;
-	entry->elapsedCycles = __rdtsc();
+	entry->startTime = GetPerformanceCounterTime();
 }
 
-void EndPersistantProfileEntry(ProfileData *profileData, const char *name)
-{
-	U64 elapsedCycles = __rdtsc();
-	U64 elapsedTime = GetPerformanceCounterTime();
-
-	for (U32 i = 0; i < profileData->persistantEntryCount; i++)
-	{
+void __EndProfileEntry(ProfileData *profileData, const char *name){
+	U64 currentTime = GetPerformanceCounterTime();
+	for(size_t i = 0; i < profileData->persistantEntryCount; i++) {
 		PersistantProfilerEntry *entry = &profileData->persistantEntries[i];
-		if (strcmp(name, entry->name) == 0)
-		{
-			entry->elapsedCycles = elapsedCycles - entry->elapsedCycles;
-			entry->elapsedTime = elapsedTime - entry->elapsedTime;
-			float elapsedTimeInMS = ((float)entry->elapsedTime / GetPerformanceCounterFrequency()) * 1000.0f;
-			entry->elapsedTimeHistory[profileData->persistantWriteIndex] = elapsedTimeInMS;
+		if(strcmp(name, entry->name) == 0){
+			U64 elapsedTime = currentTime - entry->startTime;
+			float elapsedTimeInNanoseconds = (elapsedTime / (GetPerformanceCounterFrequency()));
+      float elapsedTimeInMilliseconds = elapsedTimeInNanoseconds / 1000000.0f;
+			entry->elapsedTimes[entry->historyWriteIndex++] = elapsedTimeInMilliseconds;
+      if(entry->historyWriteIndex > ARRAY_COUNT(entry->elapsedTimes)) 
+        entry->historyWriteIndex = 0;
 			return;
 		}
 	}
 
-	assert(false);
+	assert(false && "No matching label for profile block");
 }

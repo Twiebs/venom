@@ -6,15 +6,23 @@ struct V2 {
 	float x, y;
 	V2() {}
 	V2(float x, float y) : x(x), y(y) {}
-	V2(float s) : x(s), y(s) {}
+	explicit V2(float s) : x(s), y(s) {}
 };
 
 struct V3 {
-  float x, y, z;
+  union { 
+    struct { float x, y, z; };
+    struct { float r, g, b; };
+    float e[3];
+  };
+
 	V3() : x(0), y(0), z(0) {}
-	V3(float v) : x(v), y(v), z(v) {}
+	explicit V3(float v) : x(v), y(v), z(v) {}
 	V3(float x, float y, float z) : x(x), y(y), z(z) {}
   V3(const V3& v) : x(v.x), y(v.y), z(v.z) {}
+  V3(const V4& v);
+  inline float operator[](const size_t index){ return e[index]; }
+  //inline float *operator[](const size_t index){ return (e + index); }
 };
 
 struct V4 {
@@ -24,9 +32,15 @@ struct V4 {
 	float w;
 	V4() {}
 	V4(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
-	V4(float v) : x(v), y(v), z(v), w(v) {}
+	explicit V4(float v) : x(v), y(v), z(v), w(v) {}
 	V4(const struct V3& v, float w) : x(v.x), y(v.y), z(v.z), w(w) {}
 };
+
+V3::V3(const V4& v){
+  this->x = v.x;
+  this->y = v.y;
+  this->z = v.z;
+}
 
 inline V4 operator-(const V4& a, const V4& b) 
 {
@@ -100,6 +114,17 @@ inline V3 operator*(const V3& a, const float b)
 	result.z = a.z * b;
 	return result;
 }
+
+
+inline V3 operator*(const float b, const V3& a)
+{
+	V3 result;
+	result.x = a.x * b;
+	result.y = a.y * b;
+	result.z = a.z * b;
+	return result;
+}
+
 
 inline V3& operator+=(V3& a, const V3& b)
 {
@@ -229,6 +254,21 @@ inline float Magnitude(const V3& v)
 	return result;
 }
 
+inline float Magnitude(const V4& v)
+{
+	float result = sqrtf((v.x * v.x) + (v.y * v.y) + (v.z *v.z) + (v.w * v.w));
+	return result;
+}
+
+inline V3 Abs(const V3& v) {
+  V3 result = {};
+  result.x = abs(v.x);
+  result.y = abs(v.y);
+  result.z = abs(v.z);
+  return result;
+}
+
+
 inline V2 Normalize(const V2& v)
 {
 	float magnitude = Magnitude(v);
@@ -247,6 +287,18 @@ inline V3 Normalize(const V3& v)
 	result.z = v.z / magnitude;
 	return result;
 }
+
+inline V4 Normalize(const V4& v)
+{
+	const float magnitude = Magnitude(v);
+	V4 result;
+	result.x = v.x / magnitude;
+	result.y = v.y / magnitude;
+	result.z = v.z / magnitude;
+  result.w = v.w / magnitude;
+	return result;
+}
+
 
 inline V3 Cross(const V3& a, const V3& b)
 {

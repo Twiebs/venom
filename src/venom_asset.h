@@ -1,6 +1,7 @@
 
 #define DebugShaderInfoList					\
 	_(Debug, "debug_shader.vert", "debug_shader.frag", "")\
+	_(DebugShape, "DebugShape.vert", "DebugShape.frag", "")\
 	_(SingleColor, "debug_shader.vert", "single_color.frag", "") \
 	_(Sprite, "basic_sprite.vert", "basic_sprite.frag", "") \
 	_(terrain, "terrain_instanced.vert", "terrain.frag", "") \
@@ -12,6 +13,7 @@
 	_(debug_depth_map, "vertexarray_quad.vert", "debug_depth_map.frag", "")\
   _(depth_cubemap, "depth_cubemap.vert", "depth_cubemap.frag", "depth_cubemap.geom") \
   _(GBuffer, "gbuffer.vert", "gbuffer.frag", "") \
+  _(SSAO, "vertexarray_quad.vert", "ssao.frag", "") \
   _(DeferredMaterial, "vertexarray_quad.vert", "material_deferred.frag", "")
 
 #define DebugModelList       \
@@ -20,45 +22,73 @@
   _(bush,   "foliage/bush/model.fbx")   \
   _(white_flower, "foliage/white_flower/model.fbx") \
   _(player, "dumb_player.fbx") \
-  _(SmallBarrel, "containers/SmallBarrel/barrel.fbx")\
+  _(SmallBarrel, "containers/SmallBarrel/barrel.blend")\
   _(Lamp, "lamp.fbx") \
-  _(Stairs, "Stairs/Stairs.fbx")
+  _(Stairs, "Stairs/Stairs.fbx") \
+  _(StanfordDragon, "dragon.obj") \
+  _(UtahTeapot, "UtahTeapot.fbx") \
+  _(HappyBuddah, "buddah.obj") \
+  _(Mitsuba, "mitsuba.obj") \
+  _(Bookshelf, "bookshelf.fbx") \
+  _(Table, "table.blend") \
 
-#if 0
-constexpr U64 StringHashDJB2(const char* str) {
-  U64 hash = 5381;
-  while(*str) {
-    hash = ((hash << 5) + hash) + *str;
-    str++;
-  }
-  return hash;
-} 
-#endif
+#ifdef VENOM_RELEASE
+#define ModelID(name) ModelID_##name
+#define MaterialID(name) MaterialID_##name
+#define SoundID(name) MusicID_##name
+#define ShaderID(name) ShaderID_##name
+#else//!VENOM_RELEASE
+#define ModelID(name) #name
+#define MaterialID(name) #name
+#define SoundID(name) #name
+#define ShaderID(name) #name
+#endif//VENOM_RELEASE
+
+enum AssetType {
+  AssetType_Material,
+  AssetType_Model,
+  AssetType_Shader,
+  AssetType_Sound,
+  AssetType_Count,
+};
+
+enum AssetFlag {
+  AssetFlag_Loaded = 1 << 0,
+};
+
+static const char* AssetTypeNames[] = {
+  "Material",
+  "Model",
+  "Shader",
+  "Sound",
+};
 
 
-struct MaterialAsset {
-  U32 flags;
+struct AssetSlot {
+  U64 flags;
+  //NOTE(Torin) For now these are dynamicly allocated
+  char *name;
+  char *filename;
+  void* asset;
+};
+
+struct MaterialAsset{
+  U64 flags;
+  const char* filenames[MaterialTextureType_COUNT];
   MaterialData data;
   MaterialDrawable drawable;
-  const char* filenames[MaterialTextureType_COUNT];
 };
 
-struct MaterialAssetList {
-  MaterialAsset* materials;
-  U64 materialCount;
-};
+struct ModelAsset{
+#ifndef VENOM_RELEASE
+  const char *name;
+  U64 lastWriteTime;
+#endif//VENOM_RELEASE
 
-struct AssetDataCache {
-	MemoryBlock memory;
-};
-
-struct DEBUGShaderInfo {
-	const char *filenames[4];
-};
-
-
-struct DEBUGModelInfo {
-	const char *filename;
+  ModelData data;
+  AABB aabb;
+  IndexedVertexArray vertexArray;
+  ModelDrawable drawable;
 };
 
 struct DEBUGLoadedShader {
@@ -68,17 +98,56 @@ struct DEBUGLoadedShader {
 	bool is_loaded;
 };
 
-struct SoundAssetSlot
-{
+struct SoundAsset {
 	SoundData data;
 };
 
+struct MaterialAssetList {
+  MaterialAsset* materials;
+  U64 materialCount;
+};
+
+struct DEBUGShaderInfo {
+	const char *filenames[4];
+};
+enum DEBUGShaderID {
+#define _(name,v,f,g)ShaderID_##name,
+	DebugShaderInfoList
+#undef _ 
+	DEBUGShaderID_COUNT
+};
+
+
+//NOTE(Torin) In non-release builds The asset struct contains dynamic arrays 
+//so that the number of assets can grow during runtime for quick iterration times
+//During release mode the assets are stored as static arrays
+#include <vector>
+struct AssetManifest {
+  //std::vector<AssetSlot> modelAssets;
+  DynamicArray<AssetSlot> modelAssets;
+
+
+	DEBUGLoadedShader loadedShaders[DEBUGShaderID_COUNT];
+  MaterialAssetList materialAssetList;
+
+  //TODO(Torin) This is bad beacuse we might end up deleteing assets
+  //at runtime so some dynamic strings is probably the best approach
+  char *stringBlock;
+  U64 stringBlockSize;
+  U64 stringBlockEntryCount;
+
+	MemoryBlock memoryBlock; //TODO(Torin)Currently not being used!
+};
+
+
+#if 0
 struct DEBUGLoadedModel {
 	ModelData data;
   AABB aabb;
 	IndexedVertexArray vertexArray;
 	ModelDrawable drawable;
 };
+#endif
 
 static DEBUGShaderInfo DEBUG_SHADER_INFOS[] =
 {
@@ -87,37 +156,22 @@ static DEBUGShaderInfo DEBUG_SHADER_INFOS[] =
 #undef _ 
 };
 
-static DEBUGModelInfo DEBUG_MODEL_INFOS[] =
-{
-#define _(name, file) { VENOM_ASSET_FILE(file) },
-	DebugModelList
-#undef _ 
-};
+S64 GetModelID(const char *name, AssetManifest* assets);
+S64 GetShaderID(const char *name, AssetManifest* assets);
+
+GLuint GetShaderProgram(DEBUGShaderID shaderID, AssetManifest *assets);
+
+
+const ModelDrawable& GetModelDrawable(U32 slotIndex, AssetManifest* manifest);
+const MaterialDrawable& GetMaterial(U32 id, AssetManifest* assets);
+
+const ModelAsset* GetModelAsset(U32 slotIndex, AssetManifest* assets);
+
+//const MaterialDrawable& GetMaterialDrawable(U32 id, AssetManifest* manifest);
+//const GLuint GetShaderProgram(DEBUGShaderID shaderID, AssetManifest* manifest);
+//const ModelDrawable& GetModelDrawable(DEBUGModelID id, GameAssets* assets);
 
 
 
-enum DEBUGModelID
-{
-#define _(name, file) DEBUGModelID_##name, 
-	DebugModelList
-#undef _ 
-	DEBUGModelID_COUNT
-};
 
-enum DEBUGShaderID
-{
-#define _(name,v,f,g)ShaderID_##name,
-	DebugShaderInfoList
-#undef _ 
-	DEBUGShaderID_COUNT
-};
-
-struct GameAssets
-{
-	MemoryBlock memory;
-
-	DEBUGLoadedShader loadedShaders[DEBUGShaderID_COUNT];
-	DEBUGLoadedModel loadedModels[DEBUGModelID_COUNT];
-  MaterialAssetList materialAssetList;
-};
 

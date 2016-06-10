@@ -1,5 +1,5 @@
 #define VENOM_SINGLE_TRANSLATION_UNIT
-//#define VENOM_HOTLOAD
+#define VENOM_HOTLOAD
 #define VENOM_OPENGL
 
 //#define VENOM_DEFAULT_SCREEN_WIDTH  1792
@@ -8,7 +8,8 @@
 #define VENOM_DEFAULT_SCREEN_HEIGHT 900 
 
 #define VENOM_USER_CONFIG_PATH "userdata"
-#define VENOM_MODULE_FILE "test_scene.cpp"
+#define VENOM_MODULE_SOURCE_FILENAME "test_scene.cpp"
+#define VENOM_MODULE_FILENAME "../build/game_module.so"
 
 #define VENOM_SOUCE_FILE(file) "../src" file
 #define VENOM_SHADER_FILE(file) "../src/shaders/" file
@@ -22,9 +23,11 @@
   _(U32, TERRAIN_MATERIAL_COUNT, 2)                                            \
   _(F32, TERRAIN_HEIGHT_SCALAR, 32.0f)                                         \
   _(U32, DIRECTIONAL_LIGHTS_MAX, 1)                                            \
-  _(U32, SHADOW_CASTING_POINT_LIGHT_MAX, 4)                                    \
+  _(U32, SHADOW_CASTING_POINT_LIGHT_MAX, 8)                                    \
   _(U32, POINT_LIGHTS_MAX, 16)                                                 \
-  _(U32, DIRECTIONAL_LIGHT_UNIFORM_LOCATION, 8)
+  _(U32, DIRECTIONAL_LIGHT_UNIFORM_LOCATION, 8) \
+  _(U32, SSAO_SAMPLE_COUNT, 64) \
+  _(U32, SSAO_NOISE_SIZE, 4)
 
 static const U32 UNIFORM_COUNT_PER_DIRECTIONAL_LIGHT = 2;
 static const U32 UNIFORM_COUNT_PER_POINT_LIGHT = 3;

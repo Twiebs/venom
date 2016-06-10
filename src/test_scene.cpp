@@ -1,74 +1,15 @@
+#define VENOM_ENTITY_METALIST_MACRO EntityTypeList
+#define VENOM_ENTITY_STRUCT Entity
 #define VENOM_MATERIAL_LIST_FILE "asset_list.h"
-#include "venom_module.cpp"
 
+#include "venom_module.cpp"
 #include "math_procedural.cpp"
 
-#define EntityTypeList \
-  _(Container) \
-  _(PointLight) \
-
-enum EntityType {
-#define _(name) EntityType_##name,
-  EntityTypeList
-  EntityType_Count
-#undef _
-};
-
-static const char* ENTITY_TYPE_STRINGS[] = {
-#define _(name) #name,
-  EntityTypeList
-#undef _
-};
-
-enum EntityFlag {
-  EntityFlag_ACTIVE = 1 << 0,
-};
-
-struct PointLightEntity {
-  V3 color;
-  F32 radius;
-};
-
-struct Bullet {
-  F32 decayTime;
-  V3 velocity; 
-};
-
-struct Entity {
-  EntityType type;
+struct Player {
   V3 position;
-  U32 modelID;
-
-  union {
-    PointLightEntity pointLight;
-  };
+  V3 velocity;
+  F32 cooldownTime;
 };
-
-#define ENTITY_CAPACITY 128
-struct EntityArray {
-  U64 flags[ENTITY_CAPACITY];
-  Entity entities[ENTITY_CAPACITY];
-};
-
-#define INVALID_ENTITY_ID (1LL << 32)
-
-U64 CreateEntity(EntityType type, EntityArray* array) {
-	U64 entityID = INVALID_ENTITY_ID;
-  for (U64 i = 0; i < ENTITY_CAPACITY; i++) {
-    if ((array->flags[i] & EntityFlag_ACTIVE) == 0) {
-      entityID = i;
-      break;
-    }
-  }
-
-  if (entityID != INVALID_ENTITY_ID) {
-    array->flags[entityID] |= EntityFlag_ACTIVE;
-    Entity& entity = array->entities[entityID];
-    entity.type = type;
-  }
-
-  return entityID;
-}
 
 struct MeshDrawInfo {
   U32 vertexArrayID;
@@ -77,22 +18,22 @@ struct MeshDrawInfo {
   U32 indexOffset;
 };
 
-struct Player {
-  V3 position;
-  V3 velocity;
+struct Structure {
+  IndexedVertexArray vertexArray;
+  MeshDrawInfo meshDrawInfos[4];
 };
 
 struct GameData {
   Camera camera;
-  IndexedVertexArray proceduralWorld;
-  V3 testPositions[100];
-  MeshDrawInfo meshDrawInfos[4];
-  V3 containerPositions[4];
-  EntityArray entityArray;
+  Structure structures[2];
+  //EntityArray entityArray;
+  EntityContainer entityContainer;
+  EditorData editorData;
   bool initalized;
   Player player;
-};
 
+  IndexedVertexArray proceduralMesh;
+};
 
 static void 
 GenerateQuadFromPointsCCW(
@@ -101,8 +42,8 @@ GenerateQuadFromPointsCCW(
   U32* vertexCount, U32* indexCount, 
   const U32 maxVertexCount, const U32 maxIndexCount)
 {
-  assert(*vertexCount + 4 < maxVertexCount);
-  assert(*indexCount + 6 < maxIndexCount);
+  assert(*vertexCount + 4 <= maxVertexCount);
+  assert(*indexCount + 6 <= maxIndexCount);
   Vertex3D* vertices = inVertices + *vertexCount;
   U32* indices = inIndices + *indexCount;
 
@@ -133,7 +74,6 @@ GenerateQuadFromPointsCCW(
   *indexCount+= 6;
 }
 
-
 static void 
 GenerateQuadFromPointsCW(
   const V3 a, const V3 b, const V3 c, const V3 d, const F32 materialSizeInMeters,
@@ -146,121 +86,49 @@ GenerateQuadFromPointsCW(
     maxVertexCount, maxIndexCount);
 }
 
-
-
-
-static void 
-GenerateQuadByExtrudingLineSegment(const V3 start, const V3 end, const F32 lengthY, 
-  Vertex3D* vertices, U32* indices,
-  U32* vertexCount, U32* indexCount, 
-  const U32 maxVertexCount, const U32 maxIndexCount) 
+void GenerateRandomBSPTree(const Rectangle& root, U32 divisionCount, 
+  RNGSeed& seed, Rectangle* results, U32* resultsWritten, U32 currentDepth = 0) 
 {
-  assert(*vertexCount + 4 < maxVertexCount);
-  assert(*indexCount + 6 < maxIndexCount);
-  vertices += *vertexCount;
-  indices += *indexCount;
+  static const F32 MINIMUM_SPLIT_PERCENTAGE = 0.4F;
+  static const F32 MINIMUM_SPLIT_SIZE = 2.5F;
 
-  F32 lengthX = std::abs(end.x - start.x);
-  F32 lengthZ = std::abs(end.z - start.z);
+  S32 splitDirection = Random01U64(seed); 
+  F32 splitPercentange = RandomInRange(MINIMUM_SPLIT_PERCENTAGE, 
+    1.0F - MINIMUM_SPLIT_PERCENTAGE, seed);
 
-  vertices[0].position = start;
-  vertices[1].position = end;
-  vertices[2].position = end + V3 { 0, lengthY, 0 };
-  vertices[3].position = start + V3 { 0, lengthY, 0 }; 
-
-  vertices[0].texcoord = V2 { 0.0f, 0.0f };
-  vertices[1].texcoord = V2 { 4.0f, 0.0f };
-  vertices[2].texcoord = V2 { 4.0f, 2.0f};
-  vertices[3].texcoord = V2 { 0.0f, 2.0f};
-
-  indices[0] = *vertexCount + 0;
-  indices[1] = *vertexCount + 1;
-  indices[2] = *vertexCount + 2;
-  indices[3] = *vertexCount + 0;
-  indices[4] = *vertexCount + 2;
-  indices[5] = *vertexCount + 3;
-  *vertexCount+= 4;
-  *indexCount+= 6;
-}
-
-void GenerateQuad(const V3 position, const V2 size, 
-  const F32 materialSizeInMeters, const bool faceDown,
-  Vertex3D* vertices, U32* indices,
-  U32* vertexCount, U32* indexCount,
-  const U32 maxVertexCount, const U32 maxIndexCount) 
-{
-  assert(*vertexCount + 4 <= maxVertexCount);
-  assert(*indexCount + 6 <= maxIndexCount);
-  vertices += *vertexCount;
-  indices += *indexCount;
-
-  F32 aspectRatio = size.y / size.x;
-  F32 textureRepeatCount = size.x / materialSizeInMeters; 
-  
-  vertices[0].position = position;
-  vertices[1].position = position + V3{ size.x, 0, 0 };
-  vertices[2].position = position + V3{ size.x, 0, size.y };
-  vertices[3].position = position + V3{ 0, 0, size.y };
-  vertices[0].texcoord = V2 { 0.0f, 0.0f };
-  vertices[1].texcoord = V2 { textureRepeatCount, 0.0f };
-  vertices[2].texcoord = V2 { textureRepeatCount, textureRepeatCount * aspectRatio};
-  vertices[3].texcoord = V2 { 0.0f, textureRepeatCount * aspectRatio};
-
-  if (faceDown) {
-    indices[0] = *vertexCount + 0;
-    indices[1] = *vertexCount + 1;
-    indices[2] = *vertexCount + 2;
-    indices[3] = *vertexCount + 0;
-    indices[4] = *vertexCount + 2;
-    indices[5] = *vertexCount + 3;
-  } else {
-    indices[0] = *vertexCount + 0;
-    indices[1] = *vertexCount + 3;
-    indices[2] = *vertexCount + 2;
-    indices[3] = *vertexCount + 0;
-    indices[4] = *vertexCount + 2;
-    indices[5] = *vertexCount + 1;
+  Rectangle childA, childB;
+  if(splitDirection == 0) { //Vertical Split
+    F32 splitSize = (root.maxX - root.minX) * splitPercentange;
+    Assert(splitSize > MINIMUM_SPLIT_SIZE);
+    childA = { root.minX, root.minY, root.minX + splitSize, root.maxY };
+    childB = { childA.maxX, root.minY, root.maxX, root.maxY };
+  } else { //Horizontal Split
+    F32 splitSize = (root.maxY - root.minY) * splitPercentange;
+    Assert(splitSize > MINIMUM_SPLIT_SIZE);
+    childA = { root.minX, root.minY, root.maxX, root.minY + splitSize };
+    childB = { root.minX, childA.maxY, root.maxX, root.maxY };
   }
 
-  *vertexCount += 4;
-  *indexCount += 6;
+  if((currentDepth + 1) == divisionCount) {
+    results[*resultsWritten+0] = childA;
+    results[*resultsWritten+1] = childB;
+    *resultsWritten += 2;
+    return;
+  }
+
+  GenerateRandomBSPTree(childA, divisionCount, seed, 
+    results, resultsWritten, currentDepth + 1);
+  GenerateRandomBSPTree(childB, divisionCount, seed, 
+    results, resultsWritten, currentDepth + 1);
 }
 
-void VenomModuleStart(GameMemory* memory) {
-  SystemInfo* sys = &memory->systemInfo;
-  GameData* data = PushStruct(GameData, &memory->mainBlock);
-  RenderState* rs = &memory->renderState;
-
-
-  memory->userdata = data;
-  InitGBuffer(&rs->gbuffer, sys->screen_width, sys->screen_height);
-  InitCascadedShadowMaps(&memory->renderState.csm, 
-    sys->screen_width, sys->screen_height, memory->renderState.debugCamera.fov);
-  
-  for(size_t i = 0; i < 4; i++)
-    InitOmnidirectionalShadowMap(&rs->osm[i]);
-
-  InitializeCamera(&data->camera, 45*DEG2RAD, 0.1f, 100.0f,
-    sys->screen_width, sys->screen_height);
-  data->camera.position = {4, 10, 2};
-  data->camera.pitch = -89.99f*DEG2RAD;
-  data->camera.yaw = -90.0f*DEG2RAD;
-
+void GenerateStructure(const V3 structureBoundMin, const V3 structureBoundMax, 
+  IndexedVertexArray* vertexArray, MeshDrawInfo* drawInfo) 
+{
   Vertex3D vertices[128];
   U32 indices[(ARRAY_COUNT(vertices) / 4) * 6];
   U32 vertexCount = 0, indexCount = 0;
-
-  V3 structureOrigin = { 0, 0.01F, 0 };
-  V3 structureSize = { 8, 2.6F, 5 };
- 
-  data->meshDrawInfos[0].materialID = MaterialID_dirt00;
-  data->meshDrawInfos[0].indexCount = 6;
-  data->meshDrawInfos[0].indexOffset = indexCount;
-  GenerateQuad(V3 { -32, 0, -32}, V2 {64, 64}, 0.25f, false,
-    vertices, indices, &vertexCount, &indexCount,
-    ARRAY_COUNT(vertices), ARRAY_COUNT(indices));
-
-    
+   
   auto BeginMeshDrawInfo = [](MeshDrawInfo& info, MaterialID id, U32 currentIndexCount) {
     info.materialID = id;
     info.indexOffset = currentIndexCount;
@@ -270,12 +138,13 @@ void VenomModuleStart(GameMemory* memory) {
     info.indexCount = currentIndexCount - info.indexOffset;
   };
 
+
   const F32 wallSpacing = 0.2f;
 
-  {
-    BeginMeshDrawInfo(data->meshDrawInfos[1], MaterialID_StoneTile00, indexCount); 
-    V3 boundsMin = structureOrigin;
-    V3 boundsMax = structureOrigin + structureSize;
+  { //Floor
+    BeginMeshDrawInfo(drawInfo[0], MaterialID_StoneTile00, indexCount); 
+    V3 boundsMin = structureBoundMin; 
+    V3 boundsMax = structureBoundMax; 
     GenerateQuadFromPointsCW(
       V3{boundsMin.x, boundsMin.y, boundsMin.z},
       V3{boundsMax.x, boundsMin.y, boundsMin.z},
@@ -283,14 +152,13 @@ void VenomModuleStart(GameMemory* memory) {
       V3{boundsMin.x, boundsMin.y, boundsMax.z}, 1,
       vertices, indices, &vertexCount, &indexCount,
       ARRAY_COUNT(vertices), ARRAY_COUNT(indices));
-
-    EndMeshDrawInfo(data->meshDrawInfos[1], indexCount);
+    EndMeshDrawInfo(drawInfo[0], indexCount);
   }
 
-  BeginMeshDrawInfo(data->meshDrawInfos[2], MaterialID_WoodFloor00, indexCount); 
+  BeginMeshDrawInfo(drawInfo[1], MaterialID_WoodFloor00, indexCount); 
   { //Exterior Surfaces
-    V3 boundsMin = structureOrigin;
-    V3 boundsMax = structureOrigin + structureSize;
+    V3 boundsMin = structureBoundMin;
+    V3 boundsMax = structureBoundMax;
     GenerateQuadFromPointsCW(
       V3{boundsMin.x, boundsMin.y, boundsMin.z},
       V3{boundsMax.x, boundsMin.y, boundsMin.z},
@@ -319,22 +187,13 @@ void VenomModuleStart(GameMemory* memory) {
       V3{boundsMin.x, boundsMax.y, boundsMax.z}, 1,
       vertices, indices, &vertexCount, &indexCount,
       ARRAY_COUNT(vertices), ARRAY_COUNT(indices));
-#if 0
-    GenerateQuadFromPointsCW(
-      V3{boundsMin.x, boundsMax.y, boundsMin.z}, 
-      V3{boundsMax.x, boundsMax.y, boundsMin.z}, 
-      V3{boundsMax.x, boundsMax.y, boundsMax.z}, 
-      V3{boundsMin.x, boundsMax.y, boundsMax.z}, 1,
-      vertices, indices, &vertexCount, &indexCount,
-      ARRAY_COUNT(vertices), ARRAY_COUNT(indices));
-#endif
   }
   
   { //Interior Surfaces 
-    V3 boundsMin = structureOrigin + 
+    V3 boundsMin = structureBoundMin + 
       V3{wallSpacing, 0, wallSpacing};
-    V3 boundsMax = structureOrigin - 
-      V3{wallSpacing, wallSpacing, wallSpacing} + structureSize;
+    V3 boundsMax = structureBoundMax - 
+      V3{wallSpacing, wallSpacing, wallSpacing}; 
     GenerateQuadFromPointsCCW(
       V3{boundsMin.x, boundsMin.y, boundsMin.z},
       V3{boundsMax.x, boundsMin.y, boundsMin.z},
@@ -371,32 +230,340 @@ void VenomModuleStart(GameMemory* memory) {
       vertices, indices, &vertexCount, &indexCount,
       ARRAY_COUNT(vertices), ARRAY_COUNT(indices));
   }
-  EndMeshDrawInfo(data->meshDrawInfos[2], indexCount);
-  
+
+  EndMeshDrawInfo(drawInfo[1], indexCount);
   CalculateSurfaceNormals(vertices, vertexCount, indices, indexCount);
   CalculateVertexTangents(vertices, indices, vertexCount, indexCount);
-  CreateIndexedVertexArray3D(&data->proceduralWorld, 
-    vertices, indices, vertexCount, indexCount, GL_STATIC_DRAW);
+  CreateIndexedVertexArray3D(vertexArray, vertices, indices, 
+    vertexCount, indexCount, GL_STATIC_DRAW);
+}
 
-  DirectionalLight light;
-  light.color = V3 { 1.0f, 1.0f, 1.0f };
-  light.direction = V3 { 0.7f, 0.7f, 0.7f };
+void VenomModuleStart(GameMemory* memory) {
+  SystemInfo* sys = &memory->systemInfo;
+  GameData* data = PushStruct(GameData, &memory->mainBlock);
+  memory->userdata = data;
+  RenderState* rs = &memory->renderState;
 
-  for(size_t i = 0; i < 4; i++) {
-    data->meshDrawInfos[i].vertexArrayID = data->proceduralWorld.vertexArrayID;
+#if 0
+  {
+    ModelData data = {};
+    data = ImportExternalModelData(VENOM_ASSET_FILE("sphere.fbx"), 0);
+    FILE* file = fopen("test.txt", "wb");
+    assert(file != 0);
+    for(size_t i = 0; i < data.meshData.vertexCount; i++) {
+      fprintf(file, "V3{%f, %f, %f},\n", data.meshData.vertices[i].position.x,
+        data.meshData.vertices[i].position.y, data.meshData.vertices[i].position.z);
+    }
+    fprintf(file, "\n");
+    for(size_t i = 0; i < data.meshData.indexCount; i++) {
+      fprintf(file, "%u,", data.meshData.indices[i]);
+      if(i % 3 == 0) fprintf(file, "\n");
+    }
+  }
+#endif
+
+
+  InitializeCamera(&data->camera, 45*DEG2RAD, 0.1f, 100.0f,
+    sys->screen_width, sys->screen_height);
+  data->camera.position = {4, 10, 2};
+  data->camera.pitch = -89.99f*DEG2RAD;
+  data->camera.yaw = -90.0f*DEG2RAD;
+
+  EntityContainerInit(&data->entityContainer, 1024, 8);
+  
+  //TODO(Torin) Make this paramaterizable by sturucure count
+  //instead of split count or better yet have a structure density meteric!
+  RNGSeed seed(2);
+  U32 splitCount = log2(ARRAY_COUNT(data->structures));
+  Rectangle bspTree[ARRAY_COUNT(data->structures)];
+  Rectangle bspTreeBounds = { -16.0F, -16.0F, 16.0F, 16.0F };
+  U32 currentBSPResultCount = 0;
+  GenerateRandomBSPTree(bspTreeBounds, splitCount, seed, bspTree, &currentBSPResultCount);
+    
+  for (size_t i = 0; i < ARRAY_COUNT(data->structures); i++) {
+    U64 selector = Random01U64(seed);
+    Assert(selector <= 1);
+    Rectangle bounds = bspTree[(i*2) + selector];
+    F32 width = bounds.maxX - bounds.minX;
+    F32 height = bounds.maxY - bounds.minY;
+    F32 boundsScalar = RandomInRange(0.6F, 0.8F, seed);
+#if 1
+    if (width >= height) {
+      width *= boundsScalar;
+      height *= boundsScalar;
+    } else {
+      height *= boundsScalar;
+      width *= boundsScalar;
+    }
+#endif
+
+    V3 boundMin = {bounds.minX, 0, bounds.minY};
+    V3 boundMax = {bounds.minX + width, 3, bounds.minY + height};
+
+    GenerateStructure(boundMin, boundMax,
+      &data->structures[i].vertexArray, &data->structures[i].meshDrawInfos[0]);
+    for(size_t n = 0; n < 4; n++) {
+      data->structures[i].meshDrawInfos[n].vertexArrayID = 
+        data->structures[i].vertexArray.vertexArrayID;
+    }
+  }
+
+  {
+#if 0
+    EntityArray* entityArray = &data->entityArray;
+    auto CreateEntityGrid = [entityArray](V3 origin, DEBUGModelID id, float spacing, size_t count) {
+      for (size_t y = 0; y < count; y++) {
+        for (size_t x = 0; x < count; x++) {
+          U32 entityID = CreateEntity(EntityType_StaticObject, entityArray);
+          Entity& entity = entityArray->entities[entityID];
+          entity.position = origin + V3 { x * spacing, 0, y * spacing }; 
+          entity.modelID = id;
+        }
+      }
+    };
+
+    CreateEntityGrid(V3{0,0,0}, DEBUGModelID_UtahTeapot, 2, 4);
+
+#endif
+  }
+  { 
+    V3 boundsMin = { -2, 0, -2 };
+    V3 boundsMax = { 16, 0, 16 }; 
+    Vertex3D vertices[4];
+    U32 indices[6];
+    U32 vertexCount = 0, indexCount = 0;
+    GenerateQuadFromPointsCW(
+      V3{boundsMin.x, boundsMin.y, boundsMin.z},
+      V3{boundsMax.x, boundsMin.y, boundsMin.z},
+      V3{boundsMax.x, boundsMin.y, boundsMax.z},
+      V3{boundsMin.x, boundsMin.y, boundsMax.z}, 1,
+      vertices, indices, &vertexCount, &indexCount,
+      ARRAY_COUNT(vertices), ARRAY_COUNT(indices));
+    CalculateSurfaceNormals(vertices, vertexCount, indices, indexCount);
+    CalculateVertexTangents(vertices, indices, vertexCount, indexCount);
+    CreateIndexedVertexArray3D(&data->proceduralMesh, vertices, indices, 
+      vertexCount, indexCount, GL_STATIC_DRAW);
   }
 }
 
-void VenomModuleUpdate(GameMemory* memory) {
-  ShowAssets(&memory->assets);
-  GameData* data = (GameData*)memory->userdata;
-  EntityArray* entityArray = &data->entityArray;
+struct VenomWorldFileHeader {
+  U64 verifier;
+  U64 entityCount;
+} __attribute((packed));
 
-  InputState* input = &memory->inputState;
+struct EntityInfo {
+  U32 type;
+  V3 position;
+  V3 rotation;
+  U32 modelID;
+} __attribute((packed));
+
+struct NewEntityInfo {
+  U32 type;
+  Entity entity;
+} __attribute((packed));
+inline int
+FindMatchingString(const char *source, const char **list, size_t listLength) {
+  for(size_t i = 0; i < listLength; i++)
+    if(strcmp(source, list[i]) == 0) return (int)i;
+  return -1;
+}
+
+static inline
+void WriteWorldFile(const char *filename, EntityContainer *container, 
+    AssetManifest *manifest) {
+  vs::BeginFileWrite(filename);
+  EntityBlock* block = container->firstAvaibleBlock;
+  for(size_t i = 0; i < container->capacityPerBlock; i++){
+    if(block->flags[i] & EntityFlag_PRESENT) {
+      Entity* e = &block->entities[i];
+      vs::BeginGroupWrite("entity");
+      vs::WriteString("type", EntityTypeStrings[block->types[i]]);
+      vs::WriteFloat32("position", 3, &e->position);
+      vs::WriteFloat32("rotation", 3, &e->rotation);
+      vs::WriteString("modelName", GetModelAsset(e->modelID, manifest)->name);
+      switch(block->types[i]) {
+        case EntityType_PointLight: {
+          vs::WriteFloat32("color", 3, &e->pointLight.color);
+        } break;
+      }
+      vs::EndGroupWrite(); 
+    }
+  }
+  vs::EndFileWrite();
+}
+
+static inline
+void ReadWorldFile(const char *filename, EntityContainer *container, AssetManifest *manifest)
+{
+  vs::BeginFileRead(filename);
+  while(vs::BeginGroupRead()){
+    char temp[128];
+    vs::ReadString("type", temp, sizeof(temp));
+    int type = FindMatchingString(temp, EntityTypeStrings, EntityType_Count);
+    if(type == -1) { //TODO(Torin) Should probably do somthing smarter if this fails!
+      LogError("Invalid EntityType when reading world file");
+      vs::EndGroupRead();
+      continue;
+    }
+
+#if 1
+    Entity *e = CreateEntity((EntityType)type, container);
+    vs::ReadFloat32("position", 3, &e->position);
+    vs::ReadFloat32("rotation", 3, &e->rotation);
+    vs::ReadString("modelName", temp, sizeof(temp));
+    S64 modelID = GetModelID(temp, manifest);
+    if(modelID == -1) {
+      LOG_ERROR("Entity created with unkown model %s", temp);
+    } else {
+      e->modelID = (U32)modelID;
+    }
+
+    switch(type) {
+      case EntityType_PointLight: {
+        vs::ReadFloat32("color", 3, &e->pointLight.color);
+      };
+    }
+#endif
+
+
+
+    //LogDebug(temp);
+
+    vs::EndGroupRead();
+  }
+  vs::EndFileRead();
+}
+
+static const U64 verifier = 25612366;
+void SeralizeWorld(EntityContainer* container, const char* filename, AssetManifest *manifest) {
+#if 0
+  FILE* file = fopen(filename, "wb");
+  assert(file != NULL);
+  VenomWorldFileHeader header = {};
+  header.verifier = verifier; 
+  //TODO(Torin) Suport multiple entity blocks
+  header.entityCount = container->firstAvaibleBlock->currentAliveEntityCount;
+
+#define SerializedEntity NewEntityInfo 
+#define Seralize(type, var) fwrite(var, sizeof(type), 1, file)
+  Seralize(VenomWorldFileHeader, &header);
+
+  EntityBlock* block = container->firstAvaibleBlock;
+  uint32_t totalEntityCount = 0;
+  for(size_t i = 0; i < container->capacityPerBlock; i++){
+    if(block->flags[i] & EntityFlag_PRESENT){
+      SerializedEntity info = {};
+      info.type = block->types[i];
+      info.entity = block->entities[i];
+      Seralize(SerializedEntity, &info);
+      totalEntityCount++;
+    }
+  }
+
+  header.entityCount = totalEntityCount;
+
+#undef Seralize
+#undef SerializedEntity
+  fclose(file);
+
+#endif
+  char temp[512];
+  sprintf(temp, "silly%d.world", (int)time(0));
+  WriteWorldFile(temp, container, manifest);
+  WriteWorldFile("silly.world", container, manifest);
+}
+
+void LoadWorld(EntityContainer* entityContainer, const char *filename, AssetManifest *manifest) {
+#if 0
+  FILE* file = fopen(filename, "rb");
+  assert(file != NULL);
+  VenomWorldFileHeader header = {};
+#define SerializedEntity NewEntityInfo 
+#define Seralize(type, var) fread(var, sizeof(type), 1, file)
+  Seralize(VenomWorldFileHeader, &header);
+  for (size_t i = 0; i < header.entityCount; i++) {
+    SerializedEntity info = {};
+    Seralize(SerializedEntity, &info);
+
+    Entity* entity = CreateEntity((EntityType)info.type, entityContainer);
+    *entity = info.entity;
+    //entity->position = info.position;
+    //entity->rotation = info.rotation;
+    //entity->modelID = info.modelID;
+  }
+#undef Serialize
+#undef SerializedEntity
+  fclose(file);
+#endif
+
+  ReadWorldFile("silly.world", entityContainer, manifest);
+}
+
+static void
+FuzzyFind(const char *input, const char** searchList, size_t searchListCount, bool *output){
+  if (input[0] == 0) { 
+    memset(output, 1, searchListCount);
+    return;
+  }
+
+  size_t inputLength = strlen(input);
+
+  for (size_t i = 0; i < searchListCount; i++) {
+    int finalScore = -1;
+    const char* rootSearchPos = searchList[i];
+
+    while(*rootSearchPos != 0){
+      int score = -1;
+      int lastMatchIndex = -1;
+      int currentInputIndex = 0;
+      const char* searchChar = rootSearchPos;
+      while(*searchChar != 0){
+        if(input[currentInputIndex] == 0) break;
+        if(*searchChar == input[currentInputIndex] || 
+            ((input[currentInputIndex] >= 'a' && input[currentInputIndex] <= 'z') &&
+              (input[currentInputIndex] - ('a' - 'A')) == (*searchChar))) 
+        {
+          score += (currentInputIndex - lastMatchIndex);
+          lastMatchIndex = currentInputIndex;
+          currentInputIndex++;
+        }
+
+        searchChar++;
+      }
+
+      if(currentInputIndex != (int)inputLength) score = -1;
+      if(score != -1 && (score < finalScore || finalScore == -1))
+        finalScore = score;
+      rootSearchPos++;
+    }
+
+    if(finalScore != -1){
+      output[i] = 1;
+    } else {
+      output[i] = 0;
+    }
+  }
+}
+
+
+void VenomModuleUpdate(GameMemory* memory) {
+  ShowAssetManifest(&memory->assetManifest);
+  ShowEventOverlay(memory->debugData);
+  GameData* data = (GameData*)memory->userdata;
+  EntityContainer* entityContainer = &data->entityContainer;
+  EditorData* editorData = &data->editorData;
+  RenderState* rs = &memory->renderState;
+  AssetManifest *manifest = &memory->assetManifest;
+
+  const SystemInfo* sys = &memory->systemInfo;
+  const InputState* input = &memory->inputState;
 
   Player& player = data->player;
+#if 0
   const float acceleration = 15.0f;
   const float dragCoefficent = 0.9f;
+  const F32 COOLDOWN_TIME = 0.2f;
   float deltaTime = memory->gameState.deltaTime;
   if(input->isKeyDown[KEYCODE_W]) 
     player.velocity -= V3(0, 0, acceleration) * deltaTime;
@@ -407,157 +574,224 @@ void VenomModuleUpdate(GameMemory* memory) {
   if(input->isKeyDown[KEYCODE_D]) 
     player.velocity += V3{acceleration, 0, 0} * deltaTime;
 
+  F32 cursorDisplacementX = input->cursorPosX - (sys->screen_width * 0.5f);
+  F32 cursorDisplacementY = input->cursorPosY - (sys->screen_height * 0.5f);
+  V2 displacementVector = { cursorDisplacementX, cursorDisplacementY };
+  displacementVector = Normalize(displacementVector);
+
+  const F32 BULLET_SPEED = 5000.0f;
+  if(input->isButtonDown[MOUSE_LEFT] && player.cooldownTime <= 0.0f) {
+    U64 id = CreateEntity(EntityType_Bullet, entityArray);
+    Entity* entity = &entityArray->entities[id];
+    entity->position = player.position + V3(0.0f, 0.4f, 0.0f);
+    entity->velocity = { displacementVector.x * BULLET_SPEED, 
+      0, displacementVector.y * BULLET_SPEED };
+    entity->bullet.decayTime = 2.0f;
+    entity->bullet.lightColor = V3(0.9, 0.0, 0.2);
+    entity->bullet.bulletRadius = 0.05f;
+    entity->bullet.lightRadius= 1.0;
+    player.cooldownTime += COOLDOWN_TIME; 
+  }
+
+  player.cooldownTime -= deltaTime;
+  if (player.cooldownTime < 0.0f)
+    player.cooldownTime = 0.0f;
+
   Camera& camera = data->camera;
   player.position += player.velocity * deltaTime;
   player.velocity *= dragCoefficent;
   camera.position.x = Lerp(camera.position.x, player.position.x, 0.2f);
   camera.position.z = Lerp(camera.position.z, player.position.z, 0.2f);
+#endif
+
+  EditorData* editor = &data->editorData;
+
+  if (input->isButtonDown[MOUSE_RIGHT]) {
+    MoveCameraWithFPSControls(&memory->renderState.debugCamera,
+      &memory->inputState, memory->deltaTime);
+  } else {
+    if(input->isKeyDown[KEYCODE_X]) {
+      if(editor->selectedEntities.count > 0) {
+        for(size_t i = 0; i < editor->selectedEntities.count; i++){
+          EntityIndex index = {};
+          index.blockIndex = 0;
+          index.slotIndex = editor->selectedEntities[i]; 
+          DestroyEntity(index, entityContainer);
+        }
+        editor->selectedEntities.count = 0;
+      }
+    }
+  }
+
+
+  Camera* camera = &rs->debugCamera;
+  ShowCameraInfo(camera);
+  if(input->isButtonDown[MOUSE_LEFT] && !ImGui::IsMouseHoveringAnyWindow()){
+    editor->activeCommand = EditorCommand_Select; 
+  }
+
+  if(input->isKeyDown[KEYCODE_G]) {
+    if(input->isKeyDown[KEYCODE_SHIFT])
+      editor->activeCommand = EditorCommand_Grab;
+    else editor->activeCommand = EditorCommand_Project;
+  }
+  
+  if(input->isKeyDown[KEYCODE_CAPSLOCK]) editor->activeCommand = EditorCommand_None;
+  ProcessEditorCommand(editor, camera, memory, entityContainer);
+
+#if 0
+  static char textBuffer[1024];
+  static bool stringMatches[DEBUGModelID_COUNT];
+  ImGui::Begin("FuzzyFinder");
+  ImGui::InputText("Input", textBuffer, ARRAY_COUNT(textBuffer));
+  FuzzyFind(textBuffer, MODEL_ASSET_NAMES, ARRAY_COUNT(MODEL_ASSET_NAMES),
+    stringMatches);
+
+  for(size_t i = 0; i < ARRAY_COUNT(stringMatches); i++){
+    if(stringMatches[i]) {
+      ImGui::Text(MODEL_ASSET_NAMES[i]);
+    }
+  }
+  
+  ImGui::End();
+#endif
 
 
   ImGui::Begin("Entities");
-  ImGui::Columns(2);
-  ImGui::Separator();
-  static U64 selectedIndex = INVALID_ENTITY_ID;
-  ImGui::BeginChild("EntityList");
-  for (size_t i = 0; i < ENTITY_CAPACITY; i++) {
-    if (entityArray->flags[i] & EntityFlag_ACTIVE) {
-      const Entity& entity = entityArray->entities[i];
-      ImGui::PushID(i);
-      if (ImGui::Selectable(ENTITY_TYPE_STRINGS[entity.type], selectedIndex == i)) {
-        selectedIndex = i;
-      }
-      ImGui::PopID();
+  ImGui::Text("Active Editor Command: %s", EditorCommandNames[editor->activeCommand]);
+  if(ImGui::Button("Save World"))
+    SeralizeWorld(entityContainer, "test.world", &memory->assetManifest);
+  ImGui::SameLine();
+  if(ImGui::Button("Load World"))
+    LoadWorld(entityContainer, "test.world", &memory->assetManifest);
+  ImGui::SameLine();
+  if(ImGui::Button("CreateEntity")){
+    CreateEntity(EntityType_StaticObject, entityContainer);
+  }
+
+  if(ImGui::Button("DestroyEntity")) {
+    for(size_t i = 0; i < editor->selectedEntities.count; i++){
+      EntityIndex index = {};
+      index.blockIndex = 0;//TODO(Torin)
+      index.slotIndex = editor->selectedEntities[i];
+      DestroyEntity(index, entityContainer);
     }
   }
+
+  ImGui::Columns(2);
+  ImGui::Separator();
+  ImGui::BeginChild("EntityList");
+
+  //TODO(Torin)
+  EntityBlock* block = entityContainer->firstAvaibleBlock;
+  for(size_t i = 0; i < entityContainer->capacityPerBlock; i++){
+    if(block->flags[i] & EntityFlag_PRESENT){
+      const Entity& entity = block->entities[i];
+      ImGui::PushID(i);
+
+      size_t listIndex = 0;
+      bool containsIndex = editor->selectedEntities.ContainsValue(i, &listIndex);
+      if(ImGui::Selectable(EntityTypeStrings[block->types[i]], containsIndex)) {
+        if(containsIndex) {
+          editor->selectedEntities.RemoveUnordered(listIndex);
+        } else {
+          editor->selectedEntities.PushBack(i);
+        }
+      }
+
+    }
+    ImGui::PopID();
+  }
+
   
   ImGui::EndChild();
   ImGui::NextColumn();
   ImGui::BeginChild("Info");
-  if (selectedIndex != INVALID_ENTITY_ID) {
-    Entity& entity = entityArray->entities[selectedIndex];
-    ImGui::DragFloat3("Position", &entity.position.x, 0.1f);
+  if(editor->selectedEntities.count > 0) {
+    //Entity& entity = block->entities[editor->selectedEntityIndex];
+    ImGui::DragFloat3("Position", &editor->entityGroupPosition.x, 0.1f);
+    ImGui::DragFloat3("Rotation", &editor->entityGroupRotation.x, 0.1f);
+   
+#if 0
+    auto modelAsset = GetModelAsset(entity.modelID, manifest);
+    if(ImGui::Button(modelAsset->name)) {
+      ImGui::OpenPopup("ModelSelect");
+    }
+    if (ImGui::BeginPopup("ModelSelect")) {
+      for (size_t i = 0; i < manifest->modelAssets.count; i++) {
+        if (ImGui::Selectable(manifest->modelAssets[i].name)) {
+          entity.modelID = i;
+        }
+      }
+      ImGui::EndPopup();
+    }
+    #endif
+
   }
   ImGui::EndChild();
   ImGui::NextColumn();
   ImGui::End();
+
+
+  ImGui::ShowTestWindow();
 }
+
 void VenomModuleLoad(GameMemory* memory) {
   GameData* data = (GameData*)memory->userdata;
   V3 structureOrigin = { 0, 0.01F, 0 };
   V3 structureSize = { 8, 2.6F, 5 };
 
-
-  if(!data->initalized) {
-    U64 id = CreateEntity(EntityType_PointLight, &data->entityArray);
-    Entity& entity = data->entityArray.entities[id];
-    entity.position = V3 {4, 3.0, 3 };
-    entity.pointLight.color = V3 { 1.0, 1.0, 1.0 };
-    entity.pointLight.radius = 20.0f;
-    entity.modelID = DEBUGModelID_Lamp;
-
-#if 1
-    {
-      U64 id = CreateEntity(EntityType_PointLight, &data->entityArray);
-      Entity& entity = data->entityArray.entities[id];
-      entity.position = V3 {1.5f, 6.0f, 2.0f };
-      entity.pointLight.color = V3 { 0.9F, 0.9F, 1.0F };
-      entity.pointLight.radius = 20.0f;
-      entity.modelID = DEBUGModelID_Lamp;
-    }
-#endif
-  
-#if 0 
-    { 
-      U64 id = CreateEntity(EntityType_Container, &data->entityArray);
-      Entity& entity = data->entityArray.entities[id];
-      entity.position = V3 { 1, 0, 1.8 };
-      entity.modelID = DEBUGModelID_Stairs;
-    }
-#endif
-
-
-    auto model = GetModelDrawable(DEBUGModelID_SmallBarrel, &memory->assets);
-    auto barrelAsset = memory->assets.loadedModels[DEBUGModelID_SmallBarrel];
-    V3 min = structureOrigin + V3 {0, -barrelAsset.aabb.min.y, 0};
-    V3 max = structureOrigin + 
-      V3 {structureSize.x, -barrelAsset.aabb.min.y, structureSize.z};
-    RNGSeed seed(8);
-
-    for (size_t i = 0; i < 4; i++) {
-      U64 id = CreateEntity(EntityType_Container, &data->entityArray);
-      Entity& entity = data->entityArray.entities[id];
-      entity.position = RandomInRange(min, max, seed);
-      entity.modelID = DEBUGModelID_SmallBarrel;
-    }
-
-    data->initalized = true;
-  }
 }
 
 
 void VenomModuleRender(GameMemory* memory) {
   RenderState* rs = &memory->renderState;
   GameData* data = (GameData*)memory->userdata;
-
-  //PushDrawCommand(&data->proceduralWorld, &rs->drawList);A
-
-  //AddDirectionalLight(V3{0.7, 0.7, 0.7}, V3{1.0, 1.0, 1.0}, &rs->drawList);
-
-  for (size_t i = 0; i < 4; i++)
-    PushMeshDrawCommand(data->meshDrawInfos[i].vertexArrayID, 
-      data->meshDrawInfos[i].materialID, data->meshDrawInfos[i].indexCount,
-      data->meshDrawInfos[i].indexOffset, &rs->drawList);
-#if 0
-  for (size_t i = 0; i < 100; i ++)
-    PushModelDrawCommand(DEBUGModelID_player, data->testPositions[i], &rs->drawList);
-#endif
-
-#if 0
-  for (size_t i = 0; i < rs->lightingState.pointLightCount; i++) {
-    PushModelDrawCommand(DEBUGModelID_Lamp, 
-      rs->lightingState.pointLights[i].position,
-      &rs->drawList);
-  }
-#endif
-
-
-  EntityArray* entityArray = &data->entityArray;
-  for (U64 i = 0; i < ENTITY_CAPACITY; i++) {
-    if (entityArray->flags[i] & EntityFlag_ACTIVE) {
-      Entity* entity = &entityArray->entities[i];
-      if (entity->type == EntityType_PointLight) {
+  EditorData* editorData = &data->editorData;
+  EditorData* editor = &data->editorData;
+  
+  const F32 deltaTime = memory->deltaTime;
+  EntityContainer* entityContainer = &data->entityContainer;
+  EntityBlock* block = entityContainer->firstAvaibleBlock;
+  for(U64 i = 0; i < entityContainer->capacityPerBlock; i++) {
+    if(block->flags[i] & EntityFlag_PRESENT) {
+      Entity* entity = &block->entities[i];
+      if(block->types[i] == EntityType_PointLight) {
         AddShadowCastingPointLight(entity->position, entity->pointLight.color, 
           entity->pointLight.radius, &rs->drawList);
-      }
+      } 
+      if(entity->modelID != 0){
+        if(editor->selectedEntities.ContainsValue(i)){
+          PushOutlinedModelDrawCommand(entity->modelID, 
+            &rs->drawList, entity->position, entity->rotation); 
+        } else {
+          PushModelDrawCommand(entity->modelID, 
+            &rs->drawList, entity->position, entity->rotation); 
+        }
+        auto modelAsset = GetModelAsset(entity->modelID, &memory->assetManifest);
+        V3 boundsSize = Abs(modelAsset->aabb.max - modelAsset->aabb.min);
 
-      PushModelDrawCommand((DEBUGModelID)entity->modelID, 
-        entity->position, &rs->drawList); 
+        AddWireframeBox(&rs->drawList,
+          entity->position - (boundsSize * 0.5f),
+          entity->position + (boundsSize * 0.5f));
+      }
     }
   }
 
+#if 0
+  for (size_t i = 0; i < ARRAY_COUNT(data->structures); i++) {
+    for (size_t n = 0; n < 2; n++) {
+      PushMeshDrawCommand(data->structures[i].meshDrawInfos[n].vertexArrayID, 
+        data->structures[i].meshDrawInfos[n].materialID, 
+        data->structures[i].meshDrawInfos[n].indexCount,
+        data->structures[i].meshDrawInfos[n].indexOffset, &rs->drawList);
+    }
+  }
   const Player& player = data->player;
   PushModelDrawCommand(DEBUGModelID_player,
     player.position, &rs->drawList);
+#endif 
 
-#if 0
-  for (size_t i = 0; i < 4; i++) {
-   PushModelDrawCommand(DEBUGModelID_SmallBarrel, 
-     data->containerPositions[i], &rs->drawList); 
-  }
-#endif
-
-#if 0
-  for (size_t z = 0; z < 8; z++) {
-    for (size_t x = 0; x < 8; x++) {
-      const V3 base = { 10, 0, 10 };
-      const V3 position = base + V3{ x*2.0f, 0, z*2.0f};
-      PushModelDrawCommand(DEBUGModelID_white_flower, 
-       position, &rs->drawList); 
-    }
-  }
-#endif
-
-
-  //VenomRenderScene(memory, &rs->debugCamera);
-  VenomRenderScene(memory, &data->camera);
+  VenomRenderScene(memory, &rs->debugCamera);
+  //VenomRenderScene(memory, &data->camera);
 }

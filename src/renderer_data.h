@@ -1,3 +1,4 @@
+static const V4 COLOR_WHITE = V4(1.0f, 1.0f, 1.0f, 1.0f);
 static const V4 COLOR_BLACK = V4(0.0f, 0.0f, 0.0f, 1.0f);
 static const V4 COLOR_GRAY = V4(0.5f, 0.5f, 0.5f, 1.0f);
 static const V4 COLOR_RED = V4(1.0f, 0.0f, 0.0f, 1.0f);
@@ -6,13 +7,12 @@ static const V4 COLOR_BLUE = V4(0.0f, 0.0f, 1.0f, 1.0f);
 static const V4 COLOR_YELLOW = V4(1.0f, 1.0f, 0.0f, 1.0f);
 static const V4 COLOR_MAGENTA = V4(1.0f, 0.0f, 1.0f, 1.0f);
 
-struct BoneVertexInfluence {
-	float weight;
-	U32 index;
+struct RGB8 {
+  U8 r, g, b;
 };
 
-struct Bone {
-	M4 offset_matrix;
+struct RGBA8 {
+  U8 r, g, b, a;
 };
 
 struct Vertex2D {
@@ -28,6 +28,15 @@ struct Vertex3D {
 	V2 texcoord;
 };
 
+struct BoneVertexInfluence {
+	float weight;
+	U32 index;
+};
+
+struct Bone {
+	M4 offset_matrix;
+};
+
 struct AnimatedVertex {
 	V3 position;
 	V3 normal;
@@ -37,19 +46,26 @@ struct AnimatedVertex {
 	BoneVertexInfluence *bones;
 };
 
+enum MaterialTextureType {
+	MaterialTextureType_DIFFUSE,
+	MaterialTextureType_NORMAL,
+	MaterialTextureType_SPECULAR,
+	MaterialTextureType_COUNT
+};
+
+const char *MaterialTextureTypeNames[] = {
+	"MaterialTextureType_DIFFUSE",
+	"MaterialTextureType_NORMAL",
+	"MaterialTextureType_SPECULAR",
+	"MaterialTextureType_COUNT"
+};
+
 enum MaterialFlag {
 	MaterialFlag_DIFFUSE      = 1 << 0,
 	MaterialFlag_NORMAL       = 1 << 1,
 	MaterialFlag_SPECULAR     = 1 << 2,
 	MaterialFlag_TRANSPARENT  = 1 << 3,
 	MaterialFlag_REPEAT       = 1 << 4,
-};
-
-enum MaterialTextureType {
-	MaterialTextureType_DIFFUSE,
-	MaterialTextureType_NORMAL,
-	MaterialTextureType_SPECULAR,
-	MaterialTextureType_COUNT
 };
 
 struct MaterialData {
@@ -89,8 +105,40 @@ struct AnimatedModelData {
 	U32 *indexCountPerMesh;
 };
 
+struct Frustum {
+	F32 field_of_view;
+	F32 aspect_ratio;
+	F32 near_plane_distance;
+	F32 far_plane_distance;
+	V3 points[8];
+};
+
+struct Camera {
+	V3 position;
+	V3 front;
+	F32 fov;
+	F32 yaw, pitch;
+	F32 near_clip, far_clip;
+	//F32 viewportWidth, viewportHeight;
+	M4 view, projection;
+};
+
+struct DirectionalLight {
+	V3 direction;
+	V3 color;
+};
+
+struct PointLight {
+	V3 position;
+	V3 color;
+	F32 radius;
+};
+
+
+#if 0
 struct DebugMaterialInfo {
 	const char *filenames[MaterialTextureType_COUNT];
 	V3 diffuse_color;
 	V3 specular_color;
 };
+#endif

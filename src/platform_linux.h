@@ -4,6 +4,7 @@
 #define KEYCODE_BACKSPACE 22
 #define KEYCODE_SPACE 65
 #define KEYCODE_CAPSLOCK 66
+#define KEYCODE_TILDA 49 
 
 #define KEYCODE_SHIFT 50
 #define KEYCODE_CTRL 37
@@ -14,11 +15,42 @@
 #define KEYCODE_UP 0x26
 #define KEYCODE_DOWN 0x28
 
-#define KEYCODE_W 25 
-#define KEYCODE_S 39
-#define KEYCODE_A 38
-#define KEYCODE_D 40 
 #define KEYCODE_Q 24
+#define KEYCODE_W 25 
+#define KEYCODE_E 26 
+#define KEYCODE_R 27 
+#define KEYCODE_T 28 
+#define KEYCODE_Y 29 
+#define KEYCODE_U 30 
+#define KEYCODE_I 31
+#define KEYCODE_O 32
+#define KEYCODE_P 33
+#define KEYCODE_OPEN_BRAKET 34
+#define KEYCODE_CLOSE_BRACKET 35
+
+#define KEYCODE_A 38
+#define KEYCODE_S 39
+#define KEYCODE_D 40 
+#define KEYCODE_F 41 
+#define KEYCODE_G 42 
+#define KEYCODE_H 43 
+#define KEYCODE_J 44 
+#define KEYCODE_K 45 
+#define KEYCODE_L 46 
+#define KEYCODE_SEMICOLON 47
+#define KEYCODE_QUOTE 48
+
+#define KEYCODE_Z 52
+#define KEYCODE_X 53
+#define KEYCODE_C 54
+#define KEYCODE_V 55
+#define KEYCODE_B 56
+#define KEYCODE_N 57
+#define KEYCODE_M 58
+#define KEYCODE_COMMA 59
+#define KEYCODE_PERIOD 60 
+#define KEYCODE_FOWARD_SLASH 61
+
 
 #define KEYCODE_F1 0x70
 #define KEYCODE_F2 0x71

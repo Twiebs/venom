@@ -6,6 +6,76 @@
 #define AquireArrayMemory(elements, count, memory) elements = ((decltype(elements)) PushSize(sizeof(*elements) * count, memory))
 #define InitSubBlock(name, block, size, parent) _SetBlockName(block, name); _SubBlock(block, size, parent)
 
+#define StaticArray(TElement, TSize) \
+struct { TElement data[TSize]; size_t count; } 
+
+
+template<typename TElement>
+struct DynamicArray {
+  TElement *data;
+  size_t count;
+  size_t capacity;
+
+  StaticArray(U32, 256) selectedEntities;
+
+  DynamicArray();
+  ~DynamicArray() {
+    if(data != 0) delete[] data;
+  }
+
+  TElement& operator[](size_t index){
+    assert(index < count);
+    return data[index];
+  }
+
+  void PushBack(TElement element) {
+    if(count + 1 > capacity) Resize(capacity + 16);
+    data[count++] = element;
+  }
+
+  void RemoveOrdered(size_t index) {
+    assert(index < count);
+    size_t countToMove = (count - index - 1);
+    memmove(data + index, data + index + 1, countToMove);
+    count--;
+  }
+
+  void RemoveUnordered(size_t index) {
+    assert(index < count);
+    data[index] = data[count-1];
+    count--;
+  }
+ 
+  int ContainsValue(TElement value){
+    for(size_t i = 0; i < count; i++)
+      if(data[i] == value) return 1;
+    return 0;
+  }
+
+ 
+
+  int ContainsValue(TElement value, size_t *outIndex) {
+    for(size_t i = 0; i < count; i++)
+      if(data[i] == value) { 
+        *outIndex = i;
+        return 1;
+      }
+    return 0;
+  }
+
+  void Resize(size_t newCapacity) {
+    assert(newCapacity > count);
+    TElement *newData = new TElement[newCapacity]; 
+    if(data != 0) {
+      memcpy(newData, data, newCapacity * sizeof(TElement));
+      delete[] data;
+    }
+    data = newData;
+    capacity = newCapacity;
+  }
+};
+
+
 struct MemoryBlock {
 	U8* base;
 	size_t size;
