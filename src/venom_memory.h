@@ -45,6 +45,15 @@ struct DynamicArray {
     data[index] = data[count-1];
     count--;
   }
+
+  void RemoveFirstValueUnordered(TElement e) {
+    for(size_t i = 0; i < count; i++) {
+      if(data[i] == e) {
+        RemoveUnordered(i);
+        return;
+      }
+    }
+  }
  
   int ContainsValue(TElement value){
     for(size_t i = 0; i < count; i++)

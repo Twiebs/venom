@@ -246,12 +246,14 @@ int LinuxMain() {
 #ifndef VENOM_RELEASE
   //NOTE(Torin) Signal handlers to make sure the current leveldata or
   //asset information is backed up if the engine crashes in debug builds
+  #if 0
   signal(SIGFPE, VenomSignalHandler);
   signal(SIGILL, VenomSignalHandler);
   signal(SIGINT, VenomSignalHandler);
   signal(SIGSEGV, VenomSignalHandler);
   signal(SIGTERM, VenomSignalHandler); 
   signal(SIGKILL, VenomSignalHandler);
+  #endif
 #endif//VENOM_RELEASE
 
 #ifdef VENOM_HOTLOAD
@@ -335,4 +337,3 @@ int LinuxMain() {
 	XCloseDisplay(display);
   return 0;
 }
-

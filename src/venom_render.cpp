@@ -96,3 +96,11 @@ void AddLine(VenomDrawList* drawList, V3 start, V3 end,
   cmd->lineSegmentPositions[0] = start;
   cmd->lineSegmentPositions[1] = end;
 }
+
+void AddAxes(V3 position, VenomDrawList *drawList){
+  assert(drawList->debugCommandCount + 1 < ARRAY_COUNT(drawList->debugCommands));
+  DebugRenderCommand* cmd = &drawList->debugCommands[drawList->debugCommandCount];
+  cmd->type = DebugRenderCommandType_Axis;
+  cmd->position = position;
+  drawList->debugCommandCount++;
+}

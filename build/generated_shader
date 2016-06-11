@@ -17,10 +17,15 @@
 
 #define POINT_LIGHT_UNIFORM_LOCATION 10
 #define SHADOW_CASTING_POINT_LIGHT_UNIFORM_LOCATION 58
-layout (location = 3) uniform vec4 inColor;
+in vec2 frag_texcoord;
+in vec4 frag_color;
 
-out vec4 outColor;
+layout (binding = 0) uniform sampler2D sampler;
 
-void main() {
-  outColor = inColor; 
+out vec4 out_color;
+
+void main()
+{
+	out_color = frag_color * texture(sampler, frag_texcoord);
+	//out_color = frag_color;
 }

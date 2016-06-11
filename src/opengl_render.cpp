@@ -500,9 +500,8 @@ void VenomRenderScene(GameMemory* memory, Camera* camera) {
 
   {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-    GLuint deferredMaterialShader = GetShaderProgram(ShaderID_DeferredMaterial, assetManifest);
-    glUseProgram(deferredMaterialShader);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
+    glUseProgram(GetShaderProgram(ShaderID_DeferredMaterial, assetManifest));
     SetLightingUniforms(drawList, *camera);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, gbuffer->positionDepth);
@@ -515,6 +514,7 @@ void VenomRenderScene(GameMemory* memory, Camera* camera) {
     glBindVertexArray(rs->quadVao);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
   }
+
 #endif
 
   glBindFramebuffer(GL_READ_FRAMEBUFFER, gbuffer->framebuffer);
@@ -620,6 +620,15 @@ void VenomRenderScene(GameMemory* memory, Camera* camera) {
           glDrawArrays(GL_LINES, 0, 2);
           glUniform1i(useLinePosLocation, 0);
         } break;
+        
+        case DebugRenderCommandType_Axis: {
+          modelMatrix = M4Identity(); 
+          glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, &modelMatrix[0][0]); 
+          glUniform4f(colorLocation, 1.0, 0.0, 0.0, 1.0);
+          glDrawElements(GL_TRIANGLES, debugResources.axisIndexCount,
+            GL_UNSIGNED_INT, (void*)(uintptr_t)debugResources.axisIndexOffset);
+        } break;
+
       }
 
       cmd->duration -= memory->deltaTime;

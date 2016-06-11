@@ -87,6 +87,7 @@ struct ModelAsset{
 
   ModelData data;
   AABB aabb;
+  V3 size;
   IndexedVertexArray vertexArray;
   ModelDrawable drawable;
 };

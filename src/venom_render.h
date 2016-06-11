@@ -28,6 +28,7 @@ enum DebugRenderCommandType {
   DebugRenderCommandType_Box,
   DebugRenderCommandType_Sphere,
   DebugRenderCommandType_Line,
+  DebugRenderCommandType_Axis,
 };
 
 struct DebugRenderCommand {
@@ -44,6 +45,7 @@ struct DebugRenderCommand {
       V3 center; 
       F32 radius;
     };
+    V3 position;
     V3 lineSegmentPositions[2];
   };
 };

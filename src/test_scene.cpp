@@ -244,10 +244,10 @@ void VenomModuleStart(GameMemory* memory) {
   memory->userdata = data;
   RenderState* rs = &memory->renderState;
 
-#if 0
+#if 1
   {
     ModelData data = {};
-    data = ImportExternalModelData(VENOM_ASSET_FILE("sphere.fbx"), 0);
+    data = ImportExternalModelData(VENOM_ASSET_FILE("axis.fbx"), 0);
     FILE* file = fopen("test.txt", "wb");
     assert(file != 0);
     for(size_t i = 0; i < data.meshData.vertexCount; i++) {
@@ -435,71 +435,6 @@ void ReadWorldFile(const char *filename, EntityContainer *container, AssetManife
   vs::EndFileRead();
 }
 
-static const U64 verifier = 25612366;
-void SeralizeWorld(EntityContainer* container, const char* filename, AssetManifest *manifest) {
-#if 0
-  FILE* file = fopen(filename, "wb");
-  assert(file != NULL);
-  VenomWorldFileHeader header = {};
-  header.verifier = verifier; 
-  //TODO(Torin) Suport multiple entity blocks
-  header.entityCount = container->firstAvaibleBlock->currentAliveEntityCount;
-
-#define SerializedEntity NewEntityInfo 
-#define Seralize(type, var) fwrite(var, sizeof(type), 1, file)
-  Seralize(VenomWorldFileHeader, &header);
-
-  EntityBlock* block = container->firstAvaibleBlock;
-  uint32_t totalEntityCount = 0;
-  for(size_t i = 0; i < container->capacityPerBlock; i++){
-    if(block->flags[i] & EntityFlag_PRESENT){
-      SerializedEntity info = {};
-      info.type = block->types[i];
-      info.entity = block->entities[i];
-      Seralize(SerializedEntity, &info);
-      totalEntityCount++;
-    }
-  }
-
-  header.entityCount = totalEntityCount;
-
-#undef Seralize
-#undef SerializedEntity
-  fclose(file);
-
-#endif
-  char temp[512];
-  sprintf(temp, "silly%d.world", (int)time(0));
-  WriteWorldFile(temp, container, manifest);
-  WriteWorldFile("silly.world", container, manifest);
-}
-
-void LoadWorld(EntityContainer* entityContainer, const char *filename, AssetManifest *manifest) {
-#if 0
-  FILE* file = fopen(filename, "rb");
-  assert(file != NULL);
-  VenomWorldFileHeader header = {};
-#define SerializedEntity NewEntityInfo 
-#define Seralize(type, var) fread(var, sizeof(type), 1, file)
-  Seralize(VenomWorldFileHeader, &header);
-  for (size_t i = 0; i < header.entityCount; i++) {
-    SerializedEntity info = {};
-    Seralize(SerializedEntity, &info);
-
-    Entity* entity = CreateEntity((EntityType)info.type, entityContainer);
-    *entity = info.entity;
-    //entity->position = info.position;
-    //entity->rotation = info.rotation;
-    //entity->modelID = info.modelID;
-  }
-#undef Serialize
-#undef SerializedEntity
-  fclose(file);
-#endif
-
-  ReadWorldFile("silly.world", entityContainer, manifest);
-}
-
 static void
 FuzzyFind(const char *input, const char** searchList, size_t searchListCount, bool *output){
   if (input[0] == 0) { 
@@ -626,6 +561,14 @@ void VenomModuleUpdate(GameMemory* memory) {
 
   Camera* camera = &rs->debugCamera;
   ShowCameraInfo(camera);
+
+  if(input->isKeyDown[KEYCODE_SHIFT])
+    editor->selectMode = EditorSelectMode_Append;
+  else if (input->isKeyDown[KEYCODE_LCONTROL])
+    editor->selectMode = EditorSelectMode_Remove;
+  else editor->selectMode = EditorSelectMode_Default;
+
+
   if(input->isButtonDown[MOUSE_LEFT] && !ImGui::IsMouseHoveringAnyWindow()){
     editor->activeCommand = EditorCommand_Select; 
   }
@@ -659,11 +602,20 @@ void VenomModuleUpdate(GameMemory* memory) {
 
   ImGui::Begin("Entities");
   ImGui::Text("Active Editor Command: %s", EditorCommandNames[editor->activeCommand]);
-  if(ImGui::Button("Save World"))
-    SeralizeWorld(entityContainer, "test.world", &memory->assetManifest);
+  ImGui::Text("SelectedEntityCount: %d", (int)editor->selectedEntities.count);
+  
+  if(ImGui::Button("Save World")) {
+    char temp[512];
+    sprintf(temp, "silly%d.world", (int)time(0));
+    WriteWorldFile(temp, entityContainer, manifest);
+    WriteWorldFile("silly.world", entityContainer, manifest);
+  }
+
   ImGui::SameLine();
-  if(ImGui::Button("Load World"))
-    LoadWorld(entityContainer, "test.world", &memory->assetManifest);
+  if(ImGui::Button("Load World")) {
+    ReadWorldFile("silly.world", entityContainer, &memory->assetManifest);
+  }
+
   ImGui::SameLine();
   if(ImGui::Button("CreateEntity")){
     CreateEntity(EntityType_StaticObject, entityContainer);
@@ -692,15 +644,10 @@ void VenomModuleUpdate(GameMemory* memory) {
       size_t listIndex = 0;
       bool containsIndex = editor->selectedEntities.ContainsValue(i, &listIndex);
       if(ImGui::Selectable(EntityTypeStrings[block->types[i]], containsIndex)) {
-        if(containsIndex) {
-          editor->selectedEntities.RemoveUnordered(listIndex);
-        } else {
-          editor->selectedEntities.PushBack(i);
-        }
+        UpdateEditorSelection(i, editor, entityContainer, &memory->assetManifest);
       }
-
+      ImGui::PopID();
     }
-    ImGui::PopID();
   }
 
   
@@ -709,8 +656,8 @@ void VenomModuleUpdate(GameMemory* memory) {
   ImGui::BeginChild("Info");
   if(editor->selectedEntities.count > 0) {
     //Entity& entity = block->entities[editor->selectedEntityIndex];
-    ImGui::DragFloat3("Position", &editor->entityGroupPosition.x, 0.1f);
-    ImGui::DragFloat3("Rotation", &editor->entityGroupRotation.x, 0.1f);
+    ImGui::DragFloat3("Position", &editor->currentGroupPosition.x, 0.1f);
+    ImGui::DragFloat3("Rotation", &editor->currentGroupRotation.x, 0.1f);
    
 #if 0
     auto modelAsset = GetModelAsset(entity.modelID, manifest);
@@ -740,7 +687,6 @@ void VenomModuleLoad(GameMemory* memory) {
   GameData* data = (GameData*)memory->userdata;
   V3 structureOrigin = { 0, 0.01F, 0 };
   V3 structureSize = { 8, 2.6F, 5 };
-
 }
 
 

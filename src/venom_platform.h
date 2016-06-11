@@ -72,7 +72,7 @@ EngineAPIList
 #undef _
 #endif//VENOM_HOTLOAD
 
-#define fori(lim) for(int64_t i = 0; i < lim; i++)
+#define fori(count) for(size_t i = 0; i < count; i++)
 
 #ifndef VENOM_RELEASE
 #define LogError(...) { sprintf(GetDebugData()->debugLog.temp_buffer, __VA_ARGS__); PushLogEntry(GetDebugData(), LogLevel_ERROR); }

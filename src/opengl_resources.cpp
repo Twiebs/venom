@@ -165,33 +165,55 @@ void CreateDebugRenderResources(DebugRenderResources* resources)
 
   glGenVertexArrays(1, &resources->vao);
   glBindVertexArray(resources->vao);
+
+#define ShapeList \
+  _(cube) _(sphere) _(axis)
   
   glGenBuffers(1, &resources->vbo);
   glBindBuffer(GL_ARRAY_BUFFER, resources->vbo);
-  glBufferData(GL_ARRAY_BUFFER, 
-    sizeof(cubeVertices) + sizeof(sphereVertices), 
-    0, GL_DYNAMIC_DRAW);
-  glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(cubeVertices), cubeVertices);
-  glBufferSubData(GL_ARRAY_BUFFER, sizeof(cubeVertices), sizeof(sphereVertices), sphereVertices);
-  
+#define _(name) + sizeof(name##Vertices)
+  glBufferData(GL_ARRAY_BUFFER, 0 ShapeList, 0, GL_DYNAMIC_DRAW);
+#undef _
+
+
+  {
+  size_t currentOffset = 0;
+    #define _(name) glBufferSubData(GL_ARRAY_BUFFER, currentOffset, \
+      sizeof(name##Vertices), name##Vertices); \
+      currentOffset += sizeof(name##Vertices);
+    ShapeList
+    #undef _
+  }
+
+
+
   glGenBuffers(1, &resources->ebo);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, resources->ebo);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, 
-    sizeof(cubeIndices) + sizeof(sphereIndices),
-    0, GL_DYNAMIC_DRAW);
-  glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, sizeof(cubeIndices), cubeIndices);
-  glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, sizeof(cubeIndices), sizeof(sphereIndices), sphereIndices);
+  #define _(name) + sizeof(name##Indices)
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, 0 + ShapeList, 0, GL_DYNAMIC_DRAW);
+  #undef _
 
+  {
+    size_t currentOffset = 0;
+    #define _(name) glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, currentOffset, \
+      sizeof(name##Indices), name##Indices); \
+    currentOffset += sizeof(name##Indices);
+    ShapeList
+    #undef _
+  }
 
   glEnableVertexAttribArray(0);
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-  
   glBindVertexArray(0);
 
-  resources->cubeIndexOffset = 0;
-  resources->cubeIndexCount = ARRAY_COUNT(cubeIndices);
-  resources->sphereIndexOffset = sizeof(cubeIndices);
-  resources->sphereIndexCount = ARRAY_COUNT(sphereIndices);
+  {
+    size_t currentOffset = 0;
+    #define _(name) resources->name##IndexCount = ARRAY_COUNT(name##Indices); \
+      resources->name##IndexOffset = currentOffset; \
+      currentOffset += sizeof(name##Indices);
+    ShapeList
+    #undef _
+  }
 }
 
 

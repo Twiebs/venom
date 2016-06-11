@@ -49,6 +49,72 @@ AssetManifest *assetManifest, Camera* camera, V3
   return result;
 }
 
+static inline
+void UpdateEditorSelection(U32 index, EditorData *editor,
+EntityContainer *ec, AssetManifest *am) 
+{
+  assert(index != INVALID_ENTITY_INDEX);
+  switch(editor->selectMode){
+    case EditorSelectMode_Default: {
+      editor->selectedEntities.count = 0;
+      editor->selectedEntities.PushBack(index);
+    } break;
+    case EditorSelectMode_Append: {
+      if(!editor->selectedEntities.ContainsValue(index)) {
+        editor->selectedEntities.PushBack(index);
+      }
+    } break;
+    case EditorSelectMode_Remove: {
+      editor->selectedEntities.RemoveFirstValueUnordered(index);
+    } break;
+  }
+
+  editor->groupAABB = { V3(FLT_MAX), V3(FLT_MIN) };
+  fori(editor->selectedEntities.count){
+    Entity *e = GetEntity(editor->selectedEntities[i], ec);
+    const ModelAsset *asset = GetModelAsset(e->modelID, am);
+    AABB entityAABB = { e->position - (asset->size * 0.5f),
+      e->position + (asset->size * 0.5f) }; 
+    for(size_t i = 0; i < 3; i++){
+      editor->groupAABB.min[i] = Min(entityAABB.min[i], editor->groupAABB.min[i]);
+      editor->groupAABB.max[i] = Max(entityAABB.max[i], editor->groupAABB.max[i]);
+    }
+  }
+
+  editor->originalGroupPosition = Center(editor->groupAABB);
+  editor->currentGroupPosition = editor->originalGroupPosition;
+  editor->originalEntityPositions.count = 0;
+  fori(editor->selectedEntities.count){
+    Entity *e = GetEntity(editor->selectedEntities[i], ec);
+    editor->originalEntityPositions.PushBack(e->position);
+  }
+}
+
+#if 0
+static inline
+void UpdateEntityGroupAABB(EditorData *editor, EntityContainer *ec, AssetManifest *am){
+  editor->groupAABB = { V3(FLT_MAX), V3(FLT_MIN) };
+  fori(editor->selectedEntities.count){
+    Entity *e = GetEntity(editor->selectedEntities[i], ec);
+    const ModelAsset *asset = GetModelAsset(e->modelID, am);
+    AABB entityAABB = { e->position - (asset->size * 0.5f),
+      e->position + (asset->size * 0.5f) }; 
+    for(size_t i = 0; i < 3; i++){
+      editor->groupAABB.min[i] = Min(entityAABB.min[i], editor->groupAABB.min[i]);
+      editor->groupAABB.max[i] = Max(entityAABB.max[i], editor->groupAABB.max[i]);
+    }
+  }
+
+  editor->originalGroupPosition = Center(editor->groupAABB);
+  editor->currentGroupPosition = editor->originalGroupPosition;
+  editor->originalEntityPositions.count = 0;
+  fori(editor->selectedEntities.count){
+    Entity *e = GetEntity(editor->selectedEntities[i], ec);
+    editor->originalEntityPositions.PushBack(e->position);
+  }
+}
+#endif
+
 void ProcessEditorCommand(EditorData* editor, Camera* camera, GameMemory* memory,
     EntityContainer* entityContainer)
 {
@@ -56,6 +122,7 @@ void ProcessEditorCommand(EditorData* editor, Camera* camera, GameMemory* memory
 
   InputState* input = &memory->inputState;
   SystemInfo* sys = &memory->systemInfo;
+  VenomDrawList *drawList = &memory->renderState.drawList;
 
   switch(editor->activeCommand) {
     case EditorCommand_Grab: {
@@ -75,6 +142,33 @@ void ProcessEditorCommand(EditorData* editor, Camera* camera, GameMemory* memory
         return;
       }
 
+      AssetManifest *am = &memory->assetManifest;
+      EntityContainer *ec = entityContainer;
+
+#if 0
+      if(editor->lastCommand != EditorCommand_Project){
+        editor->groupAABB = { V3(FLT_MAX), V3(FLT_MIN) };
+        fori(editor->selectedEntities.count){
+          Entity *e = GetEntity(editor->selectedEntities[i], ec);
+          const ModelAsset *asset = GetModelAsset(e->modelID, am);
+          AABB entityAABB = { e->position - (asset->size * 0.5f),
+            e->position + (asset->size * 0.5f) }; 
+          for(size_t i = 0; i < 3; i++){
+            editor->groupAABB.min[i] = Min(entityAABB.min[i], editor->groupAABB.min[i]);
+            editor->groupAABB.max[i] = Max(entityAABB.max[i], editor->groupAABB.max[i]);
+          }
+        }
+
+        editor->originalGroupPosition = Center(editor->groupAABB);
+        editor->currentGroupPosition = editor->originalGroupPosition;
+        editor->originalEntityPositions.count = 0;
+        fori(editor->selectedEntities.count){
+          Entity *e = GetEntity(editor->selectedEntities[i], ec);
+          editor->originalEntityPositions.PushBack(e->position);
+        }
+      }
+      
+#endif
       V4 ray = ProjectViewportCoordsToWorldSpaceRay(input->cursorPosX, 
         input->cursorPosY, sys->screen_width, sys->screen_height, camera);
         
@@ -84,6 +178,16 @@ void ProcessEditorCommand(EditorData* editor, Camera* camera, GameMemory* memory
         editor->selectedEntities.data, editor->selectedEntities.count);
 
       if(hitEntityIndex != INVALID_ENTITY_INDEX) {
+        editor->currentGroupPosition = hitPoint;
+        V3 totalDisplacement = editor->currentGroupPosition - 
+          editor->originalGroupPosition; 
+        fori(editor->selectedEntities.count){
+          Entity *e = GetEntity(editor->selectedEntities[i], ec);
+          e->position = editor->originalEntityPositions[i] + totalDisplacement +
+            V3{ 0, Abs(editor->groupAABB.max - editor->groupAABB.min).y * 0.5f, 0};
+        }
+
+
 #if 0
         AssetManifest *am = &memory->assetManifest;
         Entity *selectedEntity = GetEntity(editor->selectedEntityIndex, entityContainer);
@@ -131,17 +235,22 @@ void ProcessEditorCommand(EditorData* editor, Camera* camera, GameMemory* memory
         }
       } 
 
-      editor->selectedEntities.PushBack(hitEntityIndex);
-
-#if 0 
-      if(didIntersect) { 
-        AddSphere(&rs->drawList, point, 0.1f, COLOR_WHITE, true, 0.5); 
-        AddLine(&rs->drawList, camera->position, 
-            (camera->position + (worldRay * 10)), COLOR_YELLOW, true, 5);
+      //TODO(Torin) Inline UpdateEditorSelection? 
+      if(hitEntityIndex != INVALID_ENTITY_INDEX) {
+        UpdateEditorSelection(hitEntityIndex, editor, entityContainer, 
+          &memory->assetManifest);
+        AddSphere(drawList, point, 0.1f, COLOR_YELLOW, true, 5.0f); 
+        AddLine(drawList, camera->position, 
+          (camera->position + (worldRay * tmin)), COLOR_YELLOW, true, 5);
       }
-#endif
+       
       editor->activeCommand = EditorCommand_None;
     } break;
 
+  }
+
+  if(editor->selectedEntities.count > 0){
+    AddAxes(Center(editor->groupAABB), drawList);
+    //AddSphere(drawList, Center(editor->groupAABB), 1.0);
   }
 }

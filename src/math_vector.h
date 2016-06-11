@@ -21,7 +21,9 @@ struct V3 {
 	V3(float x, float y, float z) : x(x), y(y), z(z) {}
   V3(const V3& v) : x(v.x), y(v.y), z(v.z) {}
   V3(const V4& v);
-  inline float operator[](const size_t index){ return e[index]; }
+  inline float& operator[](const size_t index) { return e[index]; }
+  //inline float operator[](const size_t index){ return e[index]; }
+  inline float operator[](const size_t index) const { return e[index]; }
   //inline float *operator[](const size_t index){ return (e + index); }
 };
 

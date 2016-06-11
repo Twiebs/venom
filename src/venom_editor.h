@@ -5,6 +5,12 @@ enum EditorCommand {
   EditorCommand_Project,
 };
 
+enum EditorSelectMode {
+  EditorSelectMode_Default,
+  EditorSelectMode_Append,
+  EditorSelectMode_Remove,
+};
+
 const char *EditorCommandNames[] = {
   "EditorCommand_None",
   "EditorCommand_Select",
@@ -13,14 +19,22 @@ const char *EditorCommandNames[] = {
 };
 
 struct EditorData {
-//TODO(Torin: Jun 09, 2016) Camera does not belong here
-  Camera editorCamera; 
-  //U32 selectedEntityIndex;
+  EditorCommand lastCommand;
+  EditorCommand activeCommand;
+  EditorSelectMode selectMode;
+
+//TODO(Torin) Implement this camera functionality
+  Camera *selectedCamera;
+  Camera defaultCamera;
+  DynamicArray<Camera> customCameras;
 
   DynamicArray<U32> selectedEntities;
-  V3 entityGroupPosition;
-  V3 entityGroupRotation;
+  DynamicArray<V3> originalEntityPositions;
 
+  AABB groupAABB;
 
-  EditorCommand activeCommand;
+  V3 originalGroupPosition;
+  V3 currentGroupPosition;
+  V3 currentGroupRotation;
+  
 };

@@ -247,6 +247,7 @@ GetModelAsset(U32 modelSlotIndex, AssetManifest* manifest){
     modelAsset->data = ImportExternalModelData(
       modelAssetSlot->filename, &manifest->memoryBlock);
     modelAsset->aabb = ComputeAABB(&modelAsset->data.meshData);
+    modelAsset->size = Abs(modelAsset->aabb.max - modelAsset->aabb.min);
 		modelAsset->drawable.materials = ReserveArray(
       MaterialDrawable, modelAsset->data.meshCount, &manifest->memoryBlock);	
     CreateIndexedVertexArray3D(&modelAsset->vertexArray, &modelAsset->data);

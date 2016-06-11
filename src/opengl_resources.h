@@ -59,10 +59,13 @@ struct ModelDrawable {
 
 struct DebugRenderResources {
   GLuint vao, vbo, ebo;
+
   U32 cubeIndexOffset;
   U32 cubeIndexCount;
   U32 sphereIndexOffset;
   U32 sphereIndexCount;
+  U32 axisIndexOffset;
+  U32 axisIndexCount;
 };
 
 
