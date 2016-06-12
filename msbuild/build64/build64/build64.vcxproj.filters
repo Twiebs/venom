@@ -1,0 +1,126 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Translation Unit">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\src\engine_debug.cpp">
+      <Filter>Translation Unit</Filter>
+    </None>
+    <None Include="..\..\..\src\engine_debug.h">
+      <Filter>Translation Unit</Filter>
+    </None>
+    <None Include="..\..\..\src\entity.h">
+      <Filter>Translation Unit</Filter>
+    </None>
+    <None Include="..\..\..\src\game.h">
+      <Filter>Translation Unit</Filter>
+    </None>
+    <None Include="..\..\..\src\main.cpp">
+      <Filter>Translation Unit</Filter>
+    </None>
+    <None Include="..\..\..\src\math_geometry.h">
+      <Filter>Translation Unit</Filter>
+    </None>
+    <None Include="..\..\..\src\math_matrix.h">
+      <Filter>Translation Unit</Filter>
+    </None>
+    <None Include="..\..\..\src\math_procedural.cpp">
+      <Filter>Translation Unit</Filter>
+    </None>
+    <None Include="..\..\..\src\math_procedural.h">
+      <Filter>Translation Unit</Filter>
+    </None>
+    <None Include="..\..\..\src\math_vector.h">
+      <Filter>Translation Unit</Filter>
+    </None>
+    <None Include="..\..\..\src\offline_asset_tools.cpp">
+      <Filter>Translation Unit</Filter>
+    </None>
+    <None Include="..\..\..\src\offline_asset_tools.h">
+      <Filter>Translation Unit</Filter>
+    </None>
+    <None Include="..\..\..\src\opengl_debug.h">
+      <Filter>Translation Unit</Filter>
+    </None>
+    <None Include="..\..\..\src\opengl_glsl.h">
+      <Filter>Translation Unit</Filter>
+    </None>
+    <None Include="..\..\..\src\opengl_procs.h">
+      <Filter>Translation Unit</Filter>
+    </None>
+    <None Include="..\..\..\src\opengl_render.h">
+      <Filter>Translation Unit</Filter>
+    </None>
+    <None Include="..\..\..\src\opengl_resources.cpp">
+      <Filter>Translation Unit</Filter>
+    </None>
+    <None Include="..\..\..\src\opengl_resources.h">
+      <Filter>Translation Unit</Filter>
+    </None>
+    <None Include="..\..\..\src\platform.h">
+      <Filter>Translation Unit</Filter>
+    </None>
+    <None Include="..\..\..\src\platform_linux.cpp">
+      <Filter>Translation Unit</Filter>
+    </None>
+    <None Include="..\..\..\src\platform_linux.h">
+      <Filter>Translation Unit</Filter>
+    </None>
+    <None Include="..\..\..\src\platform_windows.cpp">
+      <Filter>Translation Unit</Filter>
+    </None>
+    <None Include="..\..\..\src\platform_windows.h">
+      <Filter>Translation Unit</Filter>
+    </None>
+    <None Include="..\..\..\src\terrain.cpp">
+      <Filter>Translation Unit</Filter>
+    </None>
+    <None Include="..\..\..\src\terrain.h">
+      <Filter>Translation Unit</Filter>
+    </None>
+    <None Include="..\..\..\src\venom_asset.cpp">
+      <Filter>Translation Unit</Filter>
+    </None>
+    <None Include="..\..\..\src\venom_asset.h">
+      <Filter>Translation Unit</Filter>
+    </None>
+    <None Include="..\..\..\src\venom_audio.cpp">
+      <Filter>Translation Unit</Filter>
+    </None>
+    <None Include="..\..\..\src\venom_audio.h">
+      <Filter>Translation Unit</Filter>
+    </None>
+    <None Include="..\..\..\src\venom_math.h">
+      <Filter>Translation Unit</Filter>
+    </None>
+    <None Include="..\..\..\src\venom_noise.cpp">
+      <Filter>Translation Unit</Filter>
+    </None>
+    <None Include="..\..\..\src\venom_render.cpp">
+      <Filter>Translation Unit</Filter>
+    </None>
+    <None Include="..\..\..\src\venom_render.h">
+      <Filter>Translation Unit</Filter>
+    </None>
+    <None Include="..\..\..\src\venom_vulkan.cpp">
+      <Filter>Translation Unit</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\src\platform.cpp">
+      <Filter>Translation Unit</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

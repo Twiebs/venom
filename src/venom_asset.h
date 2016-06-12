@@ -123,9 +123,7 @@ enum DEBUGShaderID {
 //NOTE(Torin) In non-release builds The asset struct contains dynamic arrays 
 //so that the number of assets can grow during runtime for quick iterration times
 //During release mode the assets are stored as static arrays
-#include <vector>
 struct AssetManifest {
-  //std::vector<AssetSlot> modelAssets;
   DynamicArray<AssetSlot> modelAssets;
 
 
@@ -142,15 +140,6 @@ struct AssetManifest {
 };
 
 
-#if 0
-struct DEBUGLoadedModel {
-	ModelData data;
-  AABB aabb;
-	IndexedVertexArray vertexArray;
-	ModelDrawable drawable;
-};
-#endif
-
 static DEBUGShaderInfo DEBUG_SHADER_INFOS[] =
 {
 #define _(name,v,f,g) {{ VENOM_SHADER_FILE(v), VENOM_SHADER_FILE(f), VENOM_SHADER_FILE(g) }},
@@ -158,16 +147,23 @@ static DEBUGShaderInfo DEBUG_SHADER_INFOS[] =
 #undef _ 
 };
 
-S64 GetModelID(const char *name, AssetManifest* assets);
-S64 GetShaderID(const char *name, AssetManifest* assets);
+ModelAsset *GetModelAsset(U32 index, AssetManifest* assets);
+MaterialAsset *GetMaterialAsset(U32 index, AssetManifest *assets);
 
 GLuint GetShaderProgram(DEBUGShaderID shaderID, AssetManifest *assets);
-
-
 const ModelDrawable& GetModelDrawable(U32 slotIndex, AssetManifest* manifest);
 const MaterialDrawable& GetMaterial(U32 id, AssetManifest* assets);
 
-ModelAsset* GetModelAsset(U32 slotIndex, AssetManifest* assets);
+#ifndef VENOM_RELEASE
+void WriteAssetManifestFile(const char *filename, AssetManifest *manifest);
+void ReadAssetManifestFile(const char *filename, AssetManifest *manifest);
+static void HotloadShaders(AssetManifest *assets);
+static void HotloadModels(AssetManifest* manifest);
+S64 GetModelID(const char *name, AssetManifest* assets);
+S64 GetShaderID(const char *name, AssetManifest* assets);
+
+void DestroyModelAsset(U32 index, AssetManifest *manifest);
+#endif//!VENOM_RELEASE
 
 //const MaterialDrawable& GetMaterialDrawable(U32 id, AssetManifest* manifest);
 //const GLuint GetShaderProgram(DEBUGShaderID shaderID, AssetManifest* manifest);

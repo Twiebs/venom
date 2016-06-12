@@ -18,6 +18,7 @@
 #pragma clang diagnostic ignored "-Wswitch"
 #endif
 
+#ifdef VENOM_HOTLOAD
 #include "venom_platform.h"
 #define _(returnType, name, ...) static name##Proc name;
 EngineAPIList
@@ -35,10 +36,11 @@ EngineAPIList
 #include "venom_serializer.cpp"
 #endif//VENOM_RELEASE
 #endif//VENOM_SINGE_TRANSLATION_UNIT
+#endif//VENOM_HOTLOAD
 
 //TODO(Torin) Remove This!!!
 static 
-int CopyFile(const char *a, const char *b) {
+int VenomCopyFile(const char *a, const char *b) {
   FILE *fa = fopen(a, "rb");
   FILE *fb = fopen(b, "wb");
   if(fa == 0 || fb == 0) return 0;
@@ -54,26 +56,6 @@ int CopyFile(const char *a, const char *b) {
   return 1;
 }
 
-static inline
-void BeginProfileEntryHook(const char* name){
-  VenomDebugData* debugData = GetDebugData();
-  __BeginProfileEntry(&debugData->profileData, name);
-}
-
-static inline 
-void EndProfileEntryHook(const char* name){
-  VenomDebugData* debugData = GetDebugData();
-  __EndProfileEntry(&debugData->profileData, name);
-}
-
-#ifndef VENOM_DISABLE_PROFILER
-#define BeginProfileEntry(name) BeginProfileEntryHook(name) 
-#define EndProfileEntry(name) EndProfileEntryHook(name) 
-#else//VENOM_DISABLE_PROFILER
-#define BeginProfileEntry(name)
-#define EndProfileEntry(name)
-#endif//VENOM_DISABLE_PROFILER
-
 #include "game.h"
 
 void VenomModuleStart(GameMemory* memory);
@@ -81,6 +63,7 @@ void VenomModuleLoad(GameMemory* memory);
 void VenomModuleUpdate(GameMemory* memory);
 void VenomModuleRender(GameMemory* memory);
 
+#if 1
 #define _(name, flags) MaterialID_##name,
 enum MaterialID { 
 #ifdef VENOM_MATERIAL_LIST_FILE
@@ -91,13 +74,14 @@ enum MaterialID {
 #undef _
 
 #define _(name, flags) #name,
-const char *MATERIAL_NAMES[] { 
+const char *MATERIAL_NAMES[] = { 
 #ifdef VENOM_MATERIAL_LIST_FILE
 #include VENOM_MATERIAL_LIST_FILE
 #endif//VENOM_MATERIAL_LIST_FILE
+  "FUCKYOUWINDOWS"
 }; 
 #undef _
-
+#endif
 #include "debug_imgui.cpp"
 
 static inline
@@ -371,19 +355,19 @@ EngineAPIList
 }
 
 extern "C" void _VenomModuleUpdate(GameMemory* memory) {
-  BeginProfileEntry("HotloadShaders");
+  DEBUG_BeginProfileEntry("HotloadShaders");
 	HotloadShaders(&memory->assetManifest);
-  EndProfileEntry("HotloadShaders");
-  BeginProfileEntry("HotloadModels");
+  DEBUG_EndProfileEntry("HotloadShaders");
+  DEBUG_BeginProfileEntry("HotloadModels");
   HotloadModels(&memory->assetManifest);
-  EndProfileEntry("HotloadModels");
+  DEBUG_EndProfileEntry("HotloadModels");
 
   imgui_update_state(memory);
   ImGui::NewFrame();
 
-  BeginProfileEntry("Update");
+  DEBUG_BeginProfileEntry("Update");
   VenomModuleUpdate(memory);
-  EndProfileEntry("Update");
+  DEBUG_EndProfileEntry("Update");
   
   VenomDebugData* debugData = &memory->debugData;
   if(debugData->triggerToggleConsole) {
@@ -407,9 +391,9 @@ extern "C" void _VenomModuleUpdate(GameMemory* memory) {
 
 extern "C"
 void _VenomModuleRender(GameMemory* memory) {
-  BeginProfileEntry("GPU Submit");
+  DEBUG_BeginProfileEntry("GPU Submit");
   memset(&memory->renderState.debugRenderFrameInfo, 0, sizeof(VenomDebugRenderFrameInfo));
   VenomModuleRender(memory);
   ImGui::Render();
-  EndProfileEntry("GPU Submit");
+  DEBUG_EndProfileEntry("GPU Submit");
 }

@@ -129,7 +129,7 @@ ShowAssetManifest(AssetManifest* manifest){
     char temp[512];
     sprintf(temp, "assets%d.vsf", (int)time(0));
     WriteAssetManifestFile(temp, manifest);
-    CopyFile(temp, "assets.vsf");
+    VenomCopyFile(temp, "assets.vsf");
   }
 	ImGui::Columns(2);
 	ImGui::Separator();

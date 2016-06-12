@@ -1,10 +1,9 @@
-#pragma once
-
 #define KEYCODE_ESCAPE 0x1B
 #define KEYCODE_TAB 0x09
 #define KEYCODE_ENTER 0x0D
 #define KEYCODE_BACKSPACE 0x08
 #define KEYCODE_SPACE 0x20
+#define KEYCODE_TILDA 0xC0
 
 #define KEYCODE_SHIFT 0x10 
 #define KEYCODE_CTRL 0x11
@@ -20,6 +19,11 @@
 #define KEYCODE_W 'W'
 #define KEYCODE_S 'S' 
 #define KEYCODE_A 'A'
+#define KEYCODE_C 'C'
+#define KEYCODE_X 'X'
+#define KEYCODE_Y 'Y'
+#define KEYCODE_Z 'Z'
+#define KEYCODE_V 'V'
 #define KEYCODE_D 'D' 
 
 #define KEYCODE_F1 0x70

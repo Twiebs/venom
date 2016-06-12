@@ -1,0 +1,32 @@
+﻿  platform.cpp
+d:\workspace\venom\src\platform.cpp(2): warning C4068: unknown pragma
+d:\workspace\venom\src\platform.cpp(3): warning C4068: unknown pragma
+d:\workspace\venom\src\platform.cpp(4): warning C4068: unknown pragma
+d:\workspace\venom\src\platform.cpp(7): warning C4068: unknown pragma
+d:\workspace\venom\src\platform.cpp(8): warning C4068: unknown pragma
+d:\workspace\venom\src\platform.cpp(9): warning C4068: unknown pragma
+d:\workspace\venom\src\platform.cpp(10): warning C4068: unknown pragma
+d:\workspace\venom\src\platform.cpp(11): warning C4068: unknown pragma
+d:\workspace\venom\src\platform.h(4): warning C4068: unknown pragma
+d:\workspace\venom\src\platform.h(5): warning C4068: unknown pragma
+d:\workspace\venom\src\platform.h(6): warning C4068: unknown pragma
+d:\workspace\venom\src\platform.h(9): warning C4068: unknown pragma
+d:\workspace\venom\src\platform.h(10): warning C4068: unknown pragma
+d:\workspace\venom\src\platform.h(11): warning C4068: unknown pragma
+d:\workspace\venom\src\platform.h(12): warning C4068: unknown pragma
+d:\workspace\venom\src\platform.h(13): warning C4068: unknown pragma
+d:\workspace\venom\src\math_procedural.h(15): warning C4244: 'initializing': conversion from 'U64' to 'float', possible loss of data
+d:\workspace\venom\src\offline_asset_tools.cpp(1): warning C4068: unknown pragma
+d:\workspace\venom\src\offline_asset_tools.cpp(2): warning C4068: unknown pragma
+d:\workspace\venom\src\offline_asset_tools.cpp(7): warning C4068: unknown pragma
+d:\workspace\venom\src\offline_asset_tools.cpp(9): warning C4068: unknown pragma
+d:\workspace\venom\src\offline_asset_tools.cpp(10): warning C4068: unknown pragma
+d:\workspace\venom\src\offline_asset_tools.cpp(12): warning C4068: unknown pragma
+d:\workspace\venom\src\platform.cpp(163): warning C4244: '=': conversion from 'U64' to 'size_t', possible loss of data
+d:\workspace\venom\src\platform_windows.cpp(358): warning C4244: 'argument': conversion from 'U64' to 'size_t', possible loss of data
+d:\workspace\venom\src\platform_windows.cpp(359): warning C4244: 'argument': conversion from 'U64' to 'size_t', possible loss of data
+d:\workspace\venom\src\platform_windows.cpp(425): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+d:\workspace\venom\src\platform_windows.cpp(426): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+d:\workspace\venom\src\platform_windows.cpp(427): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+d:\workspace\venom\src\platform_windows.cpp(428): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
+LINK : fatal error LNK1104: cannot open file 'assimp-vc130-mtd.lib'

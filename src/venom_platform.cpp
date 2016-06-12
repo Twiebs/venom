@@ -1,4 +1,10 @@
-#pragma clang diagnostic error "-Wreturn-type" //FUCK YOU C++
+struct Rectangle {
+  float minX, minY;
+  float maxX, maxY;
+};
+
+#ifndef _MSC_VER
+#pragma clang diagnostic error "-Wreturn-type"
 #pragma clang diagnostic warning "-Wall"
 #pragma clang diagnostic warning "-Wextra"
 #pragma clang diagnostic ignored "-Wformat-security"
@@ -9,10 +15,10 @@
 #pragma clang diagnostic ignored "-Wunused-function"
 #pragma clang diagnostic ignored "-Wunused-local-typedef"
 #pragma clang diagnostic ignored "-Wunused-variable"
-#endif
+#endif //VENOM_RELEASE && VENOM_STRICT
+#endif //_MSC_VER
 
 #include "venom_platform.h"
-
 
 #define _(rettype, name, ...) rettype name(__VA_ARGS__);
 EngineAPIList
@@ -30,11 +36,15 @@ VenomDebugData *GetDebugData() { return _debugData; }
 GameMemory* GetVenomEngineData() { return _venomEngineData; };
 #endif//VENOM_RELEASE
 
+static int VenomCopyFile(const char *a, const char *b);
+
+
+
+
 #ifdef VENOM_SINGLE_TRANSLATION_UNIT
 //NOTE(Torin)These files are the core functionality
 //of venom and may include additional .cpp files however;
 //that is the extend that includes are allowed to go
-
 #include "math_procedural.cpp"
 #include "venom_debug.cpp"
 #include "venom_render.cpp"
@@ -62,21 +72,6 @@ static VenomModuleLoadProc _VenomModuleLoad;
 static VenomModuleStartProc _VenomModuleStart;
 static VenomModuleUpdateProc _VenomModuleUpdate;
 static VenomModuleRenderProc _VenomModuleRender;
-#else//!VENOM_HOTLOAD
-#include VENOM_MODULE_SOURCE_FILENAME
-#endif//VENOM_HOTLOAD
-
-//========================================================================================
-//========================================================================================
-//========================================================================================
-
-//NOTE(Torin) Represented in a file stored on the users device 
-struct UserConfig {
-	U16 screen_width;
-	U16 screen_height;
-	B8 is_fullscreen;
-	U64 memory_size;
-};
 
 struct VenomModule {
   void *handle;
@@ -84,26 +79,18 @@ struct VenomModule {
 
 static inline void LoadVenomModule(VenomModule* module, const char* path);
 static inline void UnloadVenomModule(VenomModule* module);
+#else//!VENOM_HOTLOAD
+#include "test_scene.cpp"
+#endif//VENOM_HOTLOAD
 
-static inline
-void BeginProfileEntryHook(const char* name){
-  VenomDebugData* debugData = GetDebugData();
-  __BeginProfileEntry(&debugData->profileData, name);
-}
+//========================================================================================
 
-static inline 
-void EndProfileEntryHook(const char* name){
-  VenomDebugData* debugData = GetDebugData();
-  __EndProfileEntry(&debugData->profileData, name);
-}
-
-#ifndef VENOM_DISABLE_PROFILER
-#define BeginProfileEntry(name) BeginProfileEntryHook(name) 
-#define EndProfileEntry(name) EndProfileEntryHook(name) 
-#else//VENOM_DISABLE_PROFILER
-#define BeginProfileEntry(name)
-#define EndProfileEntry(name)
-#endif//VENOM_DISABLE_PROFILER
+struct UserConfig {
+	U16 screen_width;
+	U16 screen_height;
+	B8 is_fullscreen;
+	U64 memory_size;
+};
 
 static inline 
 UserConfig GetUserConfig() {
@@ -147,6 +134,7 @@ static const char* ModuleFileNames[] = {
 #undef _
 };
 
+#if 0
 static inline 
 void PlatformDebugUpdate(GameMemory *memory, VenomModule* module) {
 
@@ -193,6 +181,7 @@ void PlatformDebugUpdate(GameMemory *memory, VenomModule* module) {
 	}
 #endif
 }
+#endif
 
 static inline 
 void PlatformKeyEventHandler(GameMemory *memory, int keycode, int keysym, int isDown) {
@@ -277,3 +266,6 @@ static_assert(false, "No apple support yet!");
 #elif defined (__EMSCRIPTEN__)
 static_assert(false, "No emscripten support yet!")
 #endif
+
+#include "imgui.cpp"
+#include "imgui_draw.cpp"

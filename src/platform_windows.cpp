@@ -1,7 +1,10 @@
+namespace FUCKYOUWINDOWS {
+#define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <windowsx.h>
 #include <mmeapi.h>
 #include <dsound.h>
+};
 
 U64 GetFileLastWriteTime(const char *filename)
 {
@@ -121,6 +124,7 @@ U64 GetPerformanceFrequency()
 
 int WindowsPlatformMain() 
 {
+  using namespace FUCKYOUWINDOWS;
 	//NOTE(Torin) This will be read in from disk
 	//If the serialized file does not exist then we
 	//know that this is the first run of the game!
@@ -341,7 +345,6 @@ int WindowsPlatformMain()
 	//by incrementing the pointer past the GameMemory struct. So the avaible memory
 	//for the game to use is actutaly config.memorysize - sizeof(GameMemory)
 	GameMemory *memory = AllocateGameMemory(&config);
-	GameState *gameState = &memory->gameState;
 	RenderState *renderState = &memory->renderState;
 	InputState *input = &memory->inputState;
 	SystemInfo *sys = &memory->systemInfo;
@@ -352,24 +355,12 @@ int WindowsPlatformMain()
 	sys->cpu_core_count = win32SystemInfo.dwNumberOfProcessors;
 
 
-#ifndef VENOM_RELEASE
-	OpenGLEnableDebug(&memory->debug_memory.debugLog);
-#endif
-
 #ifdef VENOM_HOTLOAD
 	EngineAPI *API = &memory->engineAPI;
 #define OpenGLProc(signature, name) API->name = name;
 #include "opengl_procs.h"
 #undef OpenGLProc
 #endif
-
-
-	//Load the @GameCode
-	LoadGameCode();
-#ifdef VENOM_HOTLOAD
-	OnModuleLoad(memory);
-#endif
-
 
 	U64 performanceFrequency;
 	QueryPerformanceFrequency((LARGE_INTEGER *)&performanceFrequency);
@@ -389,10 +380,10 @@ int WindowsPlatformMain()
 	//SoundData musicData = LoadOGG("../assets/music.ogg");
 	//PlaySound(&memory->audioState, 100, musicData.sampleCount, musicData.samples);
 
-	while (gameState->isRunning) {
+	while (memory->isRunning) {
 		QueryPerformanceCounter((LARGE_INTEGER *)&currentTicks);
 		U64 deltaTicks = currentTicks - lastTicks;
-		gameState->deltaTime = (float)deltaTicks / (float)performanceFrequency;
+		memory->deltaTime = (float)deltaTicks / (float)performanceFrequency;
 		lastTicks = currentTicks;
 
 		//TODO(Torin) Make this based on integers rather than floating point
@@ -406,14 +397,6 @@ int WindowsPlatformMain()
 		input->cursorPosX = x;
 		input->cursorPosY = y;
 
-
-#ifndef VENOM_RELEASE
-		ProfileData *profileData = &memory->debug_memory.profileData;	
-		profileData->persistantWriteIndex++;
-		if (profileData->persistantWriteIndex >= PROFILER_ELAPSED_TIME_HISTORY_COUNT)
-			profileData->persistantWriteIndex = 0;
-#endif
-
 		MSG message;
 		while (PeekMessage(&message, window, 0, 0, PM_REMOVE)) {
 			switch (message.message) {
@@ -422,7 +405,7 @@ int WindowsPlatformMain()
 			case WM_DESTROY:
 			case WM_CLOSE:
 			{
-				gameState->isRunning = false;
+				memory->isRunning = false;
 			} break;
 
 			case WM_SYSKEYDOWN:
@@ -433,8 +416,7 @@ int WindowsPlatformMain()
 				int was_down = ((message.lParam & (1 << 30)) != 0);
 				int is_down = ((message.lParam & (1 << 31)) == 0);
 				input->isKeyDown[message.wParam] = is_down;
-				platform_keyevent_proc(memory, message.wParam, is_down);
-
+        PlatformKeyEventHandler(memory, message.wParam, 0, is_down);
 			} break;
 
 			case WM_LBUTTONDOWN: {input->isButtonDown[0] = true; } break;
@@ -467,19 +449,18 @@ int WindowsPlatformMain()
 			DispatchMessage(&message);
 		}
 
-		BEGIN_TIMED_BLOCK("GameTick");
-		BEGIN_TIMED_BLOCK("GameUpdate");
+		DEBUG_BeginProfileEntry("GameTick");
+		DEBUG_BeginProfileEntry("GameUpdate");
 		_VenomModuleUpdate(memory);
-		END_TIMED_BLOCK("GameUpdate");
+		DEBUG_EndProfileEntry("GameUpdate");
 
-		BEGIN_TIMED_BLOCK("GameRender");
+		DEBUG_BeginProfileEntry("GameRender");
 		_VenomModuleRender(memory);
-		END_TIMED_BLOCK("GameRender");
-		END_TIMED_BLOCK("GameTick");
+		DEBUG_EndProfileEntry("GameRender");
+		DEBUG_EndProfileEntry("GameTick");
 		
 
 		SwapBuffers(hdc);
-		input->toggleDebugModePressed = false;
 
 
 #define AUDIO_BYTES_PER_SAMPLE 2
@@ -546,3 +527,5 @@ int WindowsPlatformMain()
 	return 0;
 }
 
+//Fuck you windows
+#undef Rectangle

@@ -1,3 +1,5 @@
+static void UnloadModelAsset(ModelAsset* modelAsset);
+
 
 #ifndef VENOM_RELEASE
 //==========================================================================
@@ -5,29 +7,8 @@
 //development builds for easy runtime modifcation of asset data without
 //using hardcoded values or requiring seperate metadata to be mantained
 
-struct AssetManifestFileHeader {
-  static const U64 VERIFICATION_NUMBER = ((U64)'T' << 56) & ((U64)'S' << 48) 
-    & ((U64)'E' << 40) & ((U64)'F' << 32) & ((U64)'I' << 24) & 
-    ((U64)'N' << 16) & ((U64)'A' << 8) & ((U64)'M');
-
-  U64 verificationNumber;
-  U64 modelEntryCount;
-
-  U64 stringBlockOffset;
-  U64 stringBlockSize;
-  U64 stringBlockEntryCount;
-} __attribute__((packed));
-
-struct AssetManifestFileEntry {
-  U64 assetFlags;
-  U64 nameStringOffset;
-  U64 filenameStringOffset;
-} __attribute__((packed));
-
-
 //TODO(Torin) dont like the idea of these mallocs here
 //but for now it will suffice since this is a debug mechanisim
-
 void DestroyModelAsset(U32 index, AssetManifest *manifest) {
   assert(index < manifest->modelAssets.count);
   AssetSlot *slot = &manifest->modelAssets[index];
@@ -48,8 +29,6 @@ void WriteAssetManifestFile(const char *filename, AssetManifest *manifest){
   vs::EndFileWrite();
 }
 
-
-#if 1
 void ReadAssetManifestFile(const char *filename, AssetManifest *manifest){
   if(vs::BeginFileRead(filename) == 0) return;
   while(vs::BeginGroupRead()) {
@@ -67,14 +46,62 @@ void ReadAssetManifestFile(const char *filename, AssetManifest *manifest){
   }
   vs::EndFileRead();
 }
-#endif
 
+static void HotloadShaders(AssetManifest *assets) {
+  for (U32 i = 0; i < DEBUGShaderID_COUNT; i++) {
+    DEBUGLoadedShader *loadedShader = assets->loadedShaders + i;
+    if (!loadedShader->is_loaded) continue;
+    for (auto n = 0; n < 4; n++) {
+      const char *filename = loadedShader->filenames[n];
+      if (filename != nullptr) {
+        U64 lastWriteTime = GetFileLastWriteTime(filename);
+        if (lastWriteTime != loadedShader->lastWriteTimes[n]) {
+          loadedShader->lastWriteTimes[0] =
+            GetFileLastWriteTime(loadedShader->filenames[0]);
+          loadedShader->lastWriteTimes[1] =
+            GetFileLastWriteTime(loadedShader->filenames[1]);
+          loadedShader->lastWriteTimes[2] =
+            GetFileLastWriteTime(loadedShader->filenames[2]);
+          GLuint newShader = DEBUGCreateShaderProgramFromFiles(loadedShader->filenames);
+          if (newShader != 0) {
+            glDeleteProgram(loadedShader->programHandle);
+            loadedShader->programHandle =
+              DEBUGCreateShaderProgramFromFiles(loadedShader->filenames);
+            glDeleteProgram(newShader);
+            LOG_DEBUG("Reloaded shader program");
+          }
+          break;
+        }
+      }
+    }
+  }
+}
 
+static inline
+void HotloadModels(AssetManifest* manifest) {
+  char modelFilename[1024] = {};
+  memcpy(modelFilename, VENOM_ASSET_DIRECTORY, sizeof(VENOM_ASSET_DIRECTORY) - 1);
+  char *modelFilenameWrite = modelFilename + sizeof(VENOM_ASSET_DIRECTORY) - 1;
+  for (size_t i = 0; i < manifest->modelAssets.count; i++) {
+    if (manifest->modelAssets[i].flags & AssetFlag_Loaded) {
+      AssetSlot* modelSlot = &manifest->modelAssets[i];
+      ModelAsset* modelAsset = (ModelAsset *)manifest->modelAssets[i].asset;
+      strcpy(modelFilenameWrite, modelSlot->filename);
+      U64 lastWriteTime = GetFileLastWriteTime(modelFilename);
+      if (lastWriteTime != modelAsset->lastWriteTime) {
+        modelAsset->lastWriteTime = lastWriteTime;
+        UnloadModelAsset(modelAsset);
+        manifest->modelAssets[i].flags = 0;
+        manifest->modelAssets[i].asset = 0;
+        LogDebug("Unloaded model asset %s", modelSlot->name);
+      }
+    }
+  }
+}
 
-
-S64 GetModelID(const char *name, AssetManifest *manifest){
-  for(size_t i = 0; i < manifest->modelAssets.count; i++){
-    if(strcmp(name, manifest->modelAssets[i].name) == 0) {
+S64 GetModelID(const char *name, AssetManifest *manifest) {
+  for (size_t i = 0; i < manifest->modelAssets.count; i++) {
+    if (strcmp(name, manifest->modelAssets[i].name) == 0) {
       return i;
     }
   }
@@ -96,58 +123,6 @@ void UnloadModelAsset(ModelAsset* modelAsset){
   free(modelAsset);//TODO(Torin) This is a hack!!!
 }
 
-static void HotloadShaders(AssetManifest *assets) {
-	for (U32 i = 0; i < DEBUGShaderID_COUNT; i++) {
-		DEBUGLoadedShader *loadedShader = assets->loadedShaders + i;
-		if (!loadedShader->is_loaded) continue; 
-		for (auto n = 0; n < 4; n++) {
-			const char *filename = loadedShader->filenames[n];
-			if (filename != nullptr) {
-				U64 lastWriteTime = GetFileLastWriteTime(filename);
-				if (lastWriteTime != loadedShader->lastWriteTimes[n]) {
-					loadedShader->lastWriteTimes[0] = 
-            GetFileLastWriteTime(loadedShader->filenames[0]);
-					loadedShader->lastWriteTimes[1] = 
-            GetFileLastWriteTime(loadedShader->filenames[1]);
-					loadedShader->lastWriteTimes[2] = 
-            GetFileLastWriteTime(loadedShader->filenames[2]);
-					GLuint newShader = DEBUGCreateShaderProgramFromFiles(loadedShader->filenames);
-					if (newShader != 0) {
-						glDeleteProgram(loadedShader->programHandle);		
-						loadedShader->programHandle = 
-              DEBUGCreateShaderProgramFromFiles(loadedShader->filenames);
-						glDeleteProgram(newShader);
-						LOG_DEBUG("Reloaded shader program");
-					}
-					break;
-				}	
-			}
-		}
-	}
-}
-
-static inline
-void HotloadModels(AssetManifest* manifest){
-  char modelFilename[1024] = {};
-  memcpy(modelFilename, VENOM_ASSET_DIRECTORY, sizeof(VENOM_ASSET_DIRECTORY) -1);
-  char *modelFilenameWrite = modelFilename + sizeof(VENOM_ASSET_DIRECTORY) - 1;
-
-  for(size_t i = 0; i < manifest->modelAssets.count; i++){
-    if(manifest->modelAssets[i].flags & AssetFlag_Loaded){
-      AssetSlot* modelSlot = &manifest->modelAssets[i];
-      ModelAsset* modelAsset = (ModelAsset *)manifest->modelAssets[i].asset;
-      strcpy(modelFilenameWrite, modelSlot->filename); 
-      U64 lastWriteTime = GetFileLastWriteTime(modelFilename);
-      if(lastWriteTime != modelAsset->lastWriteTime){
-        modelAsset->lastWriteTime = lastWriteTime;
-        UnloadModelAsset(modelAsset);
-        manifest->modelAssets[i].flags = 0;
-        manifest->modelAssets[i].asset = 0;
-        LogDebug("Unloaded model asset %s", modelSlot->name);
-      }
-    }
-  }
-}
 
 //TODO(Torin) make these builtin_expected ifs because its incredibly unlikely the asset is not avaiable
 //unlikely_if()
@@ -194,8 +169,6 @@ GetModelDrawable(U32 modelSlotIndex, AssetManifest* manifest) {
   return modelAsset->drawable;
 }
 
-
-
 const MaterialDrawable& 
 GetMaterial(U32 id, AssetManifest* manifest){
   MaterialAssetList* list = &manifest->materialAssetList;
@@ -225,28 +198,3 @@ GLuint GetShaderProgram(DEBUGShaderID shaderID, AssetManifest* manifest) {
 	
 	return loadedShader->programHandle;
 }
-
-#if 0
-const ModelDrawable&
-GetModelDrawable(DEBUGModelID id, GameAssets* assets) {
-	DEBUGLoadedModel *loadedModel = &assets->loadedModels[id];
-	if(loadedModel->data.meshData.indexCount == 0){
-		
-    loadedModel->data = ImportExternalModelData(
-      MODEL_ASSET_FILENAMES[id], &assets->memory);
-    loadedModel->aabb = ComputeAABB(&loadedModel->data.meshData);
-		loadedModel->drawable.materials = ReserveArray(
-      MaterialDrawable, loadedModel->data.meshCount, &assets->memory);	
-
-		CreateIndexedVertexArray3D(&loadedModel->vertexArray, &loadedModel->data);
-		loadedModel->drawable.indexCountPerMesh = loadedModel->data.indexCountPerMesh;
-		loadedModel->drawable.vertexArrayID = loadedModel->vertexArray.vertexArrayID;
-		loadedModel->drawable.meshCount = loadedModel->data.meshCount;
-		fori(loadedModel->data.meshCount) {
-			loadedModel->drawable.materials[i] = 
-        CreateMaterialDrawable(&loadedModel->data.materialDataPerMesh[i]);
-		}
-	}
-	return loadedModel->drawable;
-}
-#endif

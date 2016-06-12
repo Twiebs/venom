@@ -9,6 +9,10 @@
 #include "imgui_draw.cpp"
 #include "imgui_demo.cpp"
 
+
+
+
+
 VenomDebugRenderSettings* GetDebugRenderSettings() {
   return &GetVenomEngineData()->renderState.debugRenderSettings;
 }
@@ -78,3 +82,23 @@ void __EndProfileEntry(ProfileData *profileData, const char *name){
 
 	assert(false && "No matching label for profile block");
 }
+
+static inline
+void BeginProfileEntryHook(const char* name) {
+  VenomDebugData* debugData = GetDebugData();
+  __BeginProfileEntry(&debugData->profileData, name);
+}
+
+static inline
+void EndProfileEntryHook(const char* name) {
+  VenomDebugData* debugData = GetDebugData();
+  __EndProfileEntry(&debugData->profileData, name);
+}
+
+#ifndef VENOM_DISABLE_PROFILER
+#define DEBUG_BeginProfileEntry(name) BeginProfileEntryHook(name) 
+#define DEBUG_EndProfileEntry(name) EndProfileEntryHook(name) 
+#else//VENOM_DISABLE_PROFILER
+#define DEBUG_BeginProfileEntry(name)
+#define DEBUG_EndProfileEntry(name)
+#endif//VENOM_DISABLE_PROFILER
