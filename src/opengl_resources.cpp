@@ -155,6 +155,38 @@ void CreateIndexedVertex1PArray(
   glBindVertexArray(0);
 }
 
+#define DEBUG_RegisterGPUResource(type, ptr)
+
+static inline
+void CreateIndexedVertex1PArray(IndexedVertexArray *array,
+const U32 vertexCount, const U32 indexCount, const GLenum drawMode,
+const V3* vertices = 0, const U32 *indices = 0)
+{
+  assert(vertexCount > 0);
+  assert(indexCount > 0);
+  CreateIndexedVertex1PArray(&array->vao, &array->vbo, &array->ebo,
+    vertexCount, indexCount, drawMode, vertices, indices);
+  array->vertexCount = vertexCount;
+  array->indexCount = indexCount;
+  DEBUG_RegisterGPUResource(GPUResourceType_IVA, array);
+}
+
+static inline
+void MapIndexedVertex1PArray(IndexedVertexArray *array, 
+V3 **vertices, U32 **indices, U32 access)
+{
+  *vertices = (V3*)glMapNamedBufferRange(array->vertexBufferID, 
+    0, array->vertexCount * sizeof(V3), access);
+  *indices = (U32*)glMapNamedBufferRange(array->indexBufferID, 
+    0, array->indexCount * sizeof(U32), access);
+}
+
+static inline
+void UnmapIndexedVertexArray(IndexedVertexArray *array){
+  glUnmapNamedBuffer(array->vao);
+  glUnmapNamedBuffer(array->ebo);
+}
+
 
 static inline
 void CreateDebugRenderResources(DebugRenderResources* resources) 
@@ -167,7 +199,7 @@ void CreateDebugRenderResources(DebugRenderResources* resources)
   glBindVertexArray(resources->vao);
 
 #define ShapeList \
-  _(cube) _(sphere) _(axis)
+  _(cube) _(sphere) _(axis) 
   
   glGenBuffers(1, &resources->vbo);
   glBindBuffer(GL_ARRAY_BUFFER, resources->vbo);
@@ -190,14 +222,22 @@ void CreateDebugRenderResources(DebugRenderResources* resources)
   glGenBuffers(1, &resources->ebo);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, resources->ebo);
   #define _(name) + sizeof(name##Indices)
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, 0 + ShapeList, 0, GL_DYNAMIC_DRAW);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, 0 ShapeList, 0, GL_DYNAMIC_DRAW);
   #undef _
 
+  static auto fuck = [](U32 *indices, size_t count, U32 offset){
+    for(size_t i = 0; i < count; i++){
+      indices[i] += offset;
+    }
+  };
+
   {
-    size_t currentOffset = 0;
-    #define _(name) glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, currentOffset, \
-      sizeof(name##Indices), name##Indices); \
-    currentOffset += sizeof(name##Indices);
+    size_t currentVertexCount = 0;
+    size_t currentIndicesOffset = 0;
+    #define _(name) fuck(name##Indices, ARRAY_COUNT(name##Indices), currentVertexCount); \
+    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, currentIndicesOffset, sizeof(name##Indices), name##Indices); \
+    currentVertexCount += ARRAY_COUNT(name##Vertices);\
+    currentIndicesOffset += sizeof(name##Indices);
     ShapeList
     #undef _
   }
@@ -413,5 +453,8 @@ inline void FreeRenderGroup(RenderGroup *group) {
 	glDeleteBuffers(1, &group->ebo);
 	glDeleteVertexArrays(1, &group->vao);
 }
+
+
+
 
 

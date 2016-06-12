@@ -117,6 +117,8 @@ struct RenderState {
   OmnidirectionalShadowMap osm[SHADOW_CASTING_POINT_LIGHT_MAX];
 	GLuint quadVao;
 
+  IndexedVertexArray skydomeIVA;
+
 #ifndef VENOM_RELEASE
   Camera debugCamera;
 

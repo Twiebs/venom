@@ -34,6 +34,8 @@ GameMemory* GetVenomEngineData() { return _venomEngineData; };
 //NOTE(Torin)These files are the core functionality
 //of venom and may include additional .cpp files however;
 //that is the extend that includes are allowed to go
+
+#include "math_procedural.cpp"
 #include "venom_debug.cpp"
 #include "venom_render.cpp"
 #include "venom_physics.cpp"

@@ -3,7 +3,6 @@
 #define VENOM_MATERIAL_LIST_FILE "asset_list.h"
 
 #include "venom_module.cpp"
-#include "math_procedural.cpp"
 
 struct Player {
   V3 position;
@@ -247,11 +246,11 @@ void VenomModuleStart(GameMemory* memory) {
 #if 1
   {
     ModelData data = {};
-    data = ImportExternalModelData(VENOM_ASSET_FILE("axis.fbx"), 0);
+    data = ImportExternalModelData(VENOM_ASSET_FILE("axis.obj"), 0);
     FILE* file = fopen("test.txt", "wb");
     assert(file != 0);
     for(size_t i = 0; i < data.meshData.vertexCount; i++) {
-      fprintf(file, "V3{%f, %f, %f},\n", data.meshData.vertices[i].position.x,
+      fprintf(file, "V3{%ff, %ff, %ff},\n", data.meshData.vertices[i].position.x,
         data.meshData.vertices[i].position.y, data.meshData.vertices[i].position.z);
     }
     fprintf(file, "\n");
@@ -362,6 +361,7 @@ struct NewEntityInfo {
   U32 type;
   Entity entity;
 } __attribute((packed));
+
 inline int
 FindMatchingString(const char *source, const char **list, size_t listLength) {
   for(size_t i = 0; i < listLength; i++)
@@ -545,6 +545,8 @@ void VenomModuleUpdate(GameMemory* memory) {
     MoveCameraWithFPSControls(&memory->renderState.debugCamera,
       &memory->inputState, memory->deltaTime);
   } else {
+
+#if 0
     if(input->isKeyDown[KEYCODE_X]) {
       if(editor->selectedEntities.count > 0) {
         for(size_t i = 0; i < editor->selectedEntities.count; i++){
@@ -556,7 +558,17 @@ void VenomModuleUpdate(GameMemory* memory) {
         editor->selectedEntities.count = 0;
       }
     }
+#endif
   }
+
+  if(input->isKeyDown[KEYCODE_X]){
+    editor->transformConstraints = EditorTransformConstraint_XAxis;
+  } else if(input->isKeyDown[KEYCODE_Y]){
+    editor->transformConstraints = EditorTransformConstraint_YAxis;
+  } else if(input->isKeyDown[KEYCODE_Z]){
+    editor->transformConstraints = EditorTransformConstraint_ZAxis;
+  }
+
 
 
   Camera* camera = &rs->debugCamera;
@@ -571,6 +583,10 @@ void VenomModuleUpdate(GameMemory* memory) {
 
   if(input->isButtonDown[MOUSE_LEFT] && !ImGui::IsMouseHoveringAnyWindow()){
     editor->activeCommand = EditorCommand_Select; 
+  }
+
+  if(input->isKeyDown[KEYCODE_E]){
+    editor->activeCommand = EditorCommand_MeshEdit;
   }
 
   if(input->isKeyDown[KEYCODE_G]) {
@@ -654,25 +670,26 @@ void VenomModuleUpdate(GameMemory* memory) {
   ImGui::EndChild();
   ImGui::NextColumn();
   ImGui::BeginChild("Info");
-  if(editor->selectedEntities.count > 0) {
+  if(editor->selectedEntities.count > 0){
     //Entity& entity = block->entities[editor->selectedEntityIndex];
     ImGui::DragFloat3("Position", &editor->currentGroupPosition.x, 0.1f);
     ImGui::DragFloat3("Rotation", &editor->currentGroupRotation.x, 0.1f);
-   
-#if 0
-    auto modelAsset = GetModelAsset(entity.modelID, manifest);
+    
+   if(editor->selectedEntities.count == 1) {
+    Entity *entity = GetEntity(editor->selectedEntities[0], entityContainer);
+    ModelAsset *modelAsset = GetModelAsset(entity->modelID, manifest);
     if(ImGui::Button(modelAsset->name)) {
       ImGui::OpenPopup("ModelSelect");
     }
     if (ImGui::BeginPopup("ModelSelect")) {
       for (size_t i = 0; i < manifest->modelAssets.count; i++) {
         if (ImGui::Selectable(manifest->modelAssets[i].name)) {
-          entity.modelID = i;
+          entity->modelID = i;
         }
       }
       ImGui::EndPopup();
-    }
-    #endif
+     }
+   } 
 
   }
   ImGui::EndChild();
@@ -706,7 +723,9 @@ void VenomModuleRender(GameMemory* memory) {
         AddShadowCastingPointLight(entity->position, entity->pointLight.color, 
           entity->pointLight.radius, &rs->drawList);
       } 
-      if(entity->modelID != 0){
+
+
+      if(entity->modelID != 0 && (block->flags[i] & EntityFlag_Visible)){
         if(editor->selectedEntities.ContainsValue(i)){
           PushOutlinedModelDrawCommand(entity->modelID, 
             &rs->drawList, entity->position, entity->rotation); 

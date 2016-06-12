@@ -123,8 +123,16 @@ void ProcessEditorCommand(EditorData* editor, Camera* camera, GameMemory* memory
   InputState* input = &memory->inputState;
   SystemInfo* sys = &memory->systemInfo;
   VenomDrawList *drawList = &memory->renderState.drawList;
+  
+  AssetManifest *am = &memory->assetManifest;
+  EntityContainer *ec = entityContainer;
+
 
   switch(editor->activeCommand) {
+    case EditorCommand_None: {
+      editor->transformConstraints = (EditorTransformConstraint)0;
+    } break;
+
     case EditorCommand_Grab: {
       if(editor->selectedEntities.count == 0) {
         editor->activeCommand = EditorCommand_None;
@@ -141,9 +149,6 @@ void ProcessEditorCommand(EditorData* editor, Camera* camera, GameMemory* memory
         editor->activeCommand = EditorCommand_None;
         return;
       }
-
-      AssetManifest *am = &memory->assetManifest;
-      EntityContainer *ec = entityContainer;
 
 #if 0
       if(editor->lastCommand != EditorCommand_Project){
@@ -181,6 +186,15 @@ void ProcessEditorCommand(EditorData* editor, Camera* camera, GameMemory* memory
         editor->currentGroupPosition = hitPoint;
         V3 totalDisplacement = editor->currentGroupPosition - 
           editor->originalGroupPosition; 
+        
+        if(editor->transformConstraints & EditorTransformConstraint_XAxis){
+          totalDisplacement = V3{totalDisplacement.x, 0.0f, 0.0f};
+        } else if (editor->transformConstraints & EditorTransformConstraint_YAxis){
+          totalDisplacement = V3{0.0f, totalDisplacement.y, 0.0f};
+        } else if (editor->transformConstraints & EditorTransformConstraint_ZAxis){
+          totalDisplacement = V3{0.0f, 0.0f, totalDisplacement.z};
+        }
+
         fori(editor->selectedEntities.count){
           Entity *e = GetEntity(editor->selectedEntities[i], ec);
           e->position = editor->originalEntityPositions[i] + totalDisplacement +
@@ -247,10 +261,35 @@ void ProcessEditorCommand(EditorData* editor, Camera* camera, GameMemory* memory
       editor->activeCommand = EditorCommand_None;
     } break;
 
+
+
+    case EditorCommand_MeshEdit: {
+      if(editor->selectedEntities.count == 0 ||
+         editor->selectedEntities.count > 1) {
+        return;
+      }
+
+      if(editor->lastCommand != EditorCommand_MeshEdit){
+        EntityBlock *block = ec->firstAvaibleBlock;
+        block->flags[editor->selectedEntities[0]] &= ~EntityFlag_Visible;
+      }
+
+      Entity *e = GetEntity(editor->selectedEntities[0], ec);
+      ModelAsset *asset = GetModelAsset(e->modelID, am);
+      MeshData *data = &asset->data.meshData;
+      for(size_t i = 0; i < data->vertexCount; i++){
+        AddSphere(drawList, data->vertices[i].position + e->position, 0.01f,
+           COLOR_YELLOW, true);
+      }
+
+    } break;
+
   }
 
   if(editor->selectedEntities.count > 0){
     AddAxes(Center(editor->groupAABB), drawList);
     //AddSphere(drawList, Center(editor->groupAABB), 1.0);
   }
+
+  editor->lastCommand = editor->activeCommand;
 }

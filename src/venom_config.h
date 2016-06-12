@@ -11,6 +11,8 @@
 #define VENOM_MODULE_SOURCE_FILENAME "test_scene.cpp"
 #define VENOM_MODULE_FILENAME "../build/game_module.so"
 
+#define VENOM_ASSET_DIRECTORY "../assets/"
+
 #define VENOM_SOUCE_FILE(file) "../src" file
 #define VENOM_SHADER_FILE(file) "../src/shaders/" file
 #define VENOM_ASSET_FILE(file) "../assets/" file

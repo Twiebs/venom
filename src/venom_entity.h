@@ -52,6 +52,7 @@ EntityTypeList
 
 enum EntityFlag {
   EntityFlag_PRESENT = 1 << 0,
+  EntityFlag_Visible = 1 << 1,
 };
 
 struct EntityIndex {
@@ -60,7 +61,7 @@ struct EntityIndex {
 };
 
 struct EntityBlock {
-  EntityFlag* flags;
+  U32* flags;
   EntityType* types;
   Entity* entities;
   U32 currentAliveEntityCount;

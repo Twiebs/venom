@@ -1,3 +1,4 @@
+
 inline void 
 InitalizeRenderState(RenderState* rs, SystemInfo* sys) {
   glGenVertexArrays(1, &rs->quadVao);
@@ -8,6 +9,28 @@ InitalizeRenderState(RenderState* rs, SystemInfo* sys) {
     InitOmnidirectionalShadowMap(&rs->osm[i]);
   } 
 
+
+  { //Setup the @skydome
+    U32 vertexCount = 0, indexCount = 0;
+    static const int skydomeResolution = 8;
+    GetSubdiviedCubeVertexAndIndexCount(skydomeResolution, &vertexCount, &indexCount);
+
+    CreateIndexedVertex1PArray(&rs->skydomeIVA, 
+      vertexCount, indexCount, GL_STATIC_DRAW);
+
+    V3 *vertices = 0;
+    U32 *indices = 0;
+    MapIndexedVertex1PArray(&rs->skydomeIVA, &vertices, &indices, GL_MAP_WRITE_BIT | GL_MAP_READ_BIT);
+    GenerateSubdiviedCubeMeshData(skydomeResolution, vertices, indices);
+
+    for (U32 i = 0; i < vertexCount; i++)
+      vertices[i]= Normalize(vertices[i]);
+
+    UnmapIndexedVertexArray(&rs->skydomeIVA);
+  }
+
+
+    
 #ifndef VENOM_RELEASE
   CreateDebugRenderResources(&rs->debugRenderResources);
 #endif//VENOM_RELEASE
@@ -38,6 +61,17 @@ void BindMaterial(const MaterialDrawable& material) {
   glActiveTexture(GL_TEXTURE2);
   glBindTexture(GL_TEXTURE_2D, material.specular_texture_id);
 };
+
+static inline
+void RenderAtmosphere(const RenderState *rs, const Camera *camera, AssetManifest *am)
+{
+  static const U32 mvpLocation = 0;
+  static const U32 cameraPositionLocation = 1;
+  glUseProgram(GetShaderProgram(ShaderID_Atmosphere, am));
+  glUniform3fv(cameraPositionLocation, 3, &camera->position.x);
+  glBindVertexArray(rs->skydomeIVA.vao);
+  glDrawElements(GL_TRIANGLES, rs->skydomeIVA.indexCount, GL_UNSIGNED_INT, 0);
+}
 
 #if 0
 static inline 
@@ -523,6 +557,8 @@ void VenomRenderScene(GameMemory* memory, Camera* camera) {
     0, 0, sys->screen_width, sys->screen_height, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+  RenderAtmosphere(rs, camera, assetManifest);
+
   glUseProgram(GetShaderProgram(ShaderID_material_opaque, assetManifest));
   glUniformMatrix4fv(viewMatrixLocation, 1, GL_FALSE, &camera->view[0][0]);
   glUniformMatrix4fv(projectionMatrixLocation, 1, GL_FALSE, &camera->projection[0][0]);
@@ -601,8 +637,7 @@ void VenomRenderScene(GameMemory* memory, Camera* camera) {
           V3 boundsSize = Abs(cmd->max - cmd->min);
           modelMatrix = Translate(cmd->min + (boundsSize * 0.5f)) * Scale(boundsSize); 
           glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, &modelMatrix[0][0]); 
-          glDrawElements(GL_TRIANGLES, debugResources.cubeIndexCount, 
-            GL_UNSIGNED_INT, (void*)(uintptr_t)debugResources.cubeIndexOffset);
+          glDrawElements(GL_TRIANGLES, debugResources.cubeIndexCount, GL_UNSIGNED_INT, (void *)(uintptr_t)(debugResources.cubeIndexOffset));
         } break;
 
         case DebugRenderCommandType_Sphere: {
@@ -622,11 +657,24 @@ void VenomRenderScene(GameMemory* memory, Camera* camera) {
         } break;
         
         case DebugRenderCommandType_Axis: {
-          modelMatrix = M4Identity(); 
-          glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, &modelMatrix[0][0]); 
+          M4 translation = Translate(cmd->position);
+          glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, &translation[0][0]); 
           glUniform4f(colorLocation, 1.0, 0.0, 0.0, 1.0);
           glDrawElements(GL_TRIANGLES, debugResources.axisIndexCount,
             GL_UNSIGNED_INT, (void*)(uintptr_t)debugResources.axisIndexOffset);
+          
+          glUniform4f(colorLocation, 0.0, 1.0, 0.0, 1.0);
+          M4 model = translation * Rotate(0.0, 0.0, -DEG2RAD*90.0f);
+          glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, &model[0][0]); 
+          glDrawElements(GL_TRIANGLES, debugResources.axisIndexCount,
+            GL_UNSIGNED_INT, (void*)(uintptr_t)debugResources.axisIndexOffset);
+
+          glUniform4f(colorLocation, 0.0, 0.0, 1.0, 1.0);
+          model = translation * Rotate(0.0, DEG2RAD*90.0f, 0.0f);
+          glUniformMatrix4fv(modelMatrixLocation, 1, GL_FALSE, &model[0][0]); 
+          glDrawElements(GL_TRIANGLES, debugResources.axisIndexCount,
+            GL_UNSIGNED_INT, (void*)(uintptr_t)debugResources.axisIndexOffset);
+
         } break;
 
       }

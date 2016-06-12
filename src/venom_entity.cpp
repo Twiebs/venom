@@ -3,7 +3,7 @@
 #define Align16(x) ((x + 0xF) & (~0xF))
 
 static inline
-EntityBlock* AllocateEntityBlock(const size_t entityCount) {
+EntityBlock* AllocateEntityBlock(const size_t entityCount){
   size_t requiredStructMemory = Align8(sizeof(EntityBlock)); 
   size_t requiredFlagMemory = Align8(sizeof(*EntityBlock::flags) * entityCount);
   size_t requiredTypeMemory = Align8(sizeof(*EntityBlock::types) * entityCount);
@@ -14,7 +14,7 @@ EntityBlock* AllocateEntityBlock(const size_t entityCount) {
 
   EntityBlock* result = (EntityBlock*)memory;
   memory += requiredStructMemory;
-  result->flags = (EntityFlag*)memory; 
+  result->flags = (U32*)memory; 
   memory += requiredFlagMemory;
   result->types = (EntityType*)memory;
   memory += requiredTypeMemory;
@@ -24,7 +24,7 @@ EntityBlock* AllocateEntityBlock(const size_t entityCount) {
   return result;
 }
 
-VENOM_ENTITY_STRUCT* CreateEntity(EntityType type, 
+Entity* CreateEntity(EntityType type, 
 EntityIndex* outIndex, EntityContainer* container) 
 {
   EntityBlock* block = container->firstAvaibleBlock;
@@ -38,7 +38,7 @@ EntityIndex* outIndex, EntityContainer* container)
     if((block->flags[i] & EntityFlag_PRESENT) == 0){
       entity = &block->entities[i];
       block->types[i] = type;
-      block->flags[i] = EntityFlag_PRESENT;
+      block->flags[i] = (EntityFlag)(EntityFlag_PRESENT | EntityFlag_Visible);
       outIndex->blockIndex = 0;
       outIndex->slotIndex = i;
       block->currentAliveEntityCount++;

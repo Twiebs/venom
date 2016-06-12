@@ -44,3 +44,8 @@ inline V3 RandomInRange(const V3& min, const V3& max, RNGSeed& seed) {
 	result.z = RandomInRange(min.z, max.z, seed);
 	return result;
 }
+
+
+void GetSubdiviedCubeVertexAndIndexCount( uint32_t cellsPerEdge, 
+	uint32_t *vertexCount, uint32_t *indexCount);
+void GenerateSubdiviedCubeMeshData(U32 cellsPerEdge, V3 *vertices,  U32 *indices);

@@ -28,6 +28,7 @@ EngineAPIList
 #include "venom_asset.cpp"
 #include "venom_physics.cpp"
 #include "venom_entity.cpp"
+#include "math_procedural.cpp"
 #ifndef VENOM_RELEASE
 #include "venom_debug.cpp"
 #include "venom_editor.cpp"

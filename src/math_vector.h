@@ -9,7 +9,7 @@ struct V2 {
 	explicit V2(float s) : x(s), y(s) {}
 };
 
-struct V3 {
+struct V3 final {
   union { 
     struct { float x, y, z; };
     struct { float r, g, b; };
@@ -22,9 +22,7 @@ struct V3 {
   V3(const V3& v) : x(v.x), y(v.y), z(v.z) {}
   V3(const V4& v);
   inline float& operator[](const size_t index) { return e[index]; }
-  //inline float operator[](const size_t index){ return e[index]; }
   inline float operator[](const size_t index) const { return e[index]; }
-  //inline float *operator[](const size_t index){ return (e + index); }
 };
 
 struct V4 {

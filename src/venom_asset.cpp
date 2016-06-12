@@ -24,96 +24,6 @@ struct AssetManifestFileEntry {
   U64 filenameStringOffset;
 } __attribute__((packed));
 
-#if 0
-static void
-WriteAssetManifestFile(const char *outputFile, AssetManifest* manifest)
-{
-  AssetManifestFileHeader header = {};
-  header.verificationNumber = AssetManifestFileHeader::VERIFICATION_NUMBER;
-  header.modelEntryCount = manifest->modelAssets.size();
-  header.stringBlockOffset = sizeof(AssetManifestFileEntry) * header.modelEntryCount +
-    sizeof(header);
-  header.stringBlockSize = 0;
-  header.stringBlockEntryCount = 0;
-
-  FILE* file = fopen(outputFile, "wb");
-  if (file == 0) { 
-    LogError("Failed to create file when writing asset manifest %s", outputFile);
-    //NOTE(Torin) Might as well try and save the file if somthing bizzar happens 
-    outputFile = "~/RecoveredAssetManifest.manifest";
-    file = fopen(outputFile, "wb");
-    if (file == 0) return;
-  }
-
-  size_t currentStringBlockOffset = 0;
-  fseek(file, sizeof(header), SEEK_SET);
-  for(size_t i = 0; i < manifest->modelAssets.size(); i++){
-    AssetSlot* slot = &manifest->modelAssets[i];
-    ModelAsset* asset = (ModelAsset *)manifest->modelAssets[i].asset;
-
-    size_t assetNameLength = strlen(slot->name);
-    size_t filenameLength = strlen(slot->filename);
-    AssetManifestFileEntry entry = {};
-    entry.nameStringOffset = currentStringBlockOffset;
-    currentStringBlockOffset += assetNameLength + 1;
-    entry.filenameStringOffset = currentStringBlockOffset;
-    currentStringBlockOffset += filenameLength + 1; 
-    fwrite(&entry, sizeof(entry), 1, file);
-  }
- 
-  assert((U64)ftell(file) == header.stringBlockOffset);
-  for(size_t i = 0; i < manifest->modelAssets.size(); i++){
-    AssetSlot* slot = &manifest->modelAssets[i];
-    ModelAsset* asset = (ModelAsset *)manifest->modelAssets[i].asset;
-
-    size_t assetNameLength = strlen(slot->name);
-    size_t filenameLength = strlen(slot->filename);
-    fwrite(slot->name, 1, assetNameLength + 1, file);
-    fwrite(slot->filename, 1, filenameLength + 1, file);
-    
-    header.stringBlockSize += assetNameLength + 1;
-    header.stringBlockSize += filenameLength + 1;
-    header.stringBlockEntryCount += 2;
-  }
-
-  fseek(file, 0, SEEK_SET);
-  fwrite(&header, sizeof(header), 1, file);
-  fclose(file);
-}
-#endif
-
-#if 0
-static void
-ReadAssetManifestFile(const char *filename, AssetManifest* manifest){
-  AssetManifestFileHeader header = {};
-  FILE *file = fopen(filename, "rb");
-  if(file == 0) { 
-    LogError("Failed to open asset manifest file %s", filename); 
-    return;
-  }
-
-  fread(&header, sizeof(header), 1, file);
-  fseek(file, header.stringBlockOffset, SEEK_SET);
-  manifest->stringBlockSize = header.stringBlockSize;
-  manifest->stringBlockEntryCount = header.stringBlockEntryCount;
-  manifest->stringBlock = (char *)malloc(header.stringBlockSize);
-  fread(manifest->stringBlock, 1, header.stringBlockSize, file);
-  fseek(file, sizeof(header), SEEK_SET);
-
-  for(size_t i = 0; i < header.modelEntryCount; i++){
-    AssetManifestFileEntry entry = {};
-    fread(&entry, sizeof(entry), 1, file);
-    AssetSlot assetSlot = {};
-    assetSlot.name = manifest->stringBlock + entry.nameStringOffset;
-    assetSlot.filename = manifest->stringBlock + entry.filenameStringOffset;
-    manifest->modelAssets.push_back(assetSlot);
-  }
-
-  fclose(file);
-}
-#endif
-
-
 
 //TODO(Torin) dont like the idea of these mallocs here
 //but for now it will suffice since this is a debug mechanisim
@@ -138,6 +48,7 @@ void WriteAssetManifestFile(const char *filename, AssetManifest *manifest){
   vs::EndFileWrite();
 }
 
+
 #if 1
 void ReadAssetManifestFile(const char *filename, AssetManifest *manifest){
   if(vs::BeginFileRead(filename) == 0) return;
@@ -148,7 +59,9 @@ void ReadAssetManifestFile(const char *filename, AssetManifest *manifest){
     vs::ReadString("filename", filenameBuffer, sizeof(filenameBuffer));
     AssetSlot slot = {};
     slot.name = strdup(nameBuffer);
-    slot.filename = strdup(filenameBuffer);
+
+    const char *filenameToCopy = filenameBuffer + sizeof(VENOM_ASSET_DIRECTORY) - 1;
+    slot.filename = strdup(filenameToCopy);
     manifest->modelAssets.PushBack(slot);
     vs::EndGroupRead();
   }
@@ -215,12 +128,16 @@ static void HotloadShaders(AssetManifest *assets) {
 
 static inline
 void HotloadModels(AssetManifest* manifest){
+  char modelFilename[1024] = {};
+  memcpy(modelFilename, VENOM_ASSET_DIRECTORY, sizeof(VENOM_ASSET_DIRECTORY) -1);
+  char *modelFilenameWrite = modelFilename + sizeof(VENOM_ASSET_DIRECTORY) - 1;
+
   for(size_t i = 0; i < manifest->modelAssets.count; i++){
     if(manifest->modelAssets[i].flags & AssetFlag_Loaded){
       AssetSlot* modelSlot = &manifest->modelAssets[i];
       ModelAsset* modelAsset = (ModelAsset *)manifest->modelAssets[i].asset;
-
-      U64 lastWriteTime = GetFileLastWriteTime(modelSlot->filename);
+      strcpy(modelFilenameWrite, modelSlot->filename); 
+      U64 lastWriteTime = GetFileLastWriteTime(modelFilename);
       if(lastWriteTime != modelAsset->lastWriteTime){
         modelAsset->lastWriteTime = lastWriteTime;
         UnloadModelAsset(modelAsset);
@@ -234,18 +151,23 @@ void HotloadModels(AssetManifest* manifest){
 
 //TODO(Torin) make these builtin_expected ifs because its incredibly unlikely the asset is not avaiable
 //unlikely_if()
-const ModelAsset*
-GetModelAsset(U32 modelSlotIndex, AssetManifest* manifest){
+ModelAsset* GetModelAsset(U32 modelSlotIndex, AssetManifest* manifest){
   AssetSlot* modelAssetSlot = &manifest->modelAssets[modelSlotIndex];
   if((modelAssetSlot->flags & AssetFlag_Loaded) == 0){
     assert(modelAssetSlot->asset == 0);
     //modelAssetSlot->asset = malloc(modelAssetSlot->requiredMemory); 
     //TODO(Torin) do somthing more along the lines of this
     //HACK: Make this way better
+
+    char modelFilename[1024] = {};
+    memcpy(modelFilename, VENOM_ASSET_DIRECTORY, sizeof(VENOM_ASSET_DIRECTORY) -1);
+    char *filenameToCheck = modelFilename + sizeof(VENOM_ASSET_DIRECTORY) - 1;
+    strcpy(filenameToCheck, modelAssetSlot->filename);
+
     modelAssetSlot->asset = malloc(sizeof(ModelAsset));
     ModelAsset* modelAsset = (ModelAsset *)modelAssetSlot->asset;
     modelAsset->data = ImportExternalModelData(
-      modelAssetSlot->filename, &manifest->memoryBlock);
+      modelFilename, &manifest->memoryBlock);
     modelAsset->aabb = ComputeAABB(&modelAsset->data.meshData);
     modelAsset->size = Abs(modelAsset->aabb.max - modelAsset->aabb.min);
 		modelAsset->drawable.materials = ReserveArray(
@@ -254,7 +176,7 @@ GetModelAsset(U32 modelSlotIndex, AssetManifest* manifest){
 		modelAsset->drawable.indexCountPerMesh = modelAsset->data.indexCountPerMesh;
 		modelAsset->drawable.vertexArrayID = modelAsset->vertexArray.vertexArrayID;
 		modelAsset->drawable.meshCount = modelAsset->data.meshCount;
-    modelAsset->lastWriteTime = GetFileLastWriteTime(modelAssetSlot->filename);
+    modelAsset->lastWriteTime = GetFileLastWriteTime(modelFilename);
 		fori(modelAsset->data.meshCount) {
 			modelAsset->drawable.materials[i] = 
         CreateMaterialDrawable(&modelAsset->data.materialDataPerMesh[i]);

@@ -1,6 +1,8 @@
 
-void GetSubdiviedCubeVertexAndIndexCount(unsigned int cellsPerEdge, 
-	unsigned int *vertexCount, unsigned int *indexCount)
+void GetSubdiviedCubeVertexAndIndexCount(
+  uint32_t cellsPerEdge, 
+	uint32_t *vertexCount, 
+  uint32_t *indexCount)
 {
 	*vertexCount = (cellsPerEdge + 1) * (cellsPerEdge + 1);
 	*indexCount = (cellsPerEdge * cellsPerEdge) * 6;
@@ -77,6 +79,94 @@ void CalculateVertexTangents(Vertex3D* vertices, const U32* indices,
     vertices[i].tangent = Normalize(vertices[i].tangent);
 }
 
+
+void GenerateSubdiviedCubeMeshData(U32 cellsPerEdge, 
+U32 vertexCount, U32 indexCount,
+V3 *vertices,  U32 *indices)
+{
+	assert(vertexCount > 0);
+	assert(indexCount > 0);
+	U32 vertexIndex = 0, indexIndex = 0;
+	U32 verticesPerFace = (cellsPerEdge + 1) * (cellsPerEdge + 1);
+	U32 indicesPerFace = (cellsPerEdge * cellsPerEdge) * 6;
+
+	//Front
+	for (U32 y = 0; y < cellsPerEdge + 1; y++) {
+		for (U32 x = 0; x < cellsPerEdge + 1; x++) {
+			V3 &vertex = vertices[vertexIndex];
+			vertex.x = -0.5f + (float)x / (float)cellsPerEdge;
+			vertex.y = -0.5f + (float)y / (float)cellsPerEdge;
+			vertex.z = 0.5f;
+			vertexIndex++;
+		}
+	}
+
+	SetPlaneIndicesClockwise(cellsPerEdge, indices + (indicesPerFace * 0), 0 * verticesPerFace);
+
+	//Back
+	for (U32 y = 0; y < cellsPerEdge + 1; y++) {
+		for (U32 x = 0; x < cellsPerEdge + 1; x++) {
+			V3 &vertex = vertices[vertexIndex];
+			vertex.x = -0.5f + (float)x / (float)cellsPerEdge;
+			vertex.y = -0.5f + (float)y / (float)cellsPerEdge;
+			vertex.z = -0.5f;
+			vertexIndex++;
+		}
+	}
+	SetPlaneIndicesCounterClockwise(cellsPerEdge, indices + (indicesPerFace * 1), 1 * verticesPerFace);
+
+	//Left
+	for (U32 y = 0; y < cellsPerEdge + 1; y++) {
+		for (U32 x = 0; x < cellsPerEdge + 1; x++) {
+			V3 &vertex = vertices[vertexIndex];
+			vertex.x = -0.5f;
+			vertex.y = -0.5f + (float)y / (float)cellsPerEdge;
+			vertex.z = -0.5f + (float)x / (float)cellsPerEdge;
+			vertexIndex++;
+		}
+	}
+	SetPlaneIndicesCounterClockwise(cellsPerEdge, indices + (indicesPerFace * 2), 2 * verticesPerFace);
+
+	//Right
+	for (U32 y = 0; y < cellsPerEdge + 1; y++) {
+		for (U32 x = 0; x < cellsPerEdge + 1; x++) {
+			V3 &vertex = vertices[vertexIndex];
+			vertex.x = 0.5f;
+			vertex.y = -0.5f + (float)y / (float)cellsPerEdge;
+			vertex.z = -0.5f + (float)x / (float)cellsPerEdge;
+			vertexIndex++;
+		}
+	}
+	SetPlaneIndicesClockwise(cellsPerEdge, indices + (indicesPerFace * 3), 3 * verticesPerFace);
+
+	//Top
+	for (U32 y = 0; y < cellsPerEdge + 1; y++) {
+		for (U32 x = 0; x < cellsPerEdge + 1; x++) {
+			V3 &vertex = vertices[vertexIndex];
+			vertex.x = -0.5f + (float)y / (float)cellsPerEdge;
+			vertex.y = 0.5f;
+			vertex.z = -0.5f + (float)x / (float)cellsPerEdge;
+			vertexIndex++;
+		}
+	}
+	SetPlaneIndicesClockwise(cellsPerEdge, indices + (indicesPerFace * 4), 4 * verticesPerFace);
+
+	//Bottom
+	for (U32 y = 0; y < cellsPerEdge + 1; y++) {
+		for (U32 x = 0; x < cellsPerEdge + 1; x++) {
+			V3 &vertex = vertices[vertexIndex];
+			vertex.x = -0.5f + (float)y / (float)cellsPerEdge;
+			vertex.y = -0.5f;
+			vertex.z = -0.5f + (float)x / (float)cellsPerEdge;
+			vertexIndex++;
+		}
+	}
+	SetPlaneIndicesCounterClockwise(cellsPerEdge, indices + (indicesPerFace * 5), 5 * verticesPerFace);
+}
+
+
+
+
 void CalculateSurfaceNormals (Vertex3D* vertices, const U32 vertexCount,  
                               U32* indices, const U32 indexCount) 
 {
@@ -98,11 +188,12 @@ void CalculateSurfaceNormals (Vertex3D* vertices, const U32 vertexCount,
     vertices[i].normal = Normalize(vertices[i].normal);
 }
 
-void GenerateSubdiviedCubeMeshData(MeshData *data, U32 cellsPerEdge)
+#if 0
+void GenerateSubdiviedCubeMeshData(U32 cellsPerEdge, 
+    Vertex3D *vertices,  U32 *indices)
 {
 	assert(data->vertexCount > 0);
 	assert(data->indexCount > 0);
-	Vertex3D *vertices = data->vertices;
 	U32 *indices = data->indices;
 	U32 vertexIndex = 0, indexIndex = 0;
 	U32 verticesPerFace = (cellsPerEdge + 1) * (cellsPerEdge + 1);
@@ -187,7 +278,7 @@ void GenerateSubdiviedCubeMeshData(MeshData *data, U32 cellsPerEdge)
 	}
 	SetPlaneIndicesCounterClockwise(cellsPerEdge, indices + (indicesPerFace * 5), 5 * verticesPerFace);
 }
-
+#endif
 
 #define STB_PERLIN_IMPLEMENTATION
 #include "stb_perlin.h"

@@ -4,6 +4,7 @@
 #define _(signature, name) static signature name;
 #include "opengl_procedures.h"
 #undef _
+
 #include "opengl_debug.cpp"
 #include "opengl_glsl.cpp"
 #include "opengl_resources.cpp"

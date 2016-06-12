@@ -14,7 +14,8 @@
   _(depth_cubemap, "depth_cubemap.vert", "depth_cubemap.frag", "depth_cubemap.geom") \
   _(GBuffer, "gbuffer.vert", "gbuffer.frag", "") \
   _(SSAO, "vertexarray_quad.vert", "ssao.frag", "") \
-  _(DeferredMaterial, "vertexarray_quad.vert", "material_deferred.frag", "")
+  _(DeferredMaterial, "vertexarray_quad.vert", "material_deferred.frag", "") \
+  _(Atmosphere, "Atmosphere.vert", "Atmosphere.frag", "")
 
 #define DebugModelList       \
   _(rock00, "dumb_rock.dae") \
@@ -166,7 +167,7 @@ GLuint GetShaderProgram(DEBUGShaderID shaderID, AssetManifest *assets);
 const ModelDrawable& GetModelDrawable(U32 slotIndex, AssetManifest* manifest);
 const MaterialDrawable& GetMaterial(U32 id, AssetManifest* assets);
 
-const ModelAsset* GetModelAsset(U32 slotIndex, AssetManifest* assets);
+ModelAsset* GetModelAsset(U32 slotIndex, AssetManifest* assets);
 
 //const MaterialDrawable& GetMaterialDrawable(U32 id, AssetManifest* manifest);
 //const GLuint GetShaderProgram(DEBUGShaderID shaderID, AssetManifest* manifest);

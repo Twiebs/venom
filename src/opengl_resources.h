@@ -8,10 +8,20 @@ struct RenderGroup {
 	size_t current_index_count;
 };
 
+//TODO(Torin: Jun 12, 2016) Remove this dirty hack
 struct IndexedVertexArray {
-	GLuint vertexArrayID;
-	GLuint vertexBufferID;
-	GLuint indexBufferID;
+  union { struct {
+    GLuint vertexArrayID;
+    GLuint vertexBufferID;
+    GLuint indexBufferID;
+  }; struct {
+    GLuint vao;
+    GLuint vbo;
+    GLuint ebo;
+  };
+  };
+
+
   U32 vertexCount, indexCount;
 };
 
@@ -66,6 +76,8 @@ struct DebugRenderResources {
   U32 sphereIndexCount;
   U32 axisIndexOffset;
   U32 axisIndexCount;
+  U32 monkeyIndexCount;
+  U32 monkeyIndexOffset;
 };
 
 
