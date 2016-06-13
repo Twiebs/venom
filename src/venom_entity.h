@@ -82,7 +82,24 @@ struct EntityContainer {
   U32 currentBlockCapacity;
 };
 
+void EntityContainerInit(EntityContainer* container, 
+  U32 entityCountPerBlock, U32 initalBlockCount);
 Entity* CreateEntity(EntityType type, EntityIndex* outIndex, EntityContainer* entities);
 void DestroyEntity(EntityType type, EntityContainer* entities);
 Entity* GetEntity(U32 entityIndex, EntityContainer* container);
+
+inline void 
+DestroyEntity(EntityIndex index, EntityContainer* container){
+  assert(index.blockIndex == 0);//TODO(Torin)
+  EntityBlock* block = container->firstAvaibleBlock;
+  block->flags[index.slotIndex] = (EntityFlag)0;
+  block->currentAliveEntityCount--;
+}
+
+inline Entity* 
+CreateEntity(EntityType type, EntityContainer* container){
+  EntityIndex index;
+  return CreateEntity(type, &index, container);
+}
+
 

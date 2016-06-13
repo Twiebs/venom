@@ -5,14 +5,6 @@
 #include <x86intrin.h>
 #endif
 
-#include "imgui.cpp"
-#include "imgui_draw.cpp"
-#include "imgui_demo.cpp"
-
-
-
-
-
 VenomDebugRenderSettings* GetDebugRenderSettings() {
   return &GetVenomEngineData()->renderState.debugRenderSettings;
 }

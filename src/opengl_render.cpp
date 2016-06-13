@@ -16,17 +16,20 @@ InitalizeRenderState(RenderState* rs, SystemInfo* sys) {
     GetSubdiviedCubeVertexAndIndexCount(skydomeResolution, &vertexCount, &indexCount);
 
     CreateIndexedVertex1PArray(&rs->skydomeIVA, 
-      vertexCount, indexCount, GL_STATIC_DRAW);
+      vertexCount, indexCount, GL_DYNAMIC_DRAW);
 
     V3 *vertices = 0;
     U32 *indices = 0;
-    MapIndexedVertex1PArray(&rs->skydomeIVA, &vertices, &indices, GL_MAP_WRITE_BIT | GL_MAP_READ_BIT);
-    GenerateSubdiviedCubeMeshData(skydomeResolution, vertices, indices);
+    //MapIndexedVertex1PArray(&rs->skydomeIVA, &vertices, &indices, GL_MAP_WRITE_BIT | GL_MAP_READ_BIT);
+    //UnmapIndexedVertexArray(&rs->skydomeIVA);
 
+    #if 0
+    GenerateSubdiviedCubeMeshData(skydomeResolution, vertices, indices);
     for (U32 i = 0; i < vertexCount; i++)
       vertices[i]= Normalize(vertices[i]);
+    #endif
 
-    UnmapIndexedVertexArray(&rs->skydomeIVA);
+    
   }
 
 

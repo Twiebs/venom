@@ -1,9 +1,3 @@
-struct Rectangle {
-  float minX, minY;
-  float maxX, maxY;
-};
-
-#ifndef _MSC_VER
 #pragma clang diagnostic error "-Wreturn-type"
 #pragma clang diagnostic warning "-Wall"
 #pragma clang diagnostic warning "-Wextra"
@@ -16,7 +10,6 @@ struct Rectangle {
 #pragma clang diagnostic ignored "-Wunused-local-typedef"
 #pragma clang diagnostic ignored "-Wunused-variable"
 #endif //VENOM_RELEASE && VENOM_STRICT
-#endif //_MSC_VER
 
 #include "venom_platform.h"
 
@@ -38,13 +31,7 @@ GameMemory* GetVenomEngineData() { return _venomEngineData; };
 
 static int VenomCopyFile(const char *a, const char *b);
 
-
-
-
 #ifdef VENOM_SINGLE_TRANSLATION_UNIT
-//NOTE(Torin)These files are the core functionality
-//of venom and may include additional .cpp files however;
-//that is the extend that includes are allowed to go
 #include "math_procedural.cpp"
 #include "venom_debug.cpp"
 #include "venom_render.cpp"
@@ -79,6 +66,7 @@ struct VenomModule {
 
 static inline void LoadVenomModule(VenomModule* module, const char* path);
 static inline void UnloadVenomModule(VenomModule* module);
+static inline void ReloadVenomModuleIfModified(VenomModule *module);
 #else//!VENOM_HOTLOAD
 #include "test_scene.cpp"
 #endif//VENOM_HOTLOAD
@@ -117,6 +105,7 @@ UserConfig GetUserConfig() {
 	return result;
 }
 
+#if 0
 #define MODULE_FILE_LIST \
   _(main) \
   _(opengl_render) \
@@ -133,10 +122,11 @@ static const char* ModuleFileNames[] = {
   MODULE_FILE_LIST
 #undef _
 };
+#endif
 
-#if 0
 static inline 
 void PlatformDebugUpdate(GameMemory *memory, VenomModule* module) {
+#if 0
 
 #ifdef _MSC_VER
 #define popen _popen
@@ -180,8 +170,8 @@ void PlatformDebugUpdate(GameMemory *memory, VenomModule* module) {
     _VenomModuleLoad(memory);
 	}
 #endif
-}
 #endif
+}
 
 static inline 
 void PlatformKeyEventHandler(GameMemory *memory, int keycode, int keysym, int isDown) {
@@ -202,15 +192,6 @@ void PlatformKeyEventHandler(GameMemory *memory, int keycode, int keysym, int is
   if(memory->keyEventCallback != 0) {
     memory->keyEventCallback(keycode, keysym, isDown);
   }
-}
-
-static inline void platform_frame_end_proc(GameMemory *memory){
-	InputState *input = &memory->inputState;
-}
-
-static void
-VenomSignalHandler(int signal){
-  //WriteAssetManifestFile("assets.manifest", &GetVenomEngineData()->assetManifest);
 }
 
 //TODO(Torin) Make this procedure take a availible system memory
@@ -267,5 +248,10 @@ static_assert(false, "No apple support yet!");
 static_assert(false, "No emscripten support yet!")
 #endif
 
+#ifndef VENOM_RELEASE
 #include "imgui.cpp"
 #include "imgui_draw.cpp"
+#include "imgui_demo.cpp"
+#endif//VENOM_RELEASE
+
+

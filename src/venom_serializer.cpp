@@ -1,8 +1,3 @@
-
-#ifdef _MSC_VER
-#define __attribute(x)
-#endif _MSC_VER
-
 //Venom Serializer
 namespace vs {
 

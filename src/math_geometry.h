@@ -1,9 +1,7 @@
-#if 0
 struct Rectangle {
   F32 minX, minY;
   F32 maxX, maxY; 
 };
-#endif
 
 inline V2 
 Center(const Rectangle& rectangle){

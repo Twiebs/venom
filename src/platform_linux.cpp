@@ -269,9 +269,6 @@ int LinuxMain() {
   _VenomModuleLoad(memory);
 		
 	while (memory->isRunning) {
-#ifdef VENOM_HOTLOAD
-		PlatformDebugUpdate(memory, &module);
-#endif
 
 		//TODO(Torin) Do somthing about when the pointer goes out of the screen bounds?
 		Window rootReturn, childReturn;
@@ -321,13 +318,11 @@ int LinuxMain() {
 			currentEventCount--;
 		}
 
-    BeginProfileEntry("Frame Time");
+    DEBUG_BeginProfileEntry("Frame Time");
 		_VenomModuleUpdate(memory);
 		_VenomModuleRender(memory);
 		glXSwapBuffers(display, window);
-    EndProfileEntry("Frame Time");
-
-		platform_frame_end_proc(memory);
+    DEBUG_EndProfileEntry("Frame Time");
 	}
 
   //The Allocated Game Memory is intentionaly not freed here  

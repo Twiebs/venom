@@ -1,3 +1,5 @@
+#pragma clang diagnostic error "-Wall"
+#pragma clang diagnostic error "-Wextra"
 #pragma clang diagnostic error "-Wreturn-type" 
 #pragma clang diagnostic error "-Wunused-value"
 #pragma clang diagnostic error "-Wunknown-pragmas"
@@ -6,8 +8,6 @@
 #pragma clang diagnostic warning "-Wall"
 #pragma clang diagnostic warning "-Wextra"
 #pragma clang diagnostic ignored "-Wformat-security"
-#pragma clang diagnostic error "-Wall"
-#pragma clang diagnostic error "-Wextra"
 
 #if !defined(VENOM_RELEASE) && !defined(VENOM_STRICT)
 #pragma clang diagnostic ignored "-Wunused-variable"
@@ -16,9 +16,9 @@
 #pragma clang diagnostic ignored "-Wunused-local-typedef"
 #pragma clang diagnostic ignored "-Wunused-variable"
 #pragma clang diagnostic ignored "-Wswitch"
-#endif
+#endif//!defined(VENOM_RELEASE) && !defined(VENOM_STRICT)
 
-#ifdef VENOM_HOTLOAD
+#if defined(VENOM_HOTLOAD) || 1
 #include "venom_platform.h"
 #define _(returnType, name, ...) static name##Proc name;
 EngineAPIList
@@ -39,7 +39,7 @@ EngineAPIList
 #endif//VENOM_HOTLOAD
 
 //TODO(Torin) Remove This!!!
-static 
+static
 int VenomCopyFile(const char *a, const char *b) {
   FILE *fa = fopen(a, "rb");
   FILE *fb = fopen(b, "wb");

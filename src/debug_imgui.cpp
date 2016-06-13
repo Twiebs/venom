@@ -8,7 +8,7 @@ static void ShowMemoryBlockTree(const MemoryBlock *block, U32 index = 0) {
 	float blockUsedPercentage = (int)(((float)block->used / (float)block->size) * 100);
 	float blockSizeInMegabytes = (float)block->size / (float)MEGABYTES(1);
 	float blockUsedInMegabytes = (float)block->used / (float)MEGABYTES(1);
-	if ((ImGui::TreeNode((void*)index, "%s : (%.2f MB / %.2f MB) : %.1f%%", 
+	if ((ImGui::TreeNode((void*)(uintptr_t)index, "%s : (%.2f MB / %.2f MB) : %.1f%%", 
 		block->name, blockUsedInMegabytes, blockSizeInMegabytes, blockUsedPercentage))) {
 		for (U64 i = 0; i < block->childCount; i++) {
 			ShowMemoryBlockTree(block->children[i], index + i);
@@ -263,14 +263,14 @@ ShowAssetManifest(AssetManifest* manifest){
       ImVec2 textureBounds = ImVec2(textureDisplaySize, textureDisplaySize);
       ImGui::BeginChild("diffuse", ImVec2(textureDisplaySize, textureDisplaySize + 18));
       ImGui::Text("Diffuse Texture");
-      ImGui::Image((ImTextureID)material->drawable.diffuse_texture_id, textureBounds);
+      ImGui::Image((ImTextureID)(uintptr_t)material->drawable.diffuse_texture_id, textureBounds);
       ImGui::EndChild();
 
       if (material->data.flags & MaterialFlag_NORMAL) {
         ImGui::SameLine();
         ImGui::BeginChild("normal", ImVec2(textureDisplaySize, textureDisplaySize + 18));
         ImGui::Text("Normal Texture");
-        ImGui::Image((ImTextureID)material->drawable.normal_texture_id, textureBounds);
+        ImGui::Image((ImTextureID)(uintptr_t)material->drawable.normal_texture_id, textureBounds);
         ImGui::EndChild();
       }
 
@@ -278,7 +278,7 @@ ShowAssetManifest(AssetManifest* manifest){
         ImGui::SameLine();
         ImGui::BeginChild("specular", ImVec2(textureDisplaySize, textureDisplaySize + 18));
         ImGui::Text("Specular Texture");
-        ImGui::Image((ImTextureID)material->drawable.specular_texture_id, textureBounds);
+        ImGui::Image((ImTextureID)(uintptr_t)material->drawable.specular_texture_id, textureBounds);
         ImGui::EndChild();
       }
 
