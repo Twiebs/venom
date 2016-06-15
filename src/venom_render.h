@@ -54,6 +54,7 @@ struct VenomDebugRenderSettings {
   B8 isWireframeEnabled;
   B8 isDebugCameraActive;
   B8 disableCascadedShadowMaps;
+  B8 disableAtmosphere;
   B8 renderDebugNormals;
   B8 renderFromDirectionalLight;
   B8 drawPhysicsColliders;

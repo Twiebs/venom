@@ -18,7 +18,7 @@
 #pragma clang diagnostic ignored "-Wswitch"
 #endif//!defined(VENOM_RELEASE) && !defined(VENOM_STRICT)
 
-#if defined(VENOM_HOTLOAD) || 1
+#if defined(VENOM_HOTLOAD) || 0
 #include "venom_platform.h"
 #define _(returnType, name, ...) static name##Proc name;
 EngineAPIList
@@ -43,6 +43,7 @@ static
 int VenomCopyFile(const char *a, const char *b) {
   FILE *fa = fopen(a, "rb");
   FILE *fb = fopen(b, "wb");
+
   if(fa == 0 || fb == 0) return 0;
   fseek(fa, 0, SEEK_END);
   size_t fileSize = ftell(fa);
@@ -239,8 +240,7 @@ EngineAPIList
   InitSubBlock("AssetDataMemory", &memory->assetManifest.memoryBlock,
     remainingBlockMemory, &memory->mainBlock);
 
-  ReadAssetManifestFile("assets.vsf", &memory->assetManifest);
-  //ReadAssetManifestFile("assets.manifest", &memory->assetManifest);
+  ReadAssetManifestFile("../project/assets.vsf", &memory->assetManifest);
 
   LoadMaterialList(&memory->assetManifest.materialAssetList);
 

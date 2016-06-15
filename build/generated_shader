@@ -17,15 +17,26 @@
 
 #define POINT_LIGHT_UNIFORM_LOCATION 10
 #define SHADOW_CASTING_POINT_LIGHT_UNIFORM_LOCATION 58
-in vec2 frag_texcoord;
-in vec4 frag_color;
 
-layout (binding = 0) uniform sampler2D sampler;
+layout (location = 2) uniform vec3 uLightPosition;
 
-out vec4 out_color;
+in VSOut {
+  vec3 rayDirection;
+  vec3 scatteringColor;
+} fsIn;
 
-void main()
-{
-	out_color = frag_color * texture(sampler, frag_texcoord);
-	//out_color = frag_color;
+out vec4 outColor;
+
+const float MIE_SCATTERING_CONSTANT = -0.75f;
+const float MIE_SCATTERING_CONSTANT_SQUARED = MIE_SCATTERING_CONSTANT * MIE_SCATTERING_CONSTANT;
+
+void main(){
+  //outColor = vec4(1.0);
+
+  float fCos = dot(uLightPosition, fsIn.rayDirection) / length(fsIn.rayDirection);
+  float fMiePhase = 1.5 * ((1.0 - MIE_SCATTERING_CONSTANT_SQUARED) / (2.0 + MIE_SCATTERING_CONSTANT_SQUARED)) * 
+    (1.0 + fCos*fCos) / pow(1.0 + MIE_SCATTERING_CONSTANT_SQUARED - 2.0*MIE_SCATTERING_CONSTANT*fCos, 1.5);
+
+  outColor = vec4(fsIn.scatteringColor + fMiePhase, 1.0);
+  outColor.a = outColor.b;
 }

@@ -124,9 +124,10 @@ static const char* ModuleFileNames[] = {
 };
 #endif
 
+#if 0
 static inline 
 void PlatformDebugUpdate(GameMemory *memory, VenomModule* module) {
-#if 0
+
 
 #ifdef _MSC_VER
 #define popen _popen
@@ -170,8 +171,9 @@ void PlatformDebugUpdate(GameMemory *memory, VenomModule* module) {
     _VenomModuleLoad(memory);
 	}
 #endif
-#endif
+
 }
+#endif
 
 static inline 
 void PlatformKeyEventHandler(GameMemory *memory, int keycode, int keysym, int isDown) {
@@ -249,6 +251,7 @@ static_assert(false, "No emscripten support yet!")
 #endif
 
 #ifndef VENOM_RELEASE
+using namespace Win32;
 #include "imgui.cpp"
 #include "imgui_draw.cpp"
 #include "imgui_demo.cpp"

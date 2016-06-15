@@ -20,16 +20,12 @@ InitalizeRenderState(RenderState* rs, SystemInfo* sys) {
 
     V3 *vertices = 0;
     U32 *indices = 0;
-    //MapIndexedVertex1PArray(&rs->skydomeIVA, &vertices, &indices, GL_MAP_WRITE_BIT | GL_MAP_READ_BIT);
-    //UnmapIndexedVertexArray(&rs->skydomeIVA);
-
-    #if 0
-    GenerateSubdiviedCubeMeshData(skydomeResolution, vertices, indices);
+    MapIndexedVertex1PArray(&rs->skydomeIVA, &vertices, &indices, GL_MAP_WRITE_BIT | GL_MAP_READ_BIT);
+    GenerateSubdiviedCubeMeshData(skydomeResolution,
+      vertexCount, indexCount,vertices, indices);
     for (U32 i = 0; i < vertexCount; i++)
-      vertices[i]= Normalize(vertices[i]);
-    #endif
-
-    
+      vertices[i] = Normalize(vertices[i]);
+    UnmapIndexedVertexArray(&rs->skydomeIVA);
   }
 
 
@@ -68,12 +64,21 @@ void BindMaterial(const MaterialDrawable& material) {
 static inline
 void RenderAtmosphere(const RenderState *rs, const Camera *camera, AssetManifest *am)
 {
+  glDisable(GL_CULL_FACE);
   static const U32 mvpLocation = 0;
   static const U32 cameraPositionLocation = 1;
+  static const U32 lightPositionLocation = 2;
+  M4 mvp = camera->projection * camera->view * Translate(camera->position);
+  
+  V3 lightPosition = { 0.0f, 1.0f, 0.0f };
   glUseProgram(GetShaderProgram(ShaderID_Atmosphere, am));
+  glUniformMatrix4fv(mvpLocation, 1, GL_FALSE, &mvp[0][0]);
   glUniform3fv(cameraPositionLocation, 3, &camera->position.x);
+  glUniform3fv(lightPositionLocation, 3, &lightPosition.x);
+
   glBindVertexArray(rs->skydomeIVA.vao);
   glDrawElements(GL_TRIANGLES, rs->skydomeIVA.indexCount, GL_UNSIGNED_INT, 0);
+  glEnable(GL_CULL_FACE);
 }
 
 #if 0
@@ -354,6 +359,7 @@ void RenderCSM(CascadedShadowMap* csm, Camera* camera,
 #ifndef VENOM_RELEASE
 #define DebugEnableIf(expr) if (expr)
 #define DebugDisableIf(expr) if(!expr)
+#define DEBUG_DisableIf(expr) if(!expr)
 #else//VENOM_RELEASE
 #define DebugDisableIf(expr) if (1)
 #define DebugEnableIf(expr) if (0)
@@ -560,7 +566,10 @@ void VenomRenderScene(GameMemory* memory, Camera* camera) {
     0, 0, sys->screen_width, sys->screen_height, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-  RenderAtmosphere(rs, camera, assetManifest);
+  DEBUG_DisableIf(GetDebugRenderSettings()->disableAtmosphere) {
+    RenderAtmosphere(rs, camera, assetManifest);
+  }
+
 
   glUseProgram(GetShaderProgram(ShaderID_material_opaque, assetManifest));
   glUniformMatrix4fv(viewMatrixLocation, 1, GL_FALSE, &camera->view[0][0]);

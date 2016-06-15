@@ -1,4 +1,4 @@
-namespace FUCKYOUWINDOWS {
+namespace Win32 {
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <windowsx.h>
@@ -7,7 +7,8 @@ namespace FUCKYOUWINDOWS {
 };
 
 U64 GetFileLastWriteTime(const char *filename)
-{
+{ 
+  using namespace Win32;
 	U64 result = 0;
 	WIN32_FIND_DATA findData;
 	HANDLE handle = FindFirstFile(filename, &findData);
@@ -20,7 +21,9 @@ U64 GetFileLastWriteTime(const char *filename)
 	return result;
 }
 
-U64 GetPerformanceCounterTime() {
+U64 GetPerformanceCounterTime() 
+{
+  using namespace Win32;
   LARGE_INTEGER counter;
   QueryPerformanceCounter(&counter);
   U64 result = (U64)counter.QuadPart;
@@ -28,6 +31,7 @@ U64 GetPerformanceCounterTime() {
 }
 
 U64 GetPerformanceCounterFrequency() {
+  using namespace Win32;
   LARGE_INTEGER frequency;
   QueryPerformanceFrequency(&frequency);
   U64 result = (U64)frequency.QuadPart;
@@ -61,7 +65,7 @@ struct Win32GameCode
 	FILETIME lastWriteTime;
 };
 
-global_variable Win32GameCode g_code;
+static Win32GameCode g_code;
 
 static inline
 FILETIME GetLastWriteTime(const char *filename)
@@ -102,14 +106,19 @@ void InternalLoadGameCode()
 	g_code.lastWriteTime = GetLastWriteTime(HOTLOAD_TRIGGER_DLL);
 }
 #endif
+
+#if 1
+using namespace Win32;
 static LRESULT CALLBACK Win32WindowCallback(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 {
 	LRESULT result = DefWindowProc(window, message, wparam, lparam);
 	return result;
 }
+#endif
 
 U64 GetPerformanceCounter()
 {
+  using namespace Win32;
 	LARGE_INTEGER counterValue;
 	QueryPerformanceCounter(&counterValue);
 	return counterValue.QuadPart;
@@ -117,6 +126,7 @@ U64 GetPerformanceCounter()
 
 U64 GetPerformanceFrequency()
 {
+  using namespace Win32;
 	LARGE_INTEGER counterFrequency;
 	QueryPerformanceFrequency(&counterFrequency);
 	return counterFrequency.QuadPart;
@@ -124,7 +134,7 @@ U64 GetPerformanceFrequency()
 
 int WindowsPlatformMain() 
 {
-  using namespace FUCKYOUWINDOWS;
+  using namespace Win32;
 	//NOTE(Torin) This will be read in from disk
 	//If the serialized file does not exist then we
 	//know that this is the first run of the game!
@@ -152,11 +162,8 @@ int WindowsPlatformMain()
 		PostQuitMessage(1);
 	}
 	
-	HWND window = CreateWindow
-	(
-		"VenomWindowClass", "VenomWindowClass",
-		WS_OVERLAPPED, 
-		CW_USEDEFAULT, CW_USEDEFAULT, 
+	HWND window = CreateWindow("VenomWindowClass", "VenomWindowClass",
+		WS_OVERLAPPED, CW_USEDEFAULT, CW_USEDEFAULT, 
 		config.screen_width, config.screen_height, 
 		NULL, NULL, 
 		hInstance, 
@@ -416,8 +423,22 @@ int WindowsPlatformMain()
 				int was_down = ((message.lParam & (1 << 30)) != 0);
 				int is_down = ((message.lParam & (1 << 31)) == 0);
 				input->isKeyDown[message.wParam] = is_down;
-        PlatformKeyEventHandler(memory, message.wParam, 0, is_down);
+
+
+        UINT scanCode = MapVirtualKey(message.wParam, MAPVK_VK_TO_VSC);
+
+         
+        U16 result = 0;
+        ToAscii(message.wParam, scanCode, 0, &result, 0);
+        PlatformKeyEventHandler(memory, message.wParam, result, is_down);
 			} break;
+
+      case WM_CHAR: {
+        ImGuiIO& io = ImGui::GetIO();
+        if (message.wParam > 0 && message.wParam < 0x10000)
+          io.AddInputCharacter((unsigned short)message.wParam);
+      } break;
+
 
 			case WM_LBUTTONDOWN: {input->isButtonDown[0] = true; } break;
 			case WM_LBUTTONUP: { input->isButtonDown[0] = false; } break;

@@ -27,6 +27,8 @@ ShowVenomDebugRenderInfo(VenomDebugRenderFrameInfo* debugInfo,
   ImGui::Checkbox("isWireframeEnabled", &renderSettings->isWireframeEnabled);
   ImGui::Checkbox("isDebugCameraActive", &renderSettings->isDebugCameraActive);
   ImGui::Checkbox("disableCascadedShadowMaps", &renderSettings->disableCascadedShadowMaps);
+  ImGui::Checkbox("disableAtmosphere", &renderSettings->disableAtmosphere);
+
   ImGui::Checkbox("renderDebugNormals", &renderSettings->renderDebugNormals);
   ImGui::Checkbox("drawPhysicsColliders", &renderSettings->drawPhysicsColliders);
   ImGui::Checkbox("renderFromDirectionalLight", 
@@ -129,7 +131,7 @@ ShowAssetManifest(AssetManifest* manifest){
     char temp[512];
     sprintf(temp, "assets%d.vsf", (int)time(0));
     WriteAssetManifestFile(temp, manifest);
-    VenomCopyFile(temp, "assets.vsf");
+    VenomCopyFile(temp, "../project/assets.vsf");
   }
 	ImGui::Columns(2);
 	ImGui::Separator();
@@ -153,7 +155,7 @@ ShowAssetManifest(AssetManifest* manifest){
 	ImGui::NextColumn();
 	ImGui::Separator();
 
-  if(selectedAssetType == AssetType_Model){
+  if (selectedAssetType == AssetType_Model) {
     ImGui::BeginChild("AssetList");
     ImGui::Columns(2);
     ImGui::Text("Name");
@@ -164,9 +166,9 @@ ShowAssetManifest(AssetManifest* manifest){
 
     static int lastSelectedIndex = -1;
     static int selected_index = -1;
-    for(U64 i = 0; i < manifest->modelAssets.count; i++){
+    for (U64 i = 0; i < manifest->modelAssets.count; i++) {
       const AssetSlot* assetSlot = &manifest->modelAssets[i];
-      if(ImGui::Selectable(assetSlot->name, selected_index == (int)i)){
+      if (ImGui::Selectable(assetSlot->name, selected_index == (int)i)) {
         selected_index = i;
       }
 
@@ -180,53 +182,55 @@ ShowAssetManifest(AssetManifest* manifest){
     }
     ImGui::EndChild();
 
-    if(ImGui::Button("Create Model Asset"))
-      ImGui::OpenPopup("NewModel"); 
-    if(ImGui::Button("Destroy Model Asset")) {
-      if(selected_index != -1) {
+    if (ImGui::Button("Create Model Asset"))
+      ImGui::OpenPopup("NewModel");
+    if (ImGui::Button("Destroy Model Asset")) {
+      if (selected_index != -1) {
         DestroyModelAsset(selected_index, manifest);
       }
     }
 
 
 
-    if(ImGui::BeginPopup("NewModel")){
-      if(ShowModelCreateWidgets(manifest)) {
+    if (ImGui::BeginPopup("NewModel")) {
+      if (ShowModelCreateWidgets(manifest)) {
         ImGui::CloseCurrentPopup();
       }
       ImGui::EndPopup();
     }
 
     ImGui::NextColumn();
-    if(selected_index != -1) {
+    if (selected_index != -1) {
       AssetSlot *slot = &manifest->modelAssets[selected_index];
-      ModelAsset *asset = (ModelAsset *)(slot->asset);
-      if(asset != 0) {
-        static char nameBuffer[256] = {};
-        static char filenameBuffer[256] = {};
-        if(selected_index != lastSelectedIndex) {
-          if(lastSelectedIndex != -1 && lastSelectedIndex != selected_index) {
-            AssetSlot *lastSlot = &manifest->modelAssets[lastSelectedIndex];
-            free(lastSlot->name);
-            free(lastSlot->filename);
-            lastSlot->name = strdup(nameBuffer);
-            lastSlot->filename = strdup(filenameBuffer);
-          }
+      static char nameBuffer[256] = {};
+      static char filenameBuffer[256] = {};
 
-          strcpy(nameBuffer, slot->name);
-          strcpy(filenameBuffer, slot->filename);
-          lastSelectedIndex = selected_index;
+      if (selected_index != lastSelectedIndex) {
+        if (lastSelectedIndex != -1) {
+          AssetSlot *lastSlot = &manifest->modelAssets[lastSelectedIndex];
+          free(lastSlot->name);
+          free(lastSlot->filename);
+          lastSlot->name = strdup(nameBuffer);
+          lastSlot->filename = strdup(filenameBuffer);
         }
+        strcpy(nameBuffer, slot->name);
+        strcpy(filenameBuffer, slot->filename);
+        lastSelectedIndex = selected_index;
+      }
 
-        ImGui::InputText("Name", nameBuffer, sizeof(nameBuffer));
-        ImGui::InputText("Filename", filenameBuffer, sizeof(filenameBuffer));
-        for(size_t i = 0; i < asset->data.meshCount; i++) {
-          ShowMaterialDataInfo(&asset->data.materialDataPerMesh[i], 
+      ImGui::InputText("Name", nameBuffer, sizeof(nameBuffer));
+      ImGui::InputText("Filename", filenameBuffer, sizeof(filenameBuffer));
+
+      if (slot->asset != 0) {
+        ModelAsset *asset = (ModelAsset *)slot->asset;
+        for (size_t i = 0; i < asset->data.meshCount; i++) {
+          ShowMaterialDataInfo(&asset->data.materialDataPerMesh[i],
             lastSelectedIndex != selected_index);
         }
       }
     }
   }
+
 
   else if(selectedAssetType == AssetType_Material){
     ImGui::BeginChild("AssetList");

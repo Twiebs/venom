@@ -3,6 +3,8 @@
 #define VENOM_MATERIAL_LIST_FILE "asset_list.h"
 
 #include "venom_module.cpp"
+#include "venom_editor.cpp"
+#include "venom_entity.cpp"
 
 struct Player {
   V3 position;
@@ -345,6 +347,7 @@ void VenomModuleStart(GameMemory* memory) {
   }
 }
 
+#if 0
 struct VenomWorldFileHeader {
   U64 verifier;
   U64 entityCount;
@@ -361,6 +364,7 @@ struct NewEntityInfo {
   U32 type;
   Entity entity;
 } __attribute((packed));
+#endif
 
 inline int
 FindMatchingString(const char *source, const char **list, size_t listLength) {
@@ -396,7 +400,7 @@ void WriteWorldFile(const char *filename, EntityContainer *container,
 static inline
 void ReadWorldFile(const char *filename, EntityContainer *container, AssetManifest *manifest)
 {
-  vs::BeginFileRead(filename);
+  if(vs::BeginFileRead(filename) == 0) return;
   while(vs::BeginGroupRead()){
     char temp[128];
     vs::ReadString("type", temp, sizeof(temp));
@@ -622,14 +626,14 @@ void VenomModuleUpdate(GameMemory* memory) {
   
   if(ImGui::Button("Save World")) {
     char temp[512];
-    sprintf(temp, "silly%d.world", (int)time(0));
+    sprintf(temp, "world%d.vsf", (int)time(0));
     WriteWorldFile(temp, entityContainer, manifest);
-    WriteWorldFile("silly.world", entityContainer, manifest);
+    WriteWorldFile("../project/world.vsf", entityContainer, manifest);
   }
 
   ImGui::SameLine();
   if(ImGui::Button("Load World")) {
-    ReadWorldFile("silly.world", entityContainer, &memory->assetManifest);
+    ReadWorldFile("../project/world.vsf", entityContainer, &memory->assetManifest);
   }
 
   ImGui::SameLine();

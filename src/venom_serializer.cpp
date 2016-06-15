@@ -1,3 +1,7 @@
+#ifdef _MSC_VER
+#define __attribute(x)
+#endif//_MSC_VER
+
 //Venom Serializer
 namespace vs {
 
@@ -10,6 +14,7 @@ enum PropertyType {
   PropertyType_Char,
 };
 
+#pragma pack(push, 1)
 struct PropertyHeader {
   uint32_t type;        
   uint32_t nameLength; 
@@ -17,6 +22,8 @@ struct PropertyHeader {
   uint32_t valueCount;
   uint32_t valueOffset;
 } __attribute((packed));
+#pragma pack(pop)
+
 
 struct Context {
   FILE* file;
@@ -67,7 +74,10 @@ static inline
 int OpenFile(const char *filename, const char *mode){
   assert(ctx.file == 0);
   ctx.file = fopen(filename, mode);
-  if(ctx.file == 0) return 0;
+  if (ctx.file == 0) {
+    assert(false);
+    return 0;
+  }
   ctx.headerBufferCapacity = 1024;
   ctx.headerBuffer = (PropertyHeader *)
     malloc(ctx.headerBufferCapacity * sizeof(PropertyHeader));

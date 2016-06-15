@@ -15,8 +15,12 @@
 #define KEYCODE_UP 0x26
 #define KEYCODE_DOWN 0x28
 
+#define KEYCODE_LCONTROL 0xA2
+
+
 #define KEYCODE_Q 'Q'
 #define KEYCODE_W 'W'
+#define KEYCODE_E 'E'
 #define KEYCODE_S 'S' 
 #define KEYCODE_A 'A'
 #define KEYCODE_C 'C'
@@ -24,7 +28,8 @@
 #define KEYCODE_Y 'Y'
 #define KEYCODE_Z 'Z'
 #define KEYCODE_V 'V'
-#define KEYCODE_D 'D' 
+#define KEYCODE_D 'D'
+#define KEYCODE_G 'G'
 
 #define KEYCODE_F1 0x70
 #define KEYCODE_F2 0x71
