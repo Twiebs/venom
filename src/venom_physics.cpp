@@ -202,17 +202,16 @@ ComputeBoundingSphere(MeshData data)
 
 
 AABB 
-ComputeAABB(const MeshData* data) 
-{
+ComputeAABB(const MeshData* data) {
   AABB result = {};
   for (size_t i = 0; i < data->vertexCount; i++) {
-    const Vertex3D& vertex = data->vertices[i];
-    result.min.x = Min(result.min.x, vertex.position.x);
-    result.min.y = Min(result.min.y, vertex.position.y);
-    result.min.z = Min(result.min.z, vertex.position.z);
-    result.max.x = Max(result.max.x, vertex.position.x);
-    result.max.y = Max(result.max.y, vertex.position.y);
-    result.max.z = Max(result.max.z, vertex.position.z);
+    Vertex3D *vertex = (Vertex3D *)&data->vertices[i];
+    result.min.x = Min(result.min.x, vertex->position.x);
+    result.min.y = Min(result.min.y, vertex->position.y);
+    result.min.z = Min(result.min.z, vertex->position.z);
+    result.max.x = Max(result.max.x, vertex->position.x);
+    result.max.y = Max(result.max.y, vertex->position.y);
+    result.max.z = Max(result.max.z, vertex->position.z);
   }
   return result;
 }

@@ -42,6 +42,7 @@ typedef bool B8;
 #include "venom_render.h"
 #include "venom_physics.h"
 #include "venom_asset.h"
+#include "debug_renderer.h"
 #include "venom_entity.h"
 #ifndef VENOM_RELEASE
 #include "venom_serializer.h"
@@ -125,7 +126,6 @@ struct RenderState {
 
   VenomDebugRenderSettings debugRenderSettings;
   VenomDebugRenderFrameInfo debugRenderFrameInfo;
-  DebugRenderResources debugRenderResources;
 
   //IndexedVertexArray debugVertexArray;
 

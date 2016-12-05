@@ -16,11 +16,14 @@ struct DynamicArray {
   size_t count;
   size_t capacity;
 
-  StaticArray(U32, 256) selectedEntities;
+  DynamicArray() {
+    data = 0;
+    count = 0;
+    capacity = 0;
+  }
 
-  DynamicArray();
   ~DynamicArray() {
-    if(data != 0) delete[] data;
+    if (data != 0) free(data);
   }
 
   TElement& operator[](size_t index){
@@ -28,8 +31,15 @@ struct DynamicArray {
     return data[index];
   }
 
+  TElement *AddElement() {
+    if (count + 1 > capacity) Resize(capacity + 10);
+    TElement *element = &data[count++];
+    memset(element, 0x00, sizeof(TElement));
+    return element;
+  }
+
   void PushBack(TElement element) {
-    if(count + 1 > capacity) Resize(capacity + 16);
+    if (count + 1 > capacity) Resize(capacity + 10);
     data[count++] = element;
   }
 
@@ -61,8 +71,6 @@ struct DynamicArray {
     return 0;
   }
 
- 
-
   int ContainsValue(TElement value, size_t *outIndex) {
     for(size_t i = 0; i < count; i++)
       if(data[i] == value) { 
@@ -74,10 +82,11 @@ struct DynamicArray {
 
   void Resize(size_t newCapacity) {
     assert(newCapacity > count);
-    TElement *newData = new TElement[newCapacity]; 
-    if(data != 0) {
-      memcpy(newData, data, newCapacity * sizeof(TElement));
-      delete[] data;
+    TElement *newData = (TElement *)malloc(newCapacity * sizeof(TElement));
+    memset(newData, 0x00, sizeof(TElement) * newCapacity);
+    if (data != 0) {
+      memcpy(newData, data, capacity * sizeof(TElement));
+      free(data);
     }
     data = newData;
     capacity = newCapacity;

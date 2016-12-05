@@ -18,6 +18,9 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\src\venom_platform.cpp" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{7125BBB5-4F0E-4F38-8B80-973671DA7D92}</ProjectGuid>
     <RootNamespace>build64</RootNamespace>
@@ -91,12 +94,12 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>VENOM_ENGINE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\usr\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\workspace\venom\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opengl32.lib;assimp-vc130-mtd.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>C:\usr\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opengl32.lib;assimp-vc140-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>D:\workspace\venom\lib64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -131,45 +134,6 @@
       <AdditionalDependencies>opengl32.lib;assimp-vc130-mtd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <None Include="..\..\..\src\engine_debug.cpp" />
-    <None Include="..\..\..\src\main.cpp" />
-    <None Include="..\..\..\src\math_procedural.cpp" />
-    <None Include="..\..\..\src\offline_asset_tools.cpp" />
-    <None Include="..\..\..\src\opengl_resources.cpp" />
-    <ClCompile Include="..\..\..\src\platform.cpp" />
-    <None Include="..\..\..\src\platform_linux.cpp" />
-    <None Include="..\..\..\src\platform_windows.cpp" />
-    <None Include="..\..\..\src\terrain.cpp" />
-    <None Include="..\..\..\src\venom_asset.cpp" />
-    <None Include="..\..\..\src\venom_audio.cpp" />
-    <None Include="..\..\..\src\venom_noise.cpp" />
-    <None Include="..\..\..\src\venom_render.cpp" />
-    <None Include="..\..\..\src\venom_vulkan.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="..\..\..\src\engine_debug.h" />
-    <None Include="..\..\..\src\entity.h" />
-    <None Include="..\..\..\src\game.h" />
-    <None Include="..\..\..\src\math_geometry.h" />
-    <None Include="..\..\..\src\math_matrix.h" />
-    <None Include="..\..\..\src\math_procedural.h" />
-    <None Include="..\..\..\src\math_vector.h" />
-    <None Include="..\..\..\src\offline_asset_tools.h" />
-    <None Include="..\..\..\src\opengl_debug.h" />
-    <None Include="..\..\..\src\opengl_glsl.h" />
-    <None Include="..\..\..\src\opengl_procs.h" />
-    <None Include="..\..\..\src\opengl_render.h" />
-    <None Include="..\..\..\src\opengl_resources.h" />
-    <None Include="..\..\..\src\platform.h" />
-    <None Include="..\..\..\src\platform_linux.h" />
-    <None Include="..\..\..\src\platform_windows.h" />
-    <None Include="..\..\..\src\terrain.h" />
-    <None Include="..\..\..\src\venom_asset.h" />
-    <None Include="..\..\..\src\venom_audio.h" />
-    <None Include="..\..\..\src\venom_math.h" />
-    <None Include="..\..\..\src\venom_render.h" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

@@ -1,7 +1,5 @@
  
-void InitalizeTerrainGenerator(TerrainGenerationState* terrainGenState, 
-  MemoryBlock* memory, V3 generationOrigin) 
-{ 
+void InitalizeTerrainGenerator(TerrainGenerationState* terrainGenState, MemoryBlock* memory, V3 generationOrigin) { 
   size_t requiredTerrainMemory = (TERRAIN_TOTAL_VERTEX_COUNT) + //heightmap
     (TERRAIN_TOTAL_VERTEX_COUNT) + //detailmap
     ((TERRAIN_TOTAL_VERTEX_COUNT) * sizeof(V3)) + //normals
@@ -111,9 +109,7 @@ void InitalizeTerrainGenerator(TerrainGenerationState* terrainGenState,
   //the surface normals for each of the edge vertices
 } 
   
-static float 
-GetTerrainHeightAtWorldPosition(TerrainGenerationState *terrainGenState, float x, float z)
-{
+static float GetTerrainHeightAtWorldPosition(TerrainGenerationState *terrainGenState, float x, float z) {
   strict_assert(x >= (terrainGenState->currentOriginX * TERRAIN_CHUNK_SIZE));
   strict_assert(z >= (terrainGenState->currentOriginZ * TERRAIN_CHUNK_SIZE));
   strict_assert(x <= (terrainGenState->currentOriginX 

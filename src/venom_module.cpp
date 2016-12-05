@@ -43,7 +43,6 @@ static
 int VenomCopyFile(const char *a, const char *b) {
   FILE *fa = fopen(a, "rb");
   FILE *fb = fopen(b, "wb");
-
   if(fa == 0 || fb == 0) return 0;
   fseek(fa, 0, SEEK_END);
   size_t fileSize = ftell(fa);
@@ -233,15 +232,20 @@ EngineAPIList
   glBindTexture(GL_TEXTURE_2D, 0);
   memory->renderState.imguiFontTexture = textureID;
   io.Fonts->TexID = (void *)(size_t)memory->renderState.imguiFontTexture;
+
+
+  initalize_asset_manifest(&memory->assetManifest);
+
   VenomModuleStart(memory);
 
+#if 0
   assert(memory->mainBlock.size > memory->mainBlock.used);
   U64 remainingBlockMemory = memory->mainBlock.size - memory->mainBlock.used;
-  InitSubBlock("AssetDataMemory", &memory->assetManifest.memoryBlock,
-    remainingBlockMemory, &memory->mainBlock);
+  InitSubBlock("AssetDataMemory", &memory->assetManifest.memoryBlock, remainingBlockMemory, &memory->mainBlock);
+#endif
 
-  ReadAssetManifestFile("../project/assets.vsf", &memory->assetManifest);
-
+  
+  
   LoadMaterialList(&memory->assetManifest.materialAssetList);
 
 #if 0
@@ -301,6 +305,15 @@ HackVenomKeyEventCallback(int keycode, int keysym, int keystate){
       io.AddInputCharacter(keysym);
     }
   }
+
+  switch (keycode) {
+  case KEYCODE_F2: {
+
+  } break;
+
+
+  }
+
 }
 
 
@@ -368,25 +381,6 @@ extern "C" void _VenomModuleUpdate(GameMemory* memory) {
   DEBUG_BeginProfileEntry("Update");
   VenomModuleUpdate(memory);
   DEBUG_EndProfileEntry("Update");
-  
-  VenomDebugData* debugData = &memory->debugData;
-  if(debugData->triggerToggleConsole) {
-    debugData->isConsoleVisible = !debugData->isConsoleVisible;
-    if (debugData->isConsoleVisible) {
-      debugData->unseenErrorCount = 0;
-      debugData->unseenWarningCount = 0;
-      ShowConsole(&memory->debugData.debugLog, true);
-    }
-    debugData->triggerToggleConsole = false;
-  } else if(debugData->isConsoleVisible) {
-    ShowConsole(&memory->debugData.debugLog);
-  }
-
-  ShowDebugInfo(memory);
-
-  InputState* input = &memory->inputState;
-    //ShowCameraInfo(&memory->renderState.debugCamera);
-  //ImGui::ShowTestWindow();
 }
 
 extern "C"

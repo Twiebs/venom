@@ -13,113 +13,12 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
+    <Filter Include="Other FIles">
+      <UniqueIdentifier>{e27df1a2-39b4-4887-b95d-de2da3243d92}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\..\src\engine_debug.cpp">
-      <Filter>Translation Unit</Filter>
-    </None>
-    <None Include="..\..\..\src\engine_debug.h">
-      <Filter>Translation Unit</Filter>
-    </None>
-    <None Include="..\..\..\src\entity.h">
-      <Filter>Translation Unit</Filter>
-    </None>
-    <None Include="..\..\..\src\game.h">
-      <Filter>Translation Unit</Filter>
-    </None>
-    <None Include="..\..\..\src\main.cpp">
-      <Filter>Translation Unit</Filter>
-    </None>
-    <None Include="..\..\..\src\math_geometry.h">
-      <Filter>Translation Unit</Filter>
-    </None>
-    <None Include="..\..\..\src\math_matrix.h">
-      <Filter>Translation Unit</Filter>
-    </None>
-    <None Include="..\..\..\src\math_procedural.cpp">
-      <Filter>Translation Unit</Filter>
-    </None>
-    <None Include="..\..\..\src\math_procedural.h">
-      <Filter>Translation Unit</Filter>
-    </None>
-    <None Include="..\..\..\src\math_vector.h">
-      <Filter>Translation Unit</Filter>
-    </None>
-    <None Include="..\..\..\src\offline_asset_tools.cpp">
-      <Filter>Translation Unit</Filter>
-    </None>
-    <None Include="..\..\..\src\offline_asset_tools.h">
-      <Filter>Translation Unit</Filter>
-    </None>
-    <None Include="..\..\..\src\opengl_debug.h">
-      <Filter>Translation Unit</Filter>
-    </None>
-    <None Include="..\..\..\src\opengl_glsl.h">
-      <Filter>Translation Unit</Filter>
-    </None>
-    <None Include="..\..\..\src\opengl_procs.h">
-      <Filter>Translation Unit</Filter>
-    </None>
-    <None Include="..\..\..\src\opengl_render.h">
-      <Filter>Translation Unit</Filter>
-    </None>
-    <None Include="..\..\..\src\opengl_resources.cpp">
-      <Filter>Translation Unit</Filter>
-    </None>
-    <None Include="..\..\..\src\opengl_resources.h">
-      <Filter>Translation Unit</Filter>
-    </None>
-    <None Include="..\..\..\src\platform.h">
-      <Filter>Translation Unit</Filter>
-    </None>
-    <None Include="..\..\..\src\platform_linux.cpp">
-      <Filter>Translation Unit</Filter>
-    </None>
-    <None Include="..\..\..\src\platform_linux.h">
-      <Filter>Translation Unit</Filter>
-    </None>
-    <None Include="..\..\..\src\platform_windows.cpp">
-      <Filter>Translation Unit</Filter>
-    </None>
-    <None Include="..\..\..\src\platform_windows.h">
-      <Filter>Translation Unit</Filter>
-    </None>
-    <None Include="..\..\..\src\terrain.cpp">
-      <Filter>Translation Unit</Filter>
-    </None>
-    <None Include="..\..\..\src\terrain.h">
-      <Filter>Translation Unit</Filter>
-    </None>
-    <None Include="..\..\..\src\venom_asset.cpp">
-      <Filter>Translation Unit</Filter>
-    </None>
-    <None Include="..\..\..\src\venom_asset.h">
-      <Filter>Translation Unit</Filter>
-    </None>
-    <None Include="..\..\..\src\venom_audio.cpp">
-      <Filter>Translation Unit</Filter>
-    </None>
-    <None Include="..\..\..\src\venom_audio.h">
-      <Filter>Translation Unit</Filter>
-    </None>
-    <None Include="..\..\..\src\venom_math.h">
-      <Filter>Translation Unit</Filter>
-    </None>
-    <None Include="..\..\..\src\venom_noise.cpp">
-      <Filter>Translation Unit</Filter>
-    </None>
-    <None Include="..\..\..\src\venom_render.cpp">
-      <Filter>Translation Unit</Filter>
-    </None>
-    <None Include="..\..\..\src\venom_render.h">
-      <Filter>Translation Unit</Filter>
-    </None>
-    <None Include="..\..\..\src\venom_vulkan.cpp">
-      <Filter>Translation Unit</Filter>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="..\..\..\src\platform.cpp">
+    <ClCompile Include="..\..\..\src\venom_platform.cpp">
       <Filter>Translation Unit</Filter>
     </ClCompile>
   </ItemGroup>

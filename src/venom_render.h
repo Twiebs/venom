@@ -21,35 +21,8 @@ struct VenomMeshDrawCommand {
   U32 indexOffset;
 };
 
-//TODO(Torin) Consider adding a debug draw list
+
 #ifndef VENOM_RELEASE
-
-enum DebugRenderCommandType {
-  DebugRenderCommandType_Box,
-  DebugRenderCommandType_Sphere,
-  DebugRenderCommandType_Line,
-  DebugRenderCommandType_Axis,
-};
-
-struct DebugRenderCommand {
-  DebugRenderCommandType type;
-  bool isSolid;
-  V4 color;
-  F32 duration;
-
-  union {
-    struct { 
-      V3 min, max; 
-    };
-    struct { 
-      V3 center; 
-      F32 radius;
-    };
-    V3 position;
-    V3 lineSegmentPositions[2];
-  };
-};
-
 struct VenomDebugRenderSettings {
   B8 isWireframeEnabled;
   B8 isDebugCameraActive;
@@ -59,7 +32,7 @@ struct VenomDebugRenderSettings {
   B8 renderFromDirectionalLight;
   B8 drawPhysicsColliders;
   B8 drawDepthMap;
-}; 
+};
 
 struct VenomDebugRenderFrameInfo {
   U64 totalVerticesDrawn;
@@ -70,7 +43,6 @@ struct VenomDebugRenderFrameInfo {
   U64 directionalLightCount;
   U64 shadowCastingPointLightCount;
 };
-
 #endif//VENOM_RELEASE
 
 struct VenomDrawList {
@@ -89,10 +61,10 @@ struct VenomDrawList {
   PointLight pointLights[POINT_LIGHTS_MAX];
   U32 shadowCastingPointLightCount;
   PointLight shadowCastingPointLights[SHADOW_CASTING_POINT_LIGHT_MAX];
-
-  U32 debugCommandCount;
-  DebugRenderCommand debugCommands[1000];
 };
+
+static inline void set_uniform(int location, V3 value);
+static inline void set_uniform(int location, M4 value);
 
 inline void 
 AddPointLight(const V3 position, const V3 color, const F32 radius, VenomDrawList* list) {
@@ -145,14 +117,12 @@ UpdateCamera(Camera *camera) {
 	camera->front.y = sinf(camera->pitch);
 	camera->front.z = sin(camera->yaw) * cos(camera->pitch);
 	camera->front = Normalize(camera->front);
-  camera->view = LookAt(camera->position, 
-    camera->front + camera->position, V3(0.0f, 1.0f, 0.0f));
+  camera->view = LookAt(camera->position, camera->front + camera->position, V3(0.0f, 1.0f, 0.0f));
 }
 
 #ifdef VENOM_OPENGL
 #include "glcorearb.h"
 #include "opengl_resources.h"
-#include "opengl_render.h"
 #include "offline_asset_tools.h"
 #endif//VENOM_OPENGL
 

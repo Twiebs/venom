@@ -1,6 +1,8 @@
 struct AABB {
   V3 min;
   V3 max;
+  AABB() {}
+  AABB(V3 min, V3 max) : min(min), max(max) {}
 };
 
 inline V3 

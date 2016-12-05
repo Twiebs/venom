@@ -9,7 +9,7 @@ struct V2 {
 	explicit V2(float s) : x(s), y(s) {}
 };
 
-struct V3 final {
+struct V3 {
   union { 
     struct { float x, y, z; };
     struct { float r, g, b; };
@@ -17,7 +17,7 @@ struct V3 final {
   };
 
 	V3() : x(0), y(0), z(0) {}
-	explicit V3(float v) : x(v), y(v), z(v) {}
+	V3(float v) : x(v), y(v), z(v) {}
 	V3(float x, float y, float z) : x(x), y(y), z(z) {}
   V3(const V3& v) : x(v.x), y(v.y), z(v.z) {}
   V3(const V4& v);
@@ -32,7 +32,7 @@ struct V4 {
 	float w;
 	V4() {}
 	V4(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
-	explicit V4(float v) : x(v), y(v), z(v), w(v) {}
+	V4(float v) : x(v), y(v), z(v), w(v) {}
 	V4(const struct V3& v, float w) : x(v.x), y(v.y), z(v.z), w(w) {}
 };
 
@@ -61,8 +61,7 @@ inline V3 operator-(const V3& a)
 	return result;
 }
 
-inline V3 operator+(const V3& a, const V3& b)
-{
+inline V3 operator+(const V3& a, const V3& b) {
 	V3 result;
 	result.x = a.x + b.x;
 	result.y = a.y + b.y;
@@ -70,8 +69,7 @@ inline V3 operator+(const V3& a, const V3& b)
 	return result;
 }
 
-inline V3 operator-(const V3& a, const V3& b)
-{
+inline V3 operator-(const V3& a, const V3& b) {
 	V3 result;
 	result.x = a.x - b.x;
 	result.y = a.y - b.y;
@@ -79,8 +77,7 @@ inline V3 operator-(const V3& a, const V3& b)
 	return result;
 }
 
-inline V3 operator*(const V3& a, const V3& b)
-{
+inline V3 operator*(const V3& a, const V3& b) {
 	V3 result;
 	result.x = a.x * b.x;
 	result.y = a.y * b.y;
@@ -88,8 +85,7 @@ inline V3 operator*(const V3& a, const V3& b)
 	return result;
 }
 
-inline V3 operator/(const V3& a, const V3& b)
-{
+inline V3 operator/(const V3& a, const V3& b) {
 	V3 result;
 	result.x = a.x / b.x;
 	result.y = a.y / b.y;
@@ -106,8 +102,7 @@ inline V3 operator+(const V3& a, const float b)
 	return result;
 }
 
-inline V3 operator*(const V3& a, const float b)
-{
+inline V3 operator*(const V3& a, const float b) {
 	V3 result;
 	result.x = a.x * b;
 	result.y = a.y * b;

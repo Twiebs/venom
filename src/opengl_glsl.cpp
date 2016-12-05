@@ -68,8 +68,7 @@ struct ShaderParseInfo {
   U32 entryCount;
 };
 
-static char* 
-ReadAndParseShaderSource(const char* rootFilename, ShaderParseInfo* parseInfo) {
+static char* ReadAndParseShaderSource(const char* rootFilename, ShaderParseInfo* parseInfo) {
 	FILE* rootFileHandle = fopen(rootFilename, "rb");
 	if (rootFileHandle == 0) return 0;
 	fseek(rootFileHandle , 0, SEEK_END);

@@ -132,8 +132,7 @@ U64 GetPerformanceFrequency()
 	return counterFrequency.QuadPart;
 }
 
-int WindowsPlatformMain() 
-{
+int WindowsPlatformMain() {
   using namespace Win32;
 	//NOTE(Torin) This will be read in from disk
 	//If the serialized file does not exist then we
@@ -156,8 +155,7 @@ int WindowsPlatformMain()
 	window_class.hIcon = LoadIcon(NULL, IDI_APPLICATION);
 	window_class.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
 	window_class.lpszClassName = "VenomWindowClass";
-	if (!RegisterClass(&window_class)) 	
-	{
+	if (!RegisterClass(&window_class)) {
 		LOG_ERROR("Failed to create window class");
 		PostQuitMessage(1);
 	}

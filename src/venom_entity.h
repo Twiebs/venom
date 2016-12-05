@@ -6,6 +6,7 @@ static const U32 INVALID_ENTITY_INDEX = ((((U64)1) << 32) - 1);
   _(Container) \
   _(PointLight) \
   _(Bullet) \
+  _(Player) \
 
 struct StaticObject {
   AABB aabb;
@@ -24,16 +25,20 @@ struct Bullet {
   V3 lightColor;
 };
 
+struct Player {
+  F32 cooldownTime;
+};
+
 struct Entity {
   V3 position;
   V3 rotation;
-
   V3 velocity;
-  U32 modelID;
+  Asset_ID modelID;
 
   union {
     PointLightEntity pointLight;
     Bullet bullet;
+    Player player;
   };
 };
 
@@ -82,8 +87,7 @@ struct EntityContainer {
   U32 currentBlockCapacity;
 };
 
-void EntityContainerInit(EntityContainer* container, 
-  U32 entityCountPerBlock, U32 initalBlockCount);
+void EntityContainerInit(EntityContainer* container, U32 entityCountPerBlock, U32 initalBlockCount);
 Entity* CreateEntity(EntityType type, EntityIndex* outIndex, EntityContainer* entities);
 void DestroyEntity(EntityType type, EntityContainer* entities);
 Entity* GetEntity(U32 entityIndex, EntityContainer* container);

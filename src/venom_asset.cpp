@@ -1,3 +1,53 @@
+
+static inline bool CreateModelAssetFromFile(AssetSlot *slot, AssetManifest *manifest) {
+  assert(slot->asset == 0);
+  assert(slot->filename != 0);
+  assert(slot->name != 0);
+
+  char filename[1024] = {};
+  memcpy(filename, VENOM_ASSET_DIRECTORY, sizeof(VENOM_ASSET_DIRECTORY) - 2);
+  strcpy(filename + sizeof(VENOM_ASSET_DIRECTORY) - 2, slot->filename);
+
+  slot->asset = malloc(sizeof(ModelAsset));
+  memset(slot->asset, 0x00, sizeof(ModelAsset));
+  ModelAsset* modelAsset = (ModelAsset *)slot->asset;
+  if (ImportExternalModelData(filename, &modelAsset->data) == false) {
+    slot->flags |= AssetFlag_INVALID;
+    return false;
+  }
+
+  modelAsset->aabb = ComputeAABB(&modelAsset->data.meshData);
+  modelAsset->size = Abs(modelAsset->aabb.max - modelAsset->aabb.min);
+  modelAsset->drawable.materials = (MaterialDrawable *)calloc(modelAsset->data.meshCount, sizeof(MaterialDrawable));
+  CreateIndexedVertexArray3D(&modelAsset->vertexArray, &modelAsset->data.meshData);
+  modelAsset->drawable.indexCountPerMesh = modelAsset->data.indexCountPerMesh;
+  modelAsset->drawable.vertexArrayID = modelAsset->vertexArray.vertexArrayID;
+  modelAsset->drawable.meshCount = modelAsset->data.meshCount;
+  slot->lastWriteTime = GetFileLastWriteTime(filename);
+  for (size_t i = 0; i < modelAsset->data.meshCount; i++) {
+    modelAsset->drawable.materials[i] = CreateMaterialDrawable(&modelAsset->data.materialDataPerMesh[i]);
+  }
+
+  slot->flags |= AssetFlag_LOADED;
+}
+
+void initalize_asset_manifest(AssetManifest *manifest) {
+#ifndef VENOM_RELEASE
+  //manifest->default_model_asset.
+
+
+#endif//VENOM_RELEASE
+
+  AssetSlot *slot = manifest->modelAssets.AddElement();
+  slot->name = "null_model_asset";
+  slot->filename = "/internal/null_model.fbx";
+  slot->lastWriteTime = 0;
+  CreateModelAssetFromFile(slot, manifest);
+
+  ReadAssetManifestFile("../project/assets.vsf", manifest);
+}
+
+
 static void UnloadModelAsset(ModelAsset* modelAsset);
 
 
@@ -7,19 +57,30 @@ static void UnloadModelAsset(ModelAsset* modelAsset);
 //development builds for easy runtime modifcation of asset data without
 //using hardcoded values or requiring seperate metadata to be mantained
 
-//TODO(Torin) dont like the idea of these mallocs here
-//but for now it will suffice since this is a debug mechanisim
-void DestroyModelAsset(U32 index, AssetManifest *manifest) {
-  assert(index < manifest->modelAssets.count);
+static inline void UnloadModelAsset(ModelAsset *modelAsset) {
+  assert(modelAsset->data.meshData.indexCount != 0);
+  DestroyModelData(&modelAsset->data);
+  DestroyIndexedVertexArray(&modelAsset->vertexArray);
+  for (size_t i = 0; i < modelAsset->drawable.meshCount; i++)
+    DestroyMaterialDrawable(&modelAsset->drawable.materials[i]);
+  free(modelAsset->drawable.materials);
+  free(modelAsset);
+}
+
+void RemoveModelFromManifest(U32 index, AssetManifest *manifest) {
   AssetSlot *slot = &manifest->modelAssets[index];
+  if (slot->flags & AssetFlag_LOADED) {
+    UnloadModelAsset((ModelAsset *)slot->asset);
+  }
+
   free(slot->name);
   free(slot->filename);
-  manifest->modelAssets.RemoveOrdered(index);
+  manifest->modelAssets.RemoveUnordered(index);
 }
 
 void WriteAssetManifestFile(const char *filename, AssetManifest *manifest){
   if(vs::BeginFileWrite(filename) == 0) return;
-  for(size_t i = 0; i < manifest->modelAssets.count; i++) {
+  for(size_t i = 1; i < manifest->modelAssets.count; i++) {
     AssetSlot *slot = &manifest->modelAssets[i];
     vs::BeginGroupWrite("slot");
     vs::WriteString("name", slot->name);
@@ -36,12 +97,9 @@ void ReadAssetManifestFile(const char *filename, AssetManifest *manifest){
     char filenameBuffer[256] = {};
     vs::ReadString("name", nameBuffer, sizeof(nameBuffer));
     vs::ReadString("filename", filenameBuffer, sizeof(filenameBuffer));
-    AssetSlot slot = {};
-    slot.name = strdup(nameBuffer);
-
-    const char *filenameToCopy = filenameBuffer + sizeof(VENOM_ASSET_DIRECTORY) - 1;
-    slot.filename = strdup(filenameToCopy);
-    manifest->modelAssets.PushBack(slot);
+    AssetSlot *slot = manifest->modelAssets.AddElement();
+    slot->name = strdup(nameBuffer);
+    slot->filename = strdup(filenameBuffer);
     vs::EndGroupRead();
   }
   vs::EndFileRead();
@@ -83,13 +141,13 @@ void HotloadModels(AssetManifest* manifest) {
   memcpy(modelFilename, VENOM_ASSET_DIRECTORY, sizeof(VENOM_ASSET_DIRECTORY) - 1);
   char *modelFilenameWrite = modelFilename + sizeof(VENOM_ASSET_DIRECTORY) - 1;
   for (size_t i = 0; i < manifest->modelAssets.count; i++) {
-    if (manifest->modelAssets[i].flags & AssetFlag_Loaded) {
+    if (manifest->modelAssets[i].flags & AssetFlag_LOADED) {
       AssetSlot* modelSlot = &manifest->modelAssets[i];
       ModelAsset* modelAsset = (ModelAsset *)manifest->modelAssets[i].asset;
       strcpy(modelFilenameWrite, modelSlot->filename);
       U64 lastWriteTime = GetFileLastWriteTime(modelFilename);
-      if (lastWriteTime != modelAsset->lastWriteTime) {
-        modelAsset->lastWriteTime = lastWriteTime;
+      if (lastWriteTime != modelSlot->lastWriteTime) {
+        modelSlot->lastWriteTime = lastWriteTime;
         UnloadModelAsset(modelAsset);
         manifest->modelAssets[i].flags = 0;
         manifest->modelAssets[i].asset = 0;
@@ -99,74 +157,72 @@ void HotloadModels(AssetManifest* manifest) {
   }
 }
 
-S64 GetModelID(const char *name, AssetManifest *manifest) {
+bool manifest_contains_model(const char *name, AssetManifest *manifest, U32 *slot_index) {
   for (size_t i = 0; i < manifest->modelAssets.count; i++) {
     if (strcmp(name, manifest->modelAssets[i].name) == 0) {
-      return i;
+      *slot_index = i;
+      return true;
     }
   }
-  return -1;
+  return false;
+} 
+
+
+Asset_ID GetModelID(const char *name, AssetManifest *manifest) {
+  if (strlen(name) > 64) assert(false);
+
+  for (size_t i = 0; i < manifest->modelAssets.count; i++) {
+    if (strcmp(name, manifest->modelAssets[i].name) == 0) {
+      Asset_ID result = {};
+      if(result.asset_name != name) strcpy(result.asset_name, name);
+      result.slot_index = i;
+      result.reload_counter_value = manifest->modelReloadCounter;
+      return result;
+    }
+  }
+
+  Asset_ID result = {};
+  if(result.asset_name != name) strcpy(result.asset_name, name);
+  result.slot_index = 0;
+  result.reload_counter_value = manifest->modelReloadCounter;
+  return result;
 }
 
 
 //====================================================================================
 #endif//VENOM_RELEASE
 
-static inline
-void UnloadModelAsset(ModelAsset* modelAsset){
-  assert(modelAsset->data.meshData.indexCount != 0);
-  DestroyModelData(&modelAsset->data);
-  DestroyIndexedVertexArray(&modelAsset->vertexArray);
-  fori(modelAsset->drawable.meshCount){
-    DestroyMaterialDrawable(&modelAsset->drawable.materials[i]);
+
+
+ModelAsset* GetModelAsset(Asset_ID& id, AssetManifest* manifest) {
+  if (manifest->modelReloadCounter != id.reload_counter_value)
+    id = GetModelID(id.asset_name, manifest);
+
+  AssetSlot* modelAssetSlot = &manifest->modelAssets[id.slot_index];
+  if((modelAssetSlot->flags & AssetFlag_LOADED) == 0){
+    if (modelAssetSlot->flags & AssetFlag_INVALID) {
+      Asset_ID null_id = {};
+      return GetModelAsset(null_id, manifest);
+    }
+
+    CreateModelAssetFromFile(modelAssetSlot, manifest);
   }
-  free(modelAsset);//TODO(Torin) This is a hack!!!
-}
 
-
-//TODO(Torin) make these builtin_expected ifs because its incredibly unlikely the asset is not avaiable
-//unlikely_if()
-ModelAsset* GetModelAsset(U32 modelSlotIndex, AssetManifest* manifest){
-  AssetSlot* modelAssetSlot = &manifest->modelAssets[modelSlotIndex];
-  if((modelAssetSlot->flags & AssetFlag_Loaded) == 0){
-    assert(modelAssetSlot->asset == 0);
-    //modelAssetSlot->asset = malloc(modelAssetSlot->requiredMemory); 
-    //TODO(Torin) do somthing more along the lines of this
-    //HACK: Make this way better
-
-    char modelFilename[1024] = {};
-    memcpy(modelFilename, VENOM_ASSET_DIRECTORY, sizeof(VENOM_ASSET_DIRECTORY) -1);
-    char *filenameToCheck = modelFilename + sizeof(VENOM_ASSET_DIRECTORY) - 1;
-    strcpy(filenameToCheck, modelAssetSlot->filename);
-
-    modelAssetSlot->asset = malloc(sizeof(ModelAsset));
-    ModelAsset* modelAsset = (ModelAsset *)modelAssetSlot->asset;
-    modelAsset->data = ImportExternalModelData(
-      modelFilename, &manifest->memoryBlock);
-    modelAsset->aabb = ComputeAABB(&modelAsset->data.meshData);
-    modelAsset->size = Abs(modelAsset->aabb.max - modelAsset->aabb.min);
-		modelAsset->drawable.materials = ReserveArray(
-      MaterialDrawable, modelAsset->data.meshCount, &manifest->memoryBlock);	
-    CreateIndexedVertexArray3D(&modelAsset->vertexArray, &modelAsset->data);
-		modelAsset->drawable.indexCountPerMesh = modelAsset->data.indexCountPerMesh;
-		modelAsset->drawable.vertexArrayID = modelAsset->vertexArray.vertexArrayID;
-		modelAsset->drawable.meshCount = modelAsset->data.meshCount;
-    modelAsset->lastWriteTime = GetFileLastWriteTime(modelFilename);
-		fori(modelAsset->data.meshCount) {
-			modelAsset->drawable.materials[i] = 
-        CreateMaterialDrawable(&modelAsset->data.materialDataPerMesh[i]);
-		}
-    modelAsset->name = modelAssetSlot->name;
-    modelAssetSlot->flags |= AssetFlag_Loaded;
-  }
-  ModelAsset *modelAsset = (ModelAsset *)manifest->modelAssets[modelSlotIndex].asset;
+  ModelAsset *modelAsset = (ModelAsset *)manifest->modelAssets[id.slot_index].asset;
   return modelAsset;
 }
 
-const ModelDrawable&
-GetModelDrawable(U32 modelSlotIndex, AssetManifest* manifest) {
-  const ModelAsset* modelAsset = GetModelAsset(modelSlotIndex, manifest);
-  return modelAsset->drawable;
+//TODO(Torin) Check load state here
+ModelDrawable *GetModelDrawableFromIndex(U32 modelIndex, AssetManifest *manifest) {
+  ModelAsset *modelAsset = (ModelAsset *)manifest->modelAssets[modelIndex].asset;
+  return &modelAsset->drawable;
+}
+
+ModelDrawable *GetModelDrawable(Asset_ID& id, AssetManifest* manifest) {
+  ModelAsset* modelAsset = GetModelAsset(id, manifest);
+  if (modelAsset == nullptr) return nullptr;
+  ModelDrawable *drawable = &modelAsset->drawable;
+  return drawable;
 }
 
 const MaterialDrawable& 
@@ -196,5 +252,8 @@ GLuint GetShaderProgram(DEBUGShaderID shaderID, AssetManifest* manifest) {
 		loadedShader->is_loaded = true;
 	}
 	
+  if (loadedShader->programHandle == 0) {
+    assert(false);
+  }
 	return loadedShader->programHandle;
 }

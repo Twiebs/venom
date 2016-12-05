@@ -1,3 +1,5 @@
+//Disable unhelpfull warnings when compiled with clang
+#ifdef __clang__
 #pragma clang diagnostic error "-Wreturn-type"
 #pragma clang diagnostic warning "-Wall"
 #pragma clang diagnostic warning "-Wextra"
@@ -10,6 +12,7 @@
 #pragma clang diagnostic ignored "-Wunused-local-typedef"
 #pragma clang diagnostic ignored "-Wunused-variable"
 #endif //VENOM_RELEASE && VENOM_STRICT
+#endif//__clang__
 
 #include "venom_platform.h"
 
@@ -29,6 +32,7 @@ VenomDebugData *GetDebugData() { return _debugData; }
 GameMemory* GetVenomEngineData() { return _venomEngineData; };
 #endif//VENOM_RELEASE
 
+//TODO(Torin) Move this somewhere usefull
 static int VenomCopyFile(const char *a, const char *b);
 
 #ifdef VENOM_SINGLE_TRANSLATION_UNIT
@@ -39,10 +43,9 @@ static int VenomCopyFile(const char *a, const char *b);
 #include "venom_asset.cpp"
 #include "venom_audio.cpp"
 #include "venom_serializer.cpp"
+#include "serialization.cpp"
 #endif//VENOM_SINGLE_TRANSLATION_UNIT
 
-//NOTE(Torin) Set default configuration macros if 
-//they were left unspecified 
 #ifndef VENOM_DEFAULT_SCREEN_WIDTH
 #define VENOM_DEFAULT_SCREEN_WIDTH 1280
 #endif//VENOM_DEFAULT_SCREEN_WIDTH
@@ -51,6 +54,7 @@ static int VenomCopyFile(const char *a, const char *b);
 #endif//VENOM_DEFAULT_SCREEN_HEIGHT
 
 #ifdef VENOM_HOTLOAD
+struct VenomModule { void *handle; };
 typedef void (*VenomModuleLoadProc)(GameMemory*);
 typedef void (*VenomModuleStartProc)(GameMemory*);
 typedef void (*VenomModuleUpdateProc)(GameMemory*);
@@ -59,11 +63,6 @@ static VenomModuleLoadProc _VenomModuleLoad;
 static VenomModuleStartProc _VenomModuleStart;
 static VenomModuleUpdateProc _VenomModuleUpdate;
 static VenomModuleRenderProc _VenomModuleRender;
-
-struct VenomModule {
-  void *handle;
-};
-
 static inline void LoadVenomModule(VenomModule* module, const char* path);
 static inline void UnloadVenomModule(VenomModule* module);
 static inline void ReloadVenomModuleIfModified(VenomModule *module);
@@ -71,7 +70,6 @@ static inline void ReloadVenomModuleIfModified(VenomModule *module);
 #include "test_scene.cpp"
 #endif//VENOM_HOTLOAD
 
-//========================================================================================
 
 struct UserConfig {
 	U16 screen_width;
@@ -186,8 +184,13 @@ void PlatformKeyEventHandler(GameMemory *memory, int keycode, int keysym, int is
 		} break;  
 
     case KEYCODE_TILDA: {
-      memory->debugData.triggerToggleConsole = true;
+      memory->debugData.isConsoleVisible = !memory->debugData.isConsoleVisible;
     } break;
+
+    case KEYCODE_F2: {
+      memory->debugData.isEditorVisible = !memory->debugData.isEditorVisible;
+    }
+
 	  } 
   }
 

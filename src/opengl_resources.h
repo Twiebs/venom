@@ -43,7 +43,7 @@ struct GBuffer {
   GLuint positionDepth;
   GLuint normal;
   GLuint albedoSpecular;
-  GLuint depthTexture;
+  GLuint depthStencilBuffer;
 };
 
 struct SSAO {
@@ -67,18 +67,6 @@ struct ModelDrawable {
 	MaterialDrawable *materials;
 };
 
-struct DebugRenderResources {
-  GLuint vao, vbo, ebo;
-
-  U32 cubeIndexOffset;
-  U32 cubeIndexCount;
-  U32 sphereIndexOffset;
-  U32 sphereIndexCount;
-  U32 axisIndexOffset;
-  U32 axisIndexCount;
-  U32 monkeyIndexCount;
-  U32 monkeyIndexOffset;
-};
 
 
 static const U32 OMNI_SHADOW_MAP_RESOLUTION = 4096;
@@ -102,6 +90,9 @@ void CreateIndexedVertex2DArray(GLuint *vertexArray, GLuint *vertexBuffer,
   GLuint *indexBuffer, U32 vertexCount, U32 indexCount, 
   const Vertex2D *vertices, const U32 *indices, GLenum drawMode); 
 
+void create_indexed_animated_vertex_array(GLuint *vertexArray, GLuint *vertexBuffer, GLuint *indexBuffer,
+    U32 vertexCount, U32 indexCount, const AnimatedVertex *vertices, const U32 *indices, GLenum drawMode);
+
 void DeleteIndexedVertexArray(GLuint *vao, GLuint *vbo, GLuint *ebo);
 
 GLuint CreateTextureWithMipmaps(const U8* pixels, U16 width, U16 height, 
@@ -111,59 +102,45 @@ GLuint CreateTextureWithoutMipmaps(const char *filename, GLenum wrapMode = GL_RE
 void CreateMaterialDataFromTextureFiles(MaterialData* data, const char* diffuse_filename,
 	const char* normal_filename, const char* specular_filename, MemoryBlock *memblock);
 
-inline void CreateIndexedVertexArray3D(IndexedVertexArray *vertexArray, 
-const Vertex3D *vertices, const U32 *indices, 
-const U32 vertexCount, const U32 indexCount, 
-const GLenum drawMode) {
+//=====================================================================================================
+
+inline void CreateIndexedVertexArray3D(IndexedVertexArray *vertexArray, const Vertex3D *vertices, 
+const U32 *indices, const U32 vertexCount, const U32 indexCount, const GLenum drawMode) {
 	CreateIndexedVertex3DArray(
-      &vertexArray->vertexArrayID, 
-      &vertexArray->vertexBufferID, 
-      &vertexArray->indexBufferID,
-		  vertexCount, indexCount, 
-      vertices, indices, drawMode);
+    &vertexArray->vertexArrayID, 
+    &vertexArray->vertexBufferID, 
+    &vertexArray->indexBufferID,
+		vertexCount, indexCount, 
+    vertices, indices, drawMode);
   vertexArray->vertexCount = vertexCount;
   vertexArray->indexCount = indexCount;
 }
 
-
 inline void CreateIndexedVertexArray3D(IndexedVertexArray *vertexArray, 
-const U32 vertexCount, const U32 indexCount, const GLenum drawMode) 
-{
+const U32 vertexCount, const U32 indexCount, const GLenum drawMode) {
 	CreateIndexedVertex3DArray(
-      &vertexArray->vertexArrayID, 
-      &vertexArray->vertexBufferID, 
-      &vertexArray->indexBufferID,
-		  vertexCount, indexCount, 
-      0, 0, drawMode);
-
+    &vertexArray->vertexArrayID, 
+    &vertexArray->vertexBufferID, 
+    &vertexArray->indexBufferID,
+		vertexCount, indexCount, 
+    0, 0, drawMode);
   vertexArray->vertexCount = vertexCount;
   vertexArray->indexCount = indexCount;
 }
 
-
-inline void CreateIndexedVertexArray3D(IndexedVertexArray *vertexArray, MeshData *data, GLenum drawMode = GL_STATIC_DRAW)
-{
+inline void CreateIndexedVertexArray3D(IndexedVertexArray *vertexArray, MeshData *data, GLenum drawMode = GL_STATIC_DRAW) {
 	CreateIndexedVertex3DArray(&vertexArray->vertexArrayID, &vertexArray->vertexBufferID, &vertexArray->indexBufferID,
-		data->vertexCount, data->indexCount, data->vertices, data->indices, drawMode);
-}
-
-inline void CreateIndexedVertexArray3D(IndexedVertexArray *vertexArray, ModelData *data)
-{
-	CreateIndexedVertex3DArray(
-      &vertexArray->vertexArrayID, 
-      &vertexArray->vertexBufferID, 
-      &vertexArray->indexBufferID, 
-      data->meshData.vertexCount, 
-      data->meshData.indexCount, 
-      data->meshData.vertices, 
-      data->meshData.indices, 
-      GL_STATIC_DRAW);
+		data->vertexCount, data->indexCount, (Vertex3D *)data->vertices, data->indices, drawMode);
 }
 
 inline void CreateIndexedVertex2DArray(IndexedVertexArray *array, 
 	U32 vertexCount, U32 indexCount, const Vertex2D *vertices, 
-	const U32 *indices, GLenum drawMode)
-{
+	const U32 *indices, GLenum drawMode) {
 	CreateIndexedVertex2DArray(&array->vertexArrayID, &array->vertexBufferID, &array->indexBufferID,
 		vertexCount, indexCount, vertices, indices, drawMode);
+}
+
+inline void create_indexed_animated_vertex_array(IndexedVertexArray *vertex_array, MeshData *data) {
+  create_indexed_animated_vertex_array(&vertex_array->vertexArrayID, &vertex_array->vertexBufferID, &vertex_array->indexBufferID,
+    data->vertexCount, data->indexCount, data->vertices, data->indices, GL_STATIC_DRAW);
 }

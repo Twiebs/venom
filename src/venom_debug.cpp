@@ -16,6 +16,7 @@ VenomDebugRenderFrameInfo* GetDebugRenderFrameInfo() {
 void PushLogEntry(VenomDebugData *data, LogLevel level) {
   if (level == LogLevel_ERROR) data->unseenErrorCount++;
   else if (level == LogLevel_WARNING) data->unseenWarningCount++;
+  else if (level == LogLevel_INFO) data->unseenInfoCount++;
 
   DebugLog* log = &data->debugLog;
 	size_t temp_buffer_length = strlen(log->temp_buffer);

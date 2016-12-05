@@ -20,9 +20,7 @@ static void ShowMemoryBlockTree(const MemoryBlock *block, U32 index = 0) {
 #define GUI_U64(prefix, name) ImGui::Text(#name ": %lu", prefix->name)
 
 static void 
-ShowVenomDebugRenderInfo(VenomDebugRenderFrameInfo* debugInfo, 
-    VenomDebugRenderSettings* renderSettings) 
-{
+draw_debug_render_info_ui(VenomDebugRenderFrameInfo* debugInfo, VenomDebugRenderSettings* renderSettings) {
   ImGui::BeginGroup();
   ImGui::Checkbox("isWireframeEnabled", &renderSettings->isWireframeEnabled);
   ImGui::Checkbox("isDebugCameraActive", &renderSettings->isDebugCameraActive);
@@ -50,7 +48,7 @@ ShowVenomDebugRenderInfo(VenomDebugRenderFrameInfo* debugInfo,
 }
 
 static void 
-ShowProfiler(const ProfileData* profileData, const MemoryBlock* block){
+draw_profiler_ui(const ProfileData* profileData, const MemoryBlock* block){
 	for(size_t i = 0; i < profileData->persistantEntryCount; i++){
 		const PersistantProfilerEntry *entry = &profileData->persistantEntries[i];
 		if(ImGui::CollapsingHeader(entry->name)){
@@ -64,19 +62,7 @@ ShowProfiler(const ProfileData* profileData, const MemoryBlock* block){
 	}
 }
 
-static void
-ShowDebugInfo(GameMemory* memory) {
-  ImGui::Begin("Venom Debug Info");
-  ShowVenomDebugRenderInfo(&memory->renderState.debugRenderFrameInfo, 
-    &memory->renderState.debugRenderSettings);
-  ImGui::BeginGroup();
-  ShowProfiler(&memory->debugData.profileData, &memory->mainBlock);
-  ImGui::EndGroup();
-  ImGui::End();
-}
-
-static int 
-ShowModelCreateWidgets(AssetManifest *manifest) {
+static bool ShowModelCreateWidgets(AssetManifest *manifest) {
   static char nameBuffer[256] = {};
   static char filenameBuffer[256] = {};
 
@@ -85,235 +71,74 @@ ShowModelCreateWidgets(AssetManifest *manifest) {
     ImGui::InputText("Filename", filenameBuffer, sizeof(filenameBuffer),
       ImGuiInputTextFlags_EnterReturnsTrue)) {
 
-      if(nameBuffer[0] == 0) return 0;
-      if(filenameBuffer[0] == 0) {
-        //Create a new Model AssetFile 
-      }
+    if(nameBuffer[0] == 0) return 0;
+    U32 slot_index = 0;
+    if (manifest_contains_model(nameBuffer, manifest, &slot_index)) {
+      LogWarning("Could not create model.  Asset named %s already exists!", nameBuffer);
+      return true;
+    }
 
-    AssetSlot slot = {};
-    slot.name = strdup(nameBuffer);
-    slot.filename = strdup(filenameBuffer);
-    manifest->modelAssets.PushBack(slot);
+    AssetSlot *slot = manifest->modelAssets.AddElement();
+    slot->name = strdup(nameBuffer);
+    slot->filename = strdup(filenameBuffer);
     memset(nameBuffer, 0, sizeof(nameBuffer));
     memset(filenameBuffer, 0, sizeof(filenameBuffer));
-    return 1;
+    return true;
   }
 
-  return 0;
+  return false;
+}
+
+
+//==================================================================================
+
+static void ShowAssetSlotInfo(AssetSlot *slot, bool just_opened = false) {
+  static char nameBuffer[256] = {};
+  static char filenameBuffer[256] = {};
+  if (just_opened == true) {
+    memset(nameBuffer, 0x00, sizeof(nameBuffer));
+    memset(filenameBuffer, 0x00, sizeof(filenameBuffer));
+  }
+
+  //NOTE(Torin) This will be problematic if the assset system trys to load
+  //a file name that is in the process of beining modified
+
+  if (ImGui::InputText("Name", nameBuffer, sizeof(nameBuffer))) {
+    free(slot->name);
+    slot->name = strdup(nameBuffer);
+  }
+  
+  if (ImGui::InputText("Filename", filenameBuffer, sizeof(filenameBuffer))) {
+    free(slot->filename);
+    slot->filename = strdup(filenameBuffer);
+  }
 }
 
 static void ShowMaterialDataInfo(const MaterialData *data, bool firstOpen = false) {
   static bool isTextureVisible[MaterialTextureType_COUNT];
   if(firstOpen == true) {
-    if(data->flags & MaterialFlag_DIFFUSE) 
+    if(data->materialFlags & MaterialFlag_DIFFUSE)
       isTextureVisible[MaterialTextureType_DIFFUSE] = 1;
-    if(data->flags & MaterialFlag_SPECULAR) 
+    if(data->materialFlags & MaterialFlag_SPECULAR)
       isTextureVisible[MaterialTextureType_SPECULAR] = 1;
-    if(data->flags & MaterialFlag_NORMAL) 
+    if(data->materialFlags & MaterialFlag_NORMAL)
       isTextureVisible[MaterialTextureType_NORMAL] = 1;
-    if(data->flags & MaterialFlag_SPECULAR) 
+    if(data->materialFlags & MaterialFlag_SPECULAR)
       isTextureVisible[MaterialTextureType_SPECULAR] = 1;
   }
 
   ImGui::Text("MaterialSize: %dx%d", (int)data->textureWidth, (int)data->textureHeight);
-  if(data->flags & MaterialFlag_DIFFUSE) 
+  if(data->materialFlags & MaterialFlag_DIFFUSE)
     ImGui::Checkbox("Diffuse", &isTextureVisible[MaterialTextureType_DIFFUSE]);
-  if(data->flags & MaterialFlag_NORMAL) 
-    ImGui::Checkbox("Diffuse", &isTextureVisible[MaterialTextureType_NORMAL]);
-  if(data->flags & MaterialFlag_SPECULAR) 
-    ImGui::Checkbox("Diffuse", &isTextureVisible[MaterialTextureType_SPECULAR]);
+  if(data->materialFlags & MaterialFlag_NORMAL)
+    ImGui::Checkbox("Normal", &isTextureVisible[MaterialTextureType_NORMAL]);
+  if(data->materialFlags & MaterialFlag_SPECULAR)
+    ImGui::Checkbox("Specular", &isTextureVisible[MaterialTextureType_SPECULAR]);
 }
+//===================================================================================
 
 static void
-ShowAssetManifest(AssetManifest* manifest){
-	ImGui::Begin("Assets");
-  if(ImGui::Button("SaveManifest")) {
-    char temp[512];
-    sprintf(temp, "assets%d.vsf", (int)time(0));
-    WriteAssetManifestFile(temp, manifest);
-    VenomCopyFile(temp, "../project/assets.vsf");
-  }
-	ImGui::Columns(2);
-	ImGui::Separator();
-  
-  static U32 selectedAssetType = 0;
-	if(ImGui::Button(AssetTypeNames[selectedAssetType]))
-    ImGui::OpenPopup("AssetTypeSelect");
-  if(ImGui::BeginPopup("AssetTypeSelect")) {
-    for (size_t i = 0; i < AssetType_Count; i++) {
-      if (ImGui::Selectable(AssetTypeNames[i])) {
-        selectedAssetType= i;
-      }
-    }
-    ImGui::EndPopup();
-  }
-
-
-
-	ImGui::NextColumn();
-	ImGui::Text("Info");
-	ImGui::NextColumn();
-	ImGui::Separator();
-
-  if (selectedAssetType == AssetType_Model) {
-    ImGui::BeginChild("AssetList");
-    ImGui::Columns(2);
-    ImGui::Text("Name");
-    ImGui::NextColumn();
-    ImGui::Text("Status");
-    ImGui::NextColumn();
-    ImGui::Separator();
-
-    static int lastSelectedIndex = -1;
-    static int selected_index = -1;
-    for (U64 i = 0; i < manifest->modelAssets.count; i++) {
-      const AssetSlot* assetSlot = &manifest->modelAssets[i];
-      if (ImGui::Selectable(assetSlot->name, selected_index == (int)i)) {
-        selected_index = i;
-      }
-
-      ImGui::NextColumn();
-      static const ImColor loadedColor = ImColor(0.0f, 1.0f, 0.0f, 1.0f);
-      static const ImColor unloadedColor = ImColor(1.0f, 0.0f, 0.0f, 1.0f);
-      ImColor color = (assetSlot->flags & AssetFlag_Loaded) ? loadedColor : unloadedColor;
-      const char *text = (assetSlot->flags & AssetFlag_Loaded) ? "loaded" : "unloaded";
-      ImGui::TextColored(color, text);
-      ImGui::NextColumn();
-    }
-    ImGui::EndChild();
-
-    if (ImGui::Button("Create Model Asset"))
-      ImGui::OpenPopup("NewModel");
-    if (ImGui::Button("Destroy Model Asset")) {
-      if (selected_index != -1) {
-        DestroyModelAsset(selected_index, manifest);
-      }
-    }
-
-
-
-    if (ImGui::BeginPopup("NewModel")) {
-      if (ShowModelCreateWidgets(manifest)) {
-        ImGui::CloseCurrentPopup();
-      }
-      ImGui::EndPopup();
-    }
-
-    ImGui::NextColumn();
-    if (selected_index != -1) {
-      AssetSlot *slot = &manifest->modelAssets[selected_index];
-      static char nameBuffer[256] = {};
-      static char filenameBuffer[256] = {};
-
-      if (selected_index != lastSelectedIndex) {
-        if (lastSelectedIndex != -1) {
-          AssetSlot *lastSlot = &manifest->modelAssets[lastSelectedIndex];
-          free(lastSlot->name);
-          free(lastSlot->filename);
-          lastSlot->name = strdup(nameBuffer);
-          lastSlot->filename = strdup(filenameBuffer);
-        }
-        strcpy(nameBuffer, slot->name);
-        strcpy(filenameBuffer, slot->filename);
-        lastSelectedIndex = selected_index;
-      }
-
-      ImGui::InputText("Name", nameBuffer, sizeof(nameBuffer));
-      ImGui::InputText("Filename", filenameBuffer, sizeof(filenameBuffer));
-
-      if (slot->asset != 0) {
-        ModelAsset *asset = (ModelAsset *)slot->asset;
-        for (size_t i = 0; i < asset->data.meshCount; i++) {
-          ShowMaterialDataInfo(&asset->data.materialDataPerMesh[i],
-            lastSelectedIndex != selected_index);
-        }
-      }
-    }
-  }
-
-
-  else if(selectedAssetType == AssetType_Material){
-    ImGui::BeginChild("AssetList");
-    ImGui::Columns(2);
-    ImGui::Text("Name");
-    ImGui::NextColumn();
-    ImGui::Text("Status");
-    ImGui::NextColumn();
-    ImGui::Separator();
-
-    static int selected_index = -1;
-    for(U64 i = 0; i < MaterialID_COUNT; i++){
-      const MaterialAsset *material = &manifest->materialAssetList.materials[i];
-      if(ImGui::Selectable(MATERIAL_NAMES[i], selected_index == (int)i)){
-        selected_index = i;
-      }
-
-      ImGui::NextColumn();
-
-      static const ImColor loadedColor = ImColor(0.0f, 1.0f, 0.0f, 1.0f);
-      static const ImColor unloadedColor = ImColor(1.0f, 0.0f, 0.0f, 1.0f);
-      ImColor color = (material->data.textureData != 0) ? loadedColor : unloadedColor;
-      const char *text = (material->data.textureData != 0) ? "loaded" : "unloaded";
-      ImGui::TextColored(color, text);
-      ImGui::NextColumn();
-    }
-    ImGui::EndChild();
-    ImGui::NextColumn();
-
-    if(selected_index >= 0) {
-      const MaterialAsset *material = &manifest->materialAssetList.materials[selected_index];
-
-      static const U32 textureDisplaySize = 256;
-      ImVec2 textureBounds = ImVec2(textureDisplaySize, textureDisplaySize);
-      ImGui::BeginChild("diffuse", ImVec2(textureDisplaySize, textureDisplaySize + 18));
-      ImGui::Text("Diffuse Texture");
-      ImGui::Image((ImTextureID)(uintptr_t)material->drawable.diffuse_texture_id, textureBounds);
-      ImGui::EndChild();
-
-      if (material->data.flags & MaterialFlag_NORMAL) {
-        ImGui::SameLine();
-        ImGui::BeginChild("normal", ImVec2(textureDisplaySize, textureDisplaySize + 18));
-        ImGui::Text("Normal Texture");
-        ImGui::Image((ImTextureID)(uintptr_t)material->drawable.normal_texture_id, textureBounds);
-        ImGui::EndChild();
-      }
-
-      if (material->data.flags & MaterialFlag_SPECULAR) {
-        ImGui::SameLine();
-        ImGui::BeginChild("specular", ImVec2(textureDisplaySize, textureDisplaySize + 18));
-        ImGui::Text("Specular Texture");
-        ImGui::Image((ImTextureID)(uintptr_t)material->drawable.specular_texture_id, textureBounds);
-        ImGui::EndChild();
-      }
-
-    }
-    ImGui::NextColumn();
-
-
-  }
-  	ImGui::End();
-}
-
-static void
-ShowEventOverlay(const VenomDebugData& data){
-  static const U32 overlayWidth = 250;
-  static const U32 overlayPadding = 8;
-  const ImGuiIO& io = ImGui::GetIO();
-  const U32 xpos = io.DisplaySize.x - overlayWidth - overlayPadding;
-  ImGui::SetNextWindowPos(ImVec2(xpos, overlayPadding));
-  ImGui::SetNextWindowSize(ImVec2(overlayWidth, 0));
-  ImGui::Begin("EventOverlay", 0, ImVec2(0,0), 0.3f, 
-    ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | 
-    ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings); 
-  if(data.unseenErrorCount > 0)
-    ImGui::TextColored(ImColor(255,0,0),"Errors: %u", data.unseenErrorCount);
-  if(data.unseenWarningCount > 0)
-    ImGui::TextColored(ImColor(255,255,0),"Warnings: %u", data.unseenWarningCount);
-  ImGui::End();
-}
-
-static void
-ShowConsole(const DebugLog *log, bool scrollToBottom = false){
+ShowConsole(VenomDebugData *data, const DebugLog *log, bool scrollToBottom = false){
 	ImGui::Begin("Console");
 	ImGui::BeginChild("LogEntries");
   for (size_t i = 0; i < log->current_entry_count; i++) {
@@ -326,6 +151,10 @@ ShowConsole(const DebugLog *log, bool scrollToBottom = false){
   if (scrollToBottom) ImGui::SetScrollHere();
 	ImGui::EndChild();
 	ImGui::End();
+
+  data->unseenErrorCount = 0;
+  data->unseenWarningCount = 0;
+  data->unseenInfoCount = 0;
 }
 
 static void 
@@ -348,12 +177,9 @@ ShowSystemInfo(const SystemInfo* sys) {
 	ImGui::End();
 }
 
-static void
-ShowCameraInfo(const Camera* camera) {
-	ImGui::Begin("CameraInfo");
-	ImGuiTextV3(camera->position);
-	ImGuiTextV3(camera->front);
+static void draw_camera_info_ui(const Camera* camera) {
+  ImGui::Text("Position: [%f, %f, %f]", camera->position.x, camera->position.y, camera->position.z);
+  ImGui::Text("Front: [%f, %f, %f]", camera->front.x, camera->front.y, camera->front.z);
 	ImGui::Text("Pitch: %f", RAD2DEG*camera->pitch);
 	ImGui::Text("Yaw: %f", RAD2DEG*camera->yaw);
-	ImGui::End();
 }

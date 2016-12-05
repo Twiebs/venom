@@ -1,13 +1,12 @@
+
 struct Rectangle {
   F32 minX, minY;
   F32 maxX, maxY; 
 };
 
-inline V2 
-Center(const Rectangle& rectangle){
+inline V2 Center(const Rectangle& rectangle){
   F32 width = rectangle.maxX - rectangle.minX;
   F32 length = rectangle.maxY - rectangle.minY;
-  V2 result = { rectangle.minX + (width * 0.5F),
-    rectangle.minY + (length * 0.5F) };
+  V2 result = { rectangle.minX + (width * 0.5F), rectangle.minY + (length * 0.5F) };
   return result; 
 }

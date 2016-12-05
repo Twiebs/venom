@@ -1,5 +1,5 @@
-void InitGBuffer(GBuffer* gbuffer, const U32 viewportWidth, const U32 viewportHeight) 
-{
+
+void InitGBuffer(GBuffer* gbuffer, const U32 viewportWidth, const U32 viewportHeight) {
   glGenFramebuffers(1, &gbuffer->framebuffer);
   glBindFramebuffer(GL_FRAMEBUFFER, gbuffer->framebuffer);
   
@@ -21,18 +21,14 @@ void InitGBuffer(GBuffer* gbuffer, const U32 viewportWidth, const U32 viewportHe
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-  glGenTextures(1, &gbuffer->depthTexture);
-  glBindTexture(GL_TEXTURE_2D, gbuffer->depthTexture);
-  glTexStorage2D(GL_TEXTURE_2D, 1, GL_DEPTH_COMPONENT24, viewportWidth, viewportHeight);
+  glGenTextures(1, &gbuffer->depthStencilBuffer);
+  glBindTexture(GL_TEXTURE_2D, gbuffer->depthStencilBuffer);
+  glTexStorage2D(GL_TEXTURE_2D, 1, GL_DEPTH24_STENCIL8, viewportWidth, viewportHeight);
 
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, 
-    GL_TEXTURE_2D, gbuffer->positionDepth, 0);
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, 
-    GL_TEXTURE_2D, gbuffer->normal, 0);
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, 
-    GL_TEXTURE_2D, gbuffer->albedoSpecular, 0);
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, 
-    GL_TEXTURE_2D, gbuffer->depthTexture, 0);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, gbuffer->positionDepth, 0);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, gbuffer->normal, 0);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, gbuffer->albedoSpecular, 0);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, gbuffer->depthStencilBuffer, 0);
 
   GLuint attachments[] = { 
     GL_COLOR_ATTACHMENT0, 
@@ -45,9 +41,7 @@ void InitGBuffer(GBuffer* gbuffer, const U32 viewportWidth, const U32 viewportHe
   glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void InitCascadedShadowMaps(CascadedShadowMap* csm, 
-  F32 viewportWidth, F32 viewportHeight, F32 fieldOfView) 
-{ 
+void InitCascadedShadowMaps(CascadedShadowMap* csm, F32 viewportWidth, F32 viewportHeight, F32 fieldOfView) { 
   glGenFramebuffers(1, &csm->framebuffer);
   glBindFramebuffer(GL_FRAMEBUFFER, csm->framebuffer);
   glDrawBuffer(GL_NONE);
@@ -55,29 +49,27 @@ void InitCascadedShadowMaps(CascadedShadowMap* csm,
 
   glGenTextures(1, &csm->depthTexture);
   glBindTexture(GL_TEXTURE_2D_ARRAY, csm->depthTexture);
-  glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_DEPTH_COMPONENT,
-               SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION, 
-               SHADOW_MAP_CASCADE_COUNT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+  glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_DEPTH_COMPONENT, SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION, 
+    SHADOW_MAP_CASCADE_COUNT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
   glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
   for (U32 i = 0; i < SHADOW_MAP_CASCADE_COUNT; i++) {
-    csm->cascadeFrustums[i].aspect_ratio = 
-      viewportWidth / viewportHeight;
+    csm->cascadeFrustums[i].aspect_ratio = viewportWidth / viewportHeight;
     csm->cascadeFrustums[i].field_of_view = fieldOfView + 0.2f;
   }
 }
 
-void InitOmnidirectionalShadowMap(OmnidirectionalShadowMap* osm) 
-{
+void InitOmnidirectionalShadowMap(OmnidirectionalShadowMap* osm) {
   glGenTextures(1, &osm->depthCubemap);
   glBindTexture(GL_TEXTURE_CUBE_MAP, osm->depthCubemap);
-  for (size_t i = 0; i < 6; i++)
+  for (size_t i = 0; i < 6; i++) {
     glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_DEPTH_COMPONENT,
-      OMNI_SHADOW_MAP_RESOLUTION, OMNI_SHADOW_MAP_RESOLUTION, 0, 
+      OMNI_SHADOW_MAP_RESOLUTION, OMNI_SHADOW_MAP_RESOLUTION, 0,
       GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+  }
   
   glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -86,9 +78,7 @@ void InitOmnidirectionalShadowMap(OmnidirectionalShadowMap* osm)
   glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);  
 }
 
-inline void
-SSAOInit(SSAO* ssao, U32 viewportWidth, U32 viewportHeight) 
-{
+inline void SSAOInit(SSAO* ssao, U32 viewportWidth, U32 viewportHeight) {
   glGenFramebuffers(1, &ssao->framebuffer);
   glBindFramebuffer(GL_FRAMEBUFFER, ssao->framebuffer);
   
@@ -97,8 +87,7 @@ SSAOInit(SSAO* ssao, U32 viewportWidth, U32 viewportHeight)
   glTexStorage2D(GL_TEXTURE_2D, 1, GL_R32F, viewportWidth, viewportHeight);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, 
-    GL_TEXTURE_2D, ssao->bufferTexture, 0);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ssao->bufferTexture, 0);
 
   GLuint attachments[] = { GL_COLOR_ATTACHMENT0 };
   glDrawBuffers(1, attachments);
@@ -114,8 +103,7 @@ SSAOInit(SSAO* ssao, U32 viewportWidth, U32 viewportHeight)
 
   glGenTextures(1, &ssao->noiseTexture);
   glBindTexture(GL_TEXTURE_2D, ssao->noiseTexture);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, SSAO_NOISE_SIZE, SSAO_NOISE_SIZE,
-    0, GL_RGB, GL_FLOAT, ssaoNoise);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, SSAO_NOISE_SIZE, SSAO_NOISE_SIZE, 0, GL_RGB, GL_FLOAT, ssaoNoise);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -188,79 +176,12 @@ void UnmapIndexedVertexArray(IndexedVertexArray *array){
 }
 
 
-static inline
-void CreateDebugRenderResources(DebugRenderResources* resources) 
-{
 
-//NOTE(Torin) Contains definitions for debug primitave vertices and indices
-#include "render_debug_shapes.h"
-
-  glGenVertexArrays(1, &resources->vao);
-  glBindVertexArray(resources->vao);
-
-#define ShapeList \
-  _(cube) _(sphere) _(axis) 
-  
-  glGenBuffers(1, &resources->vbo);
-  glBindBuffer(GL_ARRAY_BUFFER, resources->vbo);
-#define _(name) + sizeof(name##Vertices)
-  glBufferData(GL_ARRAY_BUFFER, 0 ShapeList, 0, GL_DYNAMIC_DRAW);
-#undef _
-
-
-  {
-  size_t currentOffset = 0;
-    #define _(name) glBufferSubData(GL_ARRAY_BUFFER, currentOffset, \
-      sizeof(name##Vertices), name##Vertices); \
-      currentOffset += sizeof(name##Vertices);
-    ShapeList
-    #undef _
-  }
-
-
-
-  glGenBuffers(1, &resources->ebo);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, resources->ebo);
-  #define _(name) + sizeof(name##Indices)
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, 0 ShapeList, 0, GL_DYNAMIC_DRAW);
-  #undef _
-
-  static auto fuck = [](U32 *indices, size_t count, U32 offset){
-    for(size_t i = 0; i < count; i++){
-      indices[i] += offset;
-    }
-  };
-
-  {
-    size_t currentVertexCount = 0;
-    size_t currentIndicesOffset = 0;
-    #define _(name) fuck(name##Indices, ARRAY_COUNT(name##Indices), currentVertexCount); \
-    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, currentIndicesOffset, sizeof(name##Indices), name##Indices); \
-    currentVertexCount += ARRAY_COUNT(name##Vertices);\
-    currentIndicesOffset += sizeof(name##Indices);
-    ShapeList
-    #undef _
-  }
-
-  glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-  glBindVertexArray(0);
-
-  {
-    size_t currentOffset = 0;
-    #define _(name) resources->name##IndexCount = ARRAY_COUNT(name##Indices); \
-      resources->name##IndexOffset = currentOffset; \
-      currentOffset += sizeof(name##Indices);
-    ShapeList
-    #undef _
-  }
-}
 
 
 
 void CreateIndexedVertex3DArray(GLuint *vertexArray, GLuint *vertexBuffer, GLuint *indexBuffer,
-	U32 vertexCount, U32 indexCount, const Vertex3D *vertices, const U32 *indices, GLenum drawMode)
-{
+	U32 vertexCount, U32 indexCount, const Vertex3D *vertices, const U32 *indices, GLenum drawMode) {
 	glGenVertexArrays(1, vertexArray);
 	glBindVertexArray(*vertexArray);
 
@@ -281,6 +202,34 @@ void CreateIndexedVertex3DArray(GLuint *vertexArray, GLuint *vertexBuffer, GLuin
 	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), (GLvoid*)offsetof(Vertex3D, tangent));
 	glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), (GLvoid*)offsetof(Vertex3D, texcoord));
 	glBindVertexArray(0);
+}
+
+void create_indexed_animated_vertex_array(GLuint *vertexArray, GLuint *vertexBuffer, GLuint *indexBuffer,
+  U32 vertexCount, U32 indexCount, const AnimatedVertex *vertices, const U32 *indices, GLenum drawMode) {
+  glGenVertexArrays(1, vertexArray);
+  glBindVertexArray(*vertexArray);
+
+  glGenBuffers(1, vertexBuffer);
+  glBindBuffer(GL_ARRAY_BUFFER, *vertexBuffer);
+  glBufferData(GL_ARRAY_BUFFER, vertexCount * sizeof(AnimatedVertex), vertices, drawMode);
+
+  glGenBuffers(1, indexBuffer);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, *indexBuffer);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexCount * sizeof(U32), indices, drawMode);
+
+  glEnableVertexAttribArray(0);
+  glEnableVertexAttribArray(1);
+  glEnableVertexAttribArray(2);
+  glEnableVertexAttribArray(3);
+  glEnableVertexAttribArray(4);
+  glEnableVertexAttribArray(5);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(AnimatedVertex), (GLvoid*)offsetof(AnimatedVertex, position));
+  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(AnimatedVertex), (GLvoid*)offsetof(AnimatedVertex, normal));
+  glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(AnimatedVertex), (GLvoid*)offsetof(AnimatedVertex, tangent));
+  glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(AnimatedVertex), (GLvoid*)offsetof(AnimatedVertex, texcoord));
+  glVertexAttribPointer(4, 4, GL_INT, GL_FALSE, sizeof(AnimatedVertex), (GLvoid*)offsetof(AnimatedVertex, bone_index));
+  glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(AnimatedVertex), (GLvoid*)offsetof(AnimatedVertex, weight));
+  glBindVertexArray(0);
 }
 
 void CreateIndexedVertex2DArray(GLuint *vertexArray, GLuint *vertexBuffer, GLuint *indexBuffer,
@@ -371,14 +320,14 @@ GLuint CreateTextureArray(U16 width, U16 height, U32 depth, GLenum internal_form
 
 MaterialDrawable CreateMaterialDrawable(MaterialData *data) {
 	MaterialDrawable drawable = {};
-	drawable.flags = data->flags;
-  assert(data->flags & MaterialFlag_DIFFUSE);
+	drawable.flags = data->materialFlags;
+  assert(data->materialFlags & MaterialFlag_DIFFUSE);
 	U8 *pixels_to_read = data->textureData;
 	GLenum wrap_mode = GL_CLAMP_TO_EDGE;
-	if(data->flags & MaterialFlag_REPEAT) 
+	if(data->materialFlags & MaterialFlag_REPEAT)
     wrap_mode = GL_REPEAT;
 
-	if (data->flags & MaterialFlag_TRANSPARENT) {
+	if (data->materialFlags & MaterialFlag_TRANSPARENT) {
 		drawable.diffuse_texture_id = CreateTextureWithMipmaps(pixels_to_read,
       data->textureWidth, data->textureHeight, GL_RGBA8, GL_RGBA, wrap_mode);
 		pixels_to_read += (data->textureWidth * data->textureHeight * 4);
@@ -388,13 +337,13 @@ MaterialDrawable CreateMaterialDrawable(MaterialData *data) {
 		pixels_to_read += (data->textureWidth * data->textureHeight * 3);
 	}
 
-	if (data->flags & MaterialFlag_NORMAL) {
+	if (data->materialFlags & MaterialFlag_NORMAL) {
 		drawable.normal_texture_id = CreateTextureWithMipmaps(pixels_to_read,
       data->textureWidth, data->textureHeight, GL_RGB8, GL_RGB, wrap_mode);
 		pixels_to_read += (data->textureWidth * data->textureHeight * 3);
 	}
 
-	if (data->flags & MaterialFlag_SPECULAR) {
+	if (data->materialFlags & MaterialFlag_SPECULAR) {
 		drawable.specular_texture_id = CreateTextureWithMipmaps(pixels_to_read,
       data->textureWidth, data->textureHeight, GL_RGB8, GL_RGB, wrap_mode);
 	}

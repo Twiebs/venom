@@ -75,7 +75,9 @@ struct VenomDebugData {
   U32 unseenInfoCount;
 
   B8 isConsoleVisible;
-  B8 triggerToggleConsole;
+  B8 isEditorVisible;
+
+  //B8 triggerToggleConsole;
 
 	DebugLog debugLog;
 	ProfileData profileData;

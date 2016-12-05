@@ -28,23 +28,16 @@ struct Vertex3D {
 	V2 texcoord;
 };
 
-struct BoneVertexInfluence {
-	float weight;
-	U32 index;
-};
-
-struct Bone {
-	M4 offset_matrix;
-};
-
 struct AnimatedVertex {
 	V3 position;
 	V3 normal;
 	V3 tangent;
 	V2 texcoord;
-	U32 boneInfluenceCount;
-	BoneVertexInfluence *bones;
+  U8 bone_count;
+  U8 bone_index[4];
+  F32 weight[4];
 };
+
 
 enum MaterialTextureType {
 	MaterialTextureType_DIFFUSE,
@@ -69,19 +62,26 @@ enum MaterialFlag {
 };
 
 struct MaterialData {
-	U32 flags;
+	U32 materialFlags;
 	U16 textureWidth;
 	U16 textureHeight;
 	U8 *textureData;
 };
 
+struct AnimationBone {
+
+};
+
 struct MeshData {
 	U32 vertexCount;
 	U32 indexCount;
-	Vertex3D *vertices;
+  U32 boneCount;
+	AnimatedVertex *vertices;
 	U32 *indices;
+  AnimationBone *bones;
 };
 
+#if 0
 struct AnimatedMeshData {
 	U32 vertexCount;
 	U32 indexCount;
@@ -90,6 +90,7 @@ struct AnimatedMeshData {
 	Bone *bones;
 	U32 *indices;
 };
+#endif
 
 struct ModelData {
 	U32 meshCount;
@@ -98,12 +99,14 @@ struct ModelData {
 	U32 *indexCountPerMesh;
 };
 
+#if 0
 struct AnimatedModelData {
 	U32 meshCount;
 	AnimatedMeshData meshData;
 	MaterialData *materialDataPerMesh;
 	U32 *indexCountPerMesh;
 };
+#endif
 
 struct Frustum {
 	F32 field_of_view;
@@ -133,12 +136,3 @@ struct PointLight {
 	V3 color;
 	F32 radius;
 };
-
-
-#if 0
-struct DebugMaterialInfo {
-	const char *filenames[MaterialTextureType_COUNT];
-	V3 diffuse_color;
-	V3 specular_color;
-};
-#endif

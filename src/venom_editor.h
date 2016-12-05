@@ -1,3 +1,4 @@
+
 enum EditorCommand {
   EditorCommand_None,
   EditorCommand_Confirm,
@@ -7,6 +8,17 @@ enum EditorCommand {
   EditorCommand_Grab,
   EditorCommand_Project,
   EditorCommand_MeshEdit,
+};
+
+const char *EditorCommandNames[] = {
+  "EditorCommand_None",
+  "EditorCommand_Confirm",
+  "EditorCommand_Cancel",
+
+  "EditorCommand_Select",
+  "EditorCommand_Grab",
+  "EditorCommand_Project",
+  "EditorCommand_MeshEdit",
 };
 
 enum EditorSelectMode {
@@ -21,27 +33,14 @@ enum EditorTransformConstraint {
   EditorTransformConstraint_ZAxis = 1 << 2,
 };
 
-const char *EditorCommandNames[] = {
-  "EditorCommand_None",
-  "EditorCommand_Confirm",
-  "EditorCommand_Cancel",
-
-  "EditorCommand_Select",
-  "EditorCommand_Grab",
-  "EditorCommand_Project",
-  "EditorCommand_MeshEdit",
-};
-
 struct EditorData {
   EditorCommand lastCommand;
   EditorCommand activeCommand;
   EditorSelectMode selectMode;
   EditorTransformConstraint transformConstraints;
 
-//TODO(Torin) Implement this camera functionality
-  Camera *selectedCamera;
-  Camera defaultCamera;
-  DynamicArray<Camera> customCameras;
+  Camera *activeCamera;
+  Camera editorCamera;
 
   DynamicArray<U32> selectedEntities;
   DynamicArray<V3> originalEntityPositions;
@@ -52,3 +51,4 @@ struct EditorData {
   V3 currentGroupPosition;
   V3 currentGroupRotation;
 };
+

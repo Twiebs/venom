@@ -30,103 +30,108 @@ SoundData LoadOGG(const char *filename) {
 	return result;
 }
 
-ModelData ImportExternalModelData(const char *filename, MemoryBlock *memblock)
-{
+bool ImportExternalModelData(const char *filename, ModelData *data) {
 	Assimp::Importer importer;
-	auto scene = importer.ReadFile(filename, 
-    aiProcess_JoinIdenticalVertices |
-    aiProcess_FlipWindingOrder | 
-    aiProcess_Triangulate | 
-    aiProcess_FlipUVs | 
-    aiProcess_CalcTangentSpace);
+	const aiScene* scene = importer.ReadFile(filename, aiProcess_JoinIdenticalVertices | aiProcess_FlipWindingOrder | 
+    aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
 
 	if (!scene || scene->mFlags == AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
 		LOG_ERROR("Assimp failed to load file (%s): %s", filename, importer.GetErrorString());
-		return ModelData{};
+    return false;
 	}
 
 
-	ModelData data = {};
-	data.meshCount = scene->mNumMaterials;
+	data->meshCount = scene->mNumMaterials;
 	for (U32 i = 0; i < scene->mNumMeshes; i++) {
-		data.meshData.vertexCount += scene->mMeshes[i]->mNumVertices;
-		data.meshData.indexCount += scene->mMeshes[i]->mNumFaces * 3;
+		data->meshData.vertexCount += scene->mMeshes[i]->mNumVertices;
+		data->meshData.indexCount += scene->mMeshes[i]->mNumFaces * 3;
 	}
 
-  size_t requiredMemory = 
-    sizeof(U32) * data.meshCount +
-    sizeof(MaterialData) * data.meshCount +
-    sizeof(Vertex3D) * data.meshData.vertexCount +
-    sizeof(U32) * data.meshData.indexCount;
+  size_t requiredMemory = sizeof(U32) * data->meshCount + sizeof(MaterialData) * data->meshCount +
+    sizeof(AnimatedVertex) * data->meshData.vertexCount + sizeof(U32) * data->meshData.indexCount;
 
   //TODO(Torin) Make sure these are aligned correctly
-	assert(data.meshCount == scene->mNumMaterials);
+	assert(data->meshCount == scene->mNumMaterials);
   uint8_t* memory = (uint8_t*)calloc(requiredMemory, 1);
-  data.indexCountPerMesh = (U32*)memory;
-  data.materialDataPerMesh = (MaterialData*)(data.indexCountPerMesh  + data.meshCount);
-  data.meshData.vertices = (Vertex3D*)(data.materialDataPerMesh + data.meshCount);
-  data.meshData.indices = (U32*)(data.meshData.vertices + data.meshData.vertexCount);
+  data->indexCountPerMesh = (U32*)memory;
+  data->materialDataPerMesh = (MaterialData*)(data->indexCountPerMesh  + data->meshCount);
+  data->meshData.vertices = (AnimatedVertex*)(data->materialDataPerMesh + data->meshCount);
+  data->meshData.indices = (U32*)(data->meshData.vertices + data->meshData.vertexCount);
 
-#if 0
-	data.indexCountPerMesh = ReserveArray(U32, data.meshCount, memblock);
-	data.materialDataPerMesh = ReserveArray(MaterialData, data.meshCount, memblock);
-	data.meshData.vertices = ReserveArray(Vertex3D, data.meshData.vertexCount, memblock);
-	data.meshData.indices = ReserveArray(U32, data.meshData.indexCount, memblock);
-#endif
+  //U32 total_bone_count = 0;
 
-	U32 currentVertexOffset = 0, currentIndexOffset = 0;
-	for (U32 i = 0; i < scene->mNumMaterials; i++) {
-		for (U32 n = 0; n < scene->mNumMeshes; n++) {
+  size_t currentVertexOffset = 0;
+  size_t currentIndexOffset = 0;
+	for (size_t i = 0; i < scene->mNumMaterials; i++) {
+		for (size_t n = 0; n < scene->mNumMeshes; n++) {
 			if (scene->mMeshes[n]->mMaterialIndex == i) {
 				aiMesh *assimpMesh = scene->mMeshes[n];
-				for (U32 j = 0; j < assimpMesh->mNumVertices; j++) {
-					auto index = currentVertexOffset + j;
-					data.meshData.vertices[index].position.x = assimpMesh->mVertices[j].x;
-					data.meshData.vertices[index].position.y = assimpMesh->mVertices[j].z;
-					data.meshData.vertices[index].position.z = assimpMesh->mVertices[j].y;
-				}
 
-				for (U32 j = 0; j < assimpMesh->mNumVertices; j++) {
-					auto index = currentVertexOffset + j;
-					data.meshData.vertices[index].normal.x = assimpMesh->mNormals[j].x;
-					data.meshData.vertices[index].normal.y = assimpMesh->mNormals[j].z;
-					data.meshData.vertices[index].normal.z = assimpMesh->mNormals[j].y;
-				}
+        //TODO(Torin) This might need to be fast get rid of the branches
+        //Posibly change to inlined calls to static lambdas for setting each property
+        //because we need to set these differently for each type of  vertex!
+        //Mabye for now we should just use a single type of vertex and eat the memory wastage
+        AnimatedVertex *vertices = (AnimatedVertex *)data->meshData.vertices;
+        for (size_t j = 0; j < assimpMesh->mNumVertices; j++) {
+          size_t index = currentVertexOffset + j;
+          vertices[index].position.x = assimpMesh->mVertices[j].x;
+          vertices[index].position.y = assimpMesh->mVertices[j].z;
+          vertices[index].position.z = assimpMesh->mVertices[j].y;
+          vertices[index].normal.x = assimpMesh->mNormals[j].x;
+          vertices[index].normal.y = assimpMesh->mNormals[j].z;
+          vertices[index].normal.z = assimpMesh->mNormals[j].y;
+          if (assimpMesh->mTangents != nullptr) {
+            vertices[index].tangent.x = assimpMesh->mTangents[j].x;
+            vertices[index].tangent.y = assimpMesh->mTangents[j].z;
+            vertices[index].tangent.z = assimpMesh->mTangents[j].y;
+          }
 
-				if (assimpMesh->mTangents != nullptr) {
-					for (U32 j = 0; j < assimpMesh->mNumVertices; j++) {
-						auto index = currentVertexOffset + j;
-						data.meshData.vertices[index].tangent.x = assimpMesh->mTangents[j].x;
-						data.meshData.vertices[index].tangent.y = assimpMesh->mTangents[j].y;
-						data.meshData.vertices[index].tangent.z = assimpMesh->mTangents[j].z;
-					}
-				}
+          if (assimpMesh->mTextureCoords[0] != nullptr) {
+            vertices[index].texcoord.x = assimpMesh->mTextureCoords[0][j].x;
+            vertices[index].texcoord.y = assimpMesh->mTextureCoords[0][j].y;
+          }
+        }
 
-				if (assimpMesh->mTextureCoords[0] != nullptr) {
-					for (U32 j = 0; j < assimpMesh->mNumVertices; j++) {
-						auto index = currentVertexOffset + j;
-						data.meshData.vertices[index].texcoord.x = assimpMesh->mTextureCoords[0][j].x;
-						data.meshData.vertices[index].texcoord.y = assimpMesh->mTextureCoords[0][j].y;
-					}
-				}
+
+
+#if 0
+        for (size_t bone_index = 0; bone_index < assimpMesh->mNumBones; bone_index++) {
+          aiBone *bone = assimpMesh->mBones[bone_index];
+          for (size_t i = 0; i < bone->mNumWeights; i++) {
+            aiVertexWeight *weight = &bone->mWeights[i];
+            if (vertices[weight->mVertexId].bone_count >= 4) {
+              LOG_ERROR("Vertex is influenced by too many bones: %s", filename);
+              free(memory);
+              return false;
+            }
+
+            //Does not account for total number of bones in the mesh!
+            AnimatedVertex *vertex = &vertices[weight->mVertexId];
+            vertex->bone_index[vertex->bone_count] = bone_index + total_bone_count;
+            vertex->weight[vertex->bone_count] = weight->mWeight;
+            vertex->bone_count++;
+          }
+          total_bone_count++;
+        }
+#endif
 
 				U32 lastIndexOffset = currentIndexOffset;
-				for (U32 j = 0; j < assimpMesh->mNumFaces; j++)
-				{
-					data.meshData.indices[currentIndexOffset + 0] = assimpMesh->mFaces[j].mIndices[0] + currentVertexOffset;
-					data.meshData.indices[currentIndexOffset + 1] = assimpMesh->mFaces[j].mIndices[1] + currentVertexOffset;
-					data.meshData.indices[currentIndexOffset + 2] = assimpMesh->mFaces[j].mIndices[2] + currentVertexOffset;
+				for (size_t j = 0; j < assimpMesh->mNumFaces; j++) {
+					data->meshData.indices[currentIndexOffset + 0] = assimpMesh->mFaces[j].mIndices[0] + currentVertexOffset;
+					data->meshData.indices[currentIndexOffset + 1] = assimpMesh->mFaces[j].mIndices[1] + currentVertexOffset;
+					data->meshData.indices[currentIndexOffset + 2] = assimpMesh->mFaces[j].mIndices[2] + currentVertexOffset;
 					currentIndexOffset += 3;
 				}
+
+
 				assert(currentIndexOffset == lastIndexOffset + (assimpMesh->mNumFaces * 3));
 				currentVertexOffset += scene->mMeshes[n]->mNumVertices;
-				data.indexCountPerMesh[i] += scene->mMeshes[n]->mNumFaces * 3;
+				data->indexCountPerMesh[i] += scene->mMeshes[n]->mNumFaces * 3;
 			}
 		}
 	}
 
-  auto GetTextureFilename = [&filename]
-  (MaterialTextureType type, char *out, aiMaterial *material) -> int { 
+  auto GetTextureFilename = [&filename](MaterialTextureType type, char *out, aiMaterial *material) -> int { 
     const aiTextureType aiTextureTypeLookupTable[] = {
       aiTextureType_DIFFUSE,
       aiTextureType_NORMALS,
@@ -134,8 +139,8 @@ ModelData ImportExternalModelData(const char *filename, MemoryBlock *memblock)
     };
 
     size_t lastSlashOffset = LastOffsetOfChar('/', filename);
-    memcpy(out, filename, lastSlashOffset);
-    char *textureFilenameWrite = out + lastSlashOffset;
+    memcpy(out, filename, lastSlashOffset + 1);
+    char *textureFilenameWrite = out + lastSlashOffset + 1;
 
     size_t textureCount = material->GetTextureCount(aiTextureTypeLookupTable[type]); 
     if (textureCount == 0) return 0;
@@ -158,8 +163,7 @@ ModelData ImportExternalModelData(const char *filename, MemoryBlock *memblock)
     char filenames[MaterialTextureType_COUNT][1024] = {};
     uint32_t materialFlags = 0;
     for(size_t i = 0; i < MaterialTextureType_COUNT; i++){
-      int isFilenameValid = GetTextureFilename(
-        (MaterialTextureType)i, filenames[i], material);
+      int isFilenameValid = GetTextureFilename((MaterialTextureType)i, filenames[i], material);
       materialFlags |= ((1 << i) * isFilenameValid);
     }
 
@@ -176,10 +180,11 @@ ModelData ImportExternalModelData(const char *filename, MemoryBlock *memblock)
       filenames[2],
     };
      
-		CreateMaterialData(filenameList, materialFlags, 
-      &data.materialDataPerMesh[materialIndex], diffuseColor);
+    if (CreateMaterialData(filenameList, materialFlags, &data->materialDataPerMesh[materialIndex], diffuseColor) == false) {
+      return false;
+    }
 	}
-	return data;
+	return true;
 }
 
 #if 0

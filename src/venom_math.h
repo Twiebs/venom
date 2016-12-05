@@ -15,6 +15,13 @@ inline void Swap(T* a, T* b){
   *b = t;
 }
 
+template <typename T>
+inline T Clamp(T value, T min, T max) {
+  if (value > max) return max;
+  if (value < min) return min;
+  return value;
+}
+
 inline F32 
 Clamp(F32 value, F32 min, F32 max) {
 	if (value > max) return max;
