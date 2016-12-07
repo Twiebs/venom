@@ -1,3 +1,7 @@
+
+//TODO(Torin 2016-12-05) Remove RenderGroups
+
+#if 1
 struct RenderGroup {
 	GLuint vao;
 	GLuint vbo;
@@ -7,21 +11,12 @@ struct RenderGroup {
 	size_t current_vertex_count;
 	size_t current_index_count;
 };
+#endif
 
-//TODO(Torin: Jun 12, 2016) Remove this dirty hack
 struct IndexedVertexArray {
-  union { struct {
-    GLuint vertexArrayID;
-    GLuint vertexBufferID;
-    GLuint indexBufferID;
-  }; struct {
-    GLuint vao;
-    GLuint vbo;
-    GLuint ebo;
-  };
-  };
-
-
+  GLuint vertexArrayID;
+  GLuint vertexBufferID;
+  GLuint indexBufferID;
   U32 vertexCount, indexCount;
 };
 
@@ -60,12 +55,16 @@ struct MaterialDrawable {
 	GLuint specular_texture_id;
 };
 
+#if 1
 struct ModelDrawable {
 	GLuint vertexArrayID;
 	U32 meshCount;
 	U32 *indexCountPerMesh;
 	MaterialDrawable *materials;
+  U32 bone_count;
+  Animation_Bone *bones;
 };
+#endif
 
 
 

@@ -33,9 +33,9 @@ struct AnimatedVertex {
 	V3 normal;
 	V3 tangent;
 	V2 texcoord;
-  U8 bone_count;
-  U8 bone_index[4];
+  U32 bone_index[4];
   F32 weight[4];
+  U32 bone_count;
 };
 
 
@@ -68,8 +68,9 @@ struct MaterialData {
 	U8 *textureData;
 };
 
-struct AnimationBone {
-
+struct Animation_Bone {
+  char name[64];
+  M4 offset_matrix;
 };
 
 struct MeshData {
@@ -78,35 +79,15 @@ struct MeshData {
   U32 boneCount;
 	AnimatedVertex *vertices;
 	U32 *indices;
-  AnimationBone *bones;
+  Animation_Bone *bones;
 };
-
-#if 0
-struct AnimatedMeshData {
-	U32 vertexCount;
-	U32 indexCount;
-	U32 boneCount;
-	AnimatedVertex *vertices;
-	Bone *bones;
-	U32 *indices;
-};
-#endif
 
 struct ModelData {
 	U32 meshCount;
 	MeshData meshData;
-	MaterialData *materialDataPerMesh;	
-	U32 *indexCountPerMesh;
-};
-
-#if 0
-struct AnimatedModelData {
-	U32 meshCount;
-	AnimatedMeshData meshData;
 	MaterialData *materialDataPerMesh;
 	U32 *indexCountPerMesh;
 };
-#endif
 
 struct Frustum {
 	F32 field_of_view;

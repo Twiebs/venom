@@ -152,7 +152,7 @@ const V3* vertices = 0, const U32 *indices = 0)
 {
   assert(vertexCount > 0);
   assert(indexCount > 0);
-  CreateIndexedVertex1PArray(&array->vao, &array->vbo, &array->ebo,
+  CreateIndexedVertex1PArray(&array->vertexArrayID, &array->vertexBufferID, &array->indexBufferID,
     vertexCount, indexCount, drawMode, vertices, indices);
   array->vertexCount = vertexCount;
   array->indexCount = indexCount;
@@ -171,14 +171,9 @@ V3 **vertices, U32 **indices, U32 access)
 
 static inline
 void UnmapIndexedVertexArray(IndexedVertexArray *array){
-  glUnmapNamedBuffer(array->vao);
-  glUnmapNamedBuffer(array->ebo);
+  glUnmapNamedBuffer(array->vertexArrayID);
+  glUnmapNamedBuffer(array->indexBufferID);
 }
-
-
-
-
-
 
 void CreateIndexedVertex3DArray(GLuint *vertexArray, GLuint *vertexBuffer, GLuint *indexBuffer,
 	U32 vertexCount, U32 indexCount, const Vertex3D *vertices, const U32 *indices, GLenum drawMode) {
@@ -223,12 +218,14 @@ void create_indexed_animated_vertex_array(GLuint *vertexArray, GLuint *vertexBuf
   glEnableVertexAttribArray(3);
   glEnableVertexAttribArray(4);
   glEnableVertexAttribArray(5);
+  //glEnableVertexAttribArray(6);
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(AnimatedVertex), (GLvoid*)offsetof(AnimatedVertex, position));
   glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(AnimatedVertex), (GLvoid*)offsetof(AnimatedVertex, normal));
   glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(AnimatedVertex), (GLvoid*)offsetof(AnimatedVertex, tangent));
   glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(AnimatedVertex), (GLvoid*)offsetof(AnimatedVertex, texcoord));
   glVertexAttribPointer(4, 4, GL_INT, GL_FALSE, sizeof(AnimatedVertex), (GLvoid*)offsetof(AnimatedVertex, bone_index));
   glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(AnimatedVertex), (GLvoid*)offsetof(AnimatedVertex, weight));
+  //glVertexAttribPointer(6, 1, GL_INT, GL_FALSE, sizeof(AnimatedVertex), (GLvoid*)offsetof(AnimatedVertex, bone_count));
   glBindVertexArray(0);
 }
 
@@ -361,7 +358,26 @@ void DestroyMaterialDrawable(MaterialDrawable* drawable) {
   drawable->flags = 0;
 }
 
+inline RenderGroup CreateImGuiRenderGroup() {
+  RenderGroup result = {};
+  glGenVertexArrays(1, &result.vao);
+  glGenBuffers(1, &result.vbo);
+  glGenBuffers(1, &result.ebo);
 
+  glBindVertexArray(result.vao);
+  glBindBuffer(GL_ARRAY_BUFFER, result.vbo);
+
+  glEnableVertexAttribArray(0);
+  glEnableVertexAttribArray(1);
+  glEnableVertexAttribArray(2);
+  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(ImDrawVert), (GLvoid*)offsetof(ImDrawVert, pos));
+  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(ImDrawVert), (GLvoid*)offsetof(ImDrawVert, uv));
+  glVertexAttribPointer(2, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(ImDrawVert), (GLvoid*)offsetof(ImDrawVert, col));
+  glBindVertexArray(0);
+  return result;
+}
+
+#if 0
 inline RenderGroup CreateDebugRenderGroup() {
 	RenderGroup result = {};
 
@@ -378,32 +394,9 @@ inline RenderGroup CreateDebugRenderGroup() {
 	return result;
 }
 
-inline RenderGroup CreateImGuiRenderGroup() {
-	RenderGroup result = {};
-	glGenVertexArrays(1, &result.vao);
-	glGenBuffers(1, &result.vbo);
-	glGenBuffers(1, &result.ebo);
-
-	glBindVertexArray(result.vao);
-	glBindBuffer(GL_ARRAY_BUFFER, result.vbo);
-
-	glEnableVertexAttribArray(0);
-	glEnableVertexAttribArray(1);
-	glEnableVertexAttribArray(2);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(ImDrawVert), (GLvoid*)offsetof(ImDrawVert, pos));
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(ImDrawVert), (GLvoid*)offsetof(ImDrawVert, uv));
-	glVertexAttribPointer(2, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(ImDrawVert), (GLvoid*)offsetof(ImDrawVert, col));
-	glBindVertexArray(0);
-	return result;
-}
-
 inline void FreeRenderGroup(RenderGroup *group) {
 	glDeleteBuffers(1, &group->vao);
 	glDeleteBuffers(1, &group->ebo);
 	glDeleteVertexArrays(1, &group->vao);
 }
-
-
-
-
-
+#endif

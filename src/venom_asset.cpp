@@ -19,10 +19,12 @@ static inline bool CreateModelAssetFromFile(AssetSlot *slot, AssetManifest *mani
   modelAsset->aabb = ComputeAABB(&modelAsset->data.meshData);
   modelAsset->size = Abs(modelAsset->aabb.max - modelAsset->aabb.min);
   modelAsset->drawable.materials = (MaterialDrawable *)calloc(modelAsset->data.meshCount, sizeof(MaterialDrawable));
-  CreateIndexedVertexArray3D(&modelAsset->vertexArray, &modelAsset->data.meshData);
+  create_indexed_animated_vertex_array(&modelAsset->vertexArray, &modelAsset->data.meshData);
   modelAsset->drawable.indexCountPerMesh = modelAsset->data.indexCountPerMesh;
   modelAsset->drawable.vertexArrayID = modelAsset->vertexArray.vertexArrayID;
   modelAsset->drawable.meshCount = modelAsset->data.meshCount;
+  modelAsset->drawable.bone_count = modelAsset->data.meshData.boneCount;
+  modelAsset->drawable.bones = modelAsset->data.meshData.bones;
   slot->lastWriteTime = GetFileLastWriteTime(filename);
   for (size_t i = 0; i < modelAsset->data.meshCount; i++) {
     modelAsset->drawable.materials[i] = CreateMaterialDrawable(&modelAsset->data.materialDataPerMesh[i]);
@@ -252,8 +254,5 @@ GLuint GetShaderProgram(DEBUGShaderID shaderID, AssetManifest* manifest) {
 		loadedShader->is_loaded = true;
 	}
 	
-  if (loadedShader->programHandle == 0) {
-    assert(false);
-  }
 	return loadedShader->programHandle;
 }

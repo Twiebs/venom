@@ -62,10 +62,12 @@ d:\workspace\venom\src\opengl_render.cpp(130): warning C4267: 'argument': conver
 d:\workspace\venom\src\opengl_render.cpp(137): warning C4267: 'argument': conversion from 'size_t' to 'GLint', possible loss of data
 d:\workspace\venom\src\opengl_render.cpp(140): warning C4267: 'argument': conversion from 'size_t' to 'GLint', possible loss of data
 d:\workspace\venom\src\opengl_render.cpp(142): warning C4267: 'argument': conversion from 'size_t' to 'GLint', possible loss of data
-d:\workspace\venom\src\opengl_render.cpp(434): warning C4305: 'argument': truncation from 'double' to 'float'
-d:\workspace\venom\src\opengl_render.cpp(451): warning C4244: 'argument': conversion from 'F32' to 'GLsizei', possible loss of data
-d:\workspace\venom\src\opengl_render.cpp(571): warning C4244: 'argument': conversion from 'F32' to 'GLsizei', possible loss of data
-d:\workspace\venom\src\opengl_render.cpp(647): warning C4244: 'argument': conversion from 'F32' to 'GLint', possible loss of data
+d:\workspace\venom\src\opengl_render.cpp(230): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
+d:\workspace\venom\src\opengl_render.cpp(234): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
+d:\workspace\venom\src\opengl_render.cpp(447): warning C4305: 'argument': truncation from 'double' to 'float'
+d:\workspace\venom\src\opengl_render.cpp(464): warning C4244: 'argument': conversion from 'F32' to 'GLsizei', possible loss of data
+d:\workspace\venom\src\opengl_render.cpp(584): warning C4244: 'argument': conversion from 'F32' to 'GLsizei', possible loss of data
+d:\workspace\venom\src\opengl_render.cpp(660): warning C4244: 'argument': conversion from 'F32' to 'GLint', possible loss of data
 d:\workspace\venom\src\offline_asset_tools.cpp(1): warning C4068: unknown pragma
 d:\workspace\venom\src\offline_asset_tools.cpp(2): warning C4068: unknown pragma
 d:\workspace\venom\src\stb_vorbis.c(4432): warning C4244: 'return': conversion from '__int64' to 'int', possible loss of data
@@ -77,37 +79,40 @@ d:\workspace\venom\src\stb_vorbis.c(5026): warning C4996: 'fopen': This function
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\stdio.h(205): note: see declaration of 'fopen'
 d:\workspace\venom\src\offline_asset_tools.cpp(8): warning C4068: unknown pragma
 d:\workspace\venom\src\venom_utils.h(7): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-d:\workspace\venom\src\offline_asset_tools.cpp(19): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+d:\workspace\venom\src\offline_asset_tools.cpp(30): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\stdio.h(1769): note: see declaration of 'sprintf'
-d:\workspace\venom\src\offline_asset_tools.cpp(118): warning C4267: 'initializing': conversion from 'size_t' to 'U32', possible loss of data
-d:\workspace\venom\src\offline_asset_tools.cpp(120): warning C4267: '=': conversion from 'size_t' to 'U32', possible loss of data
-d:\workspace\venom\src\offline_asset_tools.cpp(121): warning C4267: '=': conversion from 'size_t' to 'U32', possible loss of data
-d:\workspace\venom\src\offline_asset_tools.cpp(122): warning C4267: '=': conversion from 'size_t' to 'U32', possible loss of data
-d:\workspace\venom\src\offline_asset_tools.cpp(148): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+d:\workspace\venom\src\offline_asset_tools.cpp(126): warning C4267: '=': conversion from 'size_t' to 'U32', possible loss of data
+d:\workspace\venom\src\offline_asset_tools.cpp(172): warning C4267: 'initializing': conversion from 'size_t' to 'U32', possible loss of data
+d:\workspace\venom\src\offline_asset_tools.cpp(174): warning C4267: '=': conversion from 'size_t' to 'U32', possible loss of data
+d:\workspace\venom\src\offline_asset_tools.cpp(175): warning C4267: '=': conversion from 'size_t' to 'U32', possible loss of data
+d:\workspace\venom\src\offline_asset_tools.cpp(176): warning C4267: '=': conversion from 'size_t' to 'U32', possible loss of data
+d:\workspace\venom\src\offline_asset_tools.cpp(202): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\stdio.h(1769): note: see declaration of 'sprintf'
-d:\workspace\venom\src\offline_asset_tools.cpp(155): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+d:\workspace\venom\src\offline_asset_tools.cpp(209): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\string.h(119): note: see declaration of 'strcpy'
-d:\workspace\venom\src\offline_asset_tools.cpp(39): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+d:\workspace\venom\src\offline_asset_tools.cpp(49): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\stdio.h(1769): note: see declaration of 'sprintf'
+d:\workspace\venom\src\offline_asset_tools.cpp(119): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\stdio.h(1769): note: see declaration of 'sprintf'
 d:\workspace\venom\src\venom_asset.cpp(9): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\string.h(119): note: see declaration of 'strcpy'
-d:\workspace\venom\src\venom_asset.cpp(101): warning C4996: 'strdup': The POSIX name for this item is deprecated. Instead, use the ISO C and C++ conformant name: _strdup. See online help for details.
+d:\workspace\venom\src\venom_asset.cpp(103): warning C4996: 'strdup': The POSIX name for this item is deprecated. Instead, use the ISO C and C++ conformant name: _strdup. See online help for details.
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\string.h(552): note: see declaration of 'strdup'
-d:\workspace\venom\src\venom_asset.cpp(102): warning C4996: 'strdup': The POSIX name for this item is deprecated. Instead, use the ISO C and C++ conformant name: _strdup. See online help for details.
+d:\workspace\venom\src\venom_asset.cpp(104): warning C4996: 'strdup': The POSIX name for this item is deprecated. Instead, use the ISO C and C++ conformant name: _strdup. See online help for details.
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\string.h(552): note: see declaration of 'strdup'
-d:\workspace\venom\src\venom_asset.cpp(129): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+d:\workspace\venom\src\venom_asset.cpp(131): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\stdio.h(1769): note: see declaration of 'sprintf'
-d:\workspace\venom\src\venom_asset.cpp(147): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+d:\workspace\venom\src\venom_asset.cpp(149): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\string.h(119): note: see declaration of 'strcpy'
-d:\workspace\venom\src\venom_asset.cpp(154): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+d:\workspace\venom\src\venom_asset.cpp(156): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\stdio.h(1769): note: see declaration of 'sprintf'
-d:\workspace\venom\src\venom_asset.cpp(163): warning C4267: '=': conversion from 'size_t' to 'U32', possible loss of data
-d:\workspace\venom\src\venom_asset.cpp(178): warning C4267: '=': conversion from 'size_t' to 'U32', possible loss of data
-d:\workspace\venom\src\venom_asset.cpp(177): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+d:\workspace\venom\src\venom_asset.cpp(165): warning C4267: '=': conversion from 'size_t' to 'U32', possible loss of data
+d:\workspace\venom\src\venom_asset.cpp(180): warning C4267: '=': conversion from 'size_t' to 'U32', possible loss of data
+d:\workspace\venom\src\venom_asset.cpp(179): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\string.h(119): note: see declaration of 'strcpy'
-d:\workspace\venom\src\venom_asset.cpp(185): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+d:\workspace\venom\src\venom_asset.cpp(187): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\string.h(119): note: see declaration of 'strcpy'
-d:\workspace\venom\src\venom_asset.cpp(235): warning C4244: 'argument': conversion from 'U64' to 'U32', possible loss of data
+d:\workspace\venom\src\venom_asset.cpp(237): warning C4244: 'argument': conversion from 'U64' to 'U32', possible loss of data
 d:\workspace\venom\src\venom_serializer.cpp(50): warning C4244: 'initializing': conversion from 'uint64_t' to 'uint32_t', possible loss of data
 d:\workspace\venom\src\venom_serializer.cpp(60): warning C4267: '=': conversion from 'size_t' to 'uint32_t', possible loss of data
 d:\workspace\venom\src\venom_serializer.cpp(76): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
@@ -227,5 +232,5 @@ d:\workspace\venom\src\platform_windows.cpp(227): warning C4996: 'sprintf': This
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\stdio.h(1769): note: see declaration of 'sprintf'
 d:\workspace\venom\src\platform_windows.cpp(342): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\stdio.h(1769): note: see declaration of 'sprintf'
-d:\workspace\venom\src\venom_asset.cpp(32): warning C4715: 'CreateModelAssetFromFile': not all control paths return a value
+d:\workspace\venom\src\venom_asset.cpp(34): warning C4715: 'CreateModelAssetFromFile': not all control paths return a value
   build64.vcxproj -> D:/workspace/venom/build\build64.exe

@@ -74,6 +74,8 @@ struct MaterialAsset {
   MaterialDrawable drawable;
 };
 
+//TODO(Torin) Seriously consider just conolodating all of this into one
+//structure... There really is not much reason to keep all of this stuff seperatly
 struct ModelAsset {
   ModelData data;
   AABB aabb;
@@ -81,8 +83,6 @@ struct ModelAsset {
   IndexedVertexArray vertexArray;
   ModelDrawable drawable;
 };
-
-
 
 struct DEBUGLoadedShader {
 	const char *filenames[4];

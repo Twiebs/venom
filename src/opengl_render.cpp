@@ -195,7 +195,7 @@ static inline void draw_atmosphere_oneil(const RenderState *rs, const Camera *ca
   glUniformMatrix4fv(MVP_MATRIX_LOCATION, 1, GL_FALSE, &mvp_matrix[0][0]);
   set_uniform(CAMERA_POSITION_LOCATION, camera->position);
   set_uniform(SUN_POSITION_LOCATION, lightPosition);
-  glBindVertexArray(rs->skydomeIVA.vao);
+  glBindVertexArray(rs->skydomeIVA.vertexArrayID);
   glDrawElements(GL_TRIANGLES, rs->skydomeIVA.indexCount, GL_UNSIGNED_INT, 0);
   glEnable(GL_CULL_FACE);
 }
@@ -218,12 +218,24 @@ static inline void draw_atmosphere_glsl(RenderState *rs, Camera *camera, AssetMa
 }
 
 static inline void draw_model_with_materials(ModelDrawable* drawable, M4 modelMatrix){
-  glUniformMatrix4fv(0, 1, GL_FALSE, &modelMatrix[0][0]);
+  static const U32 MODEL_MATRIX_LOCATION = 0;
+  static const U32 NORMALMAP_PRESENT_LOCATION = 3;
+  static const U32 SPECULARMAP_PRESENT_LOCATION = 4;
+  static const U32 BONE_OFFSET_LOCATION = 5;
+  glUniformMatrix4fv(MODEL_MATRIX_LOCATION, 1, GL_FALSE, &modelMatrix[0][0]);
   U64 currentIndexOffset = 0;
   glBindVertexArray(drawable->vertexArrayID);
-  for(size_t j = 0; j < drawable->meshCount; j++){
-    static const U32 NORMALMAP_PRESENT_LOCATION = 3;
-    static const U32 SPECULARMAP_PRESENT_LOCATION = 4;
+  if (drawable->bone_count > 0) {
+    for (size_t i = 0; i < drawable->bone_count; i++) {
+      set_uniform(BONE_OFFSET_LOCATION + i, drawable->bones[i].offset_matrix);
+    }
+  } else {
+    for (size_t i = 0; i < 16; i++) {
+      set_uniform(BONE_OFFSET_LOCATION + i, M4Identity());
+    }
+  }
+
+  for (size_t j = 0; j < drawable->meshCount; j++) {
     const MaterialDrawable &material = drawable->materials[j];
     glUniform1i(NORMALMAP_PRESENT_LOCATION, material.flags & MaterialFlag_NORMAL);
     glUniform1i(SPECULARMAP_PRESENT_LOCATION, material.flags & MaterialFlag_SPECULAR);
@@ -231,6 +243,7 @@ static inline void draw_model_with_materials(ModelDrawable* drawable, M4 modelMa
     glDrawElements(GL_TRIANGLES, drawable->indexCountPerMesh[j], GL_UNSIGNED_INT, (GLvoid*)(sizeof(U32)*currentIndexOffset));
     currentIndexOffset += drawable->indexCountPerMesh[j];
   }
+
 }
 
 static inline void draw_model_with_only_geometry(ModelDrawable* drawable, M4 modelMatrix) {

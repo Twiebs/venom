@@ -53,7 +53,7 @@ void VenomModuleStart(GameMemory* memory) {
     Entity *player = CreateEntity(EntityType_Player, entityContainer);
     player->modelID = GetModelID("player", assetManifest);
 #if 0
-    Entity *light = CreateEntity(EntityType_PointLight, entityContainer);
+    Entity *light = CreateEntity(EntityType_StaticObject, entityContainer);
     light->position = V3(0.0f, 3.0f, 0.0f);
     light->modelID = GetModelID("lamp", assetManifest);
     light->pointLight.color = V3(1.0, 1.0, 1.0);
