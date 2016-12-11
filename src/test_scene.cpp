@@ -53,6 +53,11 @@ void VenomModuleStart(GameMemory* memory) {
     EntityIndex player_index;
     Entity *player = CreateEntity(EntityType_Player, &player_index, entityContainer);
     assign_model_to_entity(player_index, GetModelID("player", assetManifest), assetManifest, entityContainer);
+    ModelAsset *asset = GetModelAsset(player->modelID, assetManifest);
+    player->animation_state.model_id = player->modelID;
+
+
+
 #if 0
     Entity *light = CreateEntity(EntityType_StaticObject, entityContainer);
     light->position = V3(0.0f, 3.0f, 0.0f);

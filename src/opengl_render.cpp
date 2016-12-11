@@ -161,19 +161,7 @@ void RenderDrawListWithGeometry(VenomDrawList* drawList, AssetManifest* manifest
 #endif//VENOM_RELEASE
 }
 
-static inline M4 calculate_current_pose_matrix(S32 joint_index, Animation_Joint *joints, M4 *current_transforms) {
-  M4 result = current_transforms[joint_index];
-  Animation_Joint *joint = &joints[joint_index];
-  S32 parent_index = joint->parent_index;
-  while (parent_index != -1) {
-    result = current_transforms[parent_index] * result;
-    Animation_Joint *parent = &joints[parent_index];
-    parent_index = parent->parent_index;
-  }
 
-  result = Inverse(result);
-  return result;
-}
 
 //==========================================================================
 
@@ -214,7 +202,13 @@ static inline void draw_model_with_materials_common(ModelDrawable *drawable, M4 
   static const U32 MODEL_MATRIX_LOCATION = 0;
   static const U32 NORMALMAP_PRESENT_LOCATION = 3;
   static const U32 SPECULARMAP_PRESENT_LOCATION = 4;
-  set_uniform(MODEL_MATRIX_LOCATION, Rotate(PI32*0.5f,0.0,0.0) * model_matrix);
+
+  static float time = 0.0f;
+  Quaternion q = QuaternionFromEulerAngles(0.0f, 0.0f, 10.0f*DEG2RAD*sin(time));
+  M4 rotation = QuaternionToMatrix(q);
+  time += 0.016f;
+
+  set_uniform(MODEL_MATRIX_LOCATION, model_matrix);
   glBindVertexArray(drawable->vertexArrayID);
   U64 currentIndexOffset = 0;
   for (size_t j = 0; j < drawable->meshCount; j++) {
@@ -233,23 +227,23 @@ static inline void draw_animated_model_with_materials(ModelDrawable *drawable, A
   set_uniform(IS_MESH_STATIC_LOCATION, false);
   
   U32 current_index_offset = 0;
-  M4 current_transform_matrices[16];
+  assert(drawable->joint_count < 16);
+  M4 local_joint_poses[16];
+
   Animation_Joint *joints = drawable->joints;
-  for (size_t j = 0; j < drawable->joint_count; j++) {
-    Animation_Joint *joint = &joints[j];
-    current_transform_matrices[j] = joint->parent_realtive_matrix;
+  for (size_t i = 0; i < drawable->joint_count; i++) {
+    Animation_Joint *joint = &joints[i];
+    local_joint_poses[i] = CalculateLocalJointPose(i, joint, animation_state);
   }
 
   for (size_t i = 0; i < drawable->joint_count; i++) {
     Animation_Joint *joint = &joints[i];
-    M4 current_pose_matrix = calculate_current_pose_matrix((S32)i, joints, current_transform_matrices);
-    M4 final_skinning_matrix = joint->inverse_bind_matrix * current_pose_matrix;
+    M4 global_joint_pose = CalculateGlobalJointPose(i, drawable->joints, local_joint_poses);
+    M4 final_skinning_matrix = joint->inverse_bind_matrix * global_joint_pose;
     set_uniform(BONE_OFFSET_LOCATION + i, final_skinning_matrix);
   }
 
   draw_model_with_materials_common(drawable, model_matrix);
-  //current_transform_matrices[0] = Translate(4.0f*sin(animation_state->animation_time*0.25), 0.0f, 0.0f) * current_transform_matrices[0];
-  //current_transform_matrices[2] = Translate(0.5*sin(animation_state->animation_time * 8), 0.0, 0.0) * current_transform_matrices[3];
 }
 
 static inline void draw_static_model_with_materials(ModelDrawable* drawable, M4 modelMatrix) {

@@ -232,7 +232,10 @@ Asset_ID GetModelID(const char *name, AssetManifest *manifest) {
 //====================================================================================
 #endif//VENOM_RELEASE
 
-
+ModelAsset *GetModelAsset(Asset_ID& id) {
+  AssetManifest *manifest = get_asset_manifest();
+  return GetModelAsset(id, manifest);
+}
 
 ModelAsset* GetModelAsset(Asset_ID& id, AssetManifest* manifest) {
   if (manifest->modelReloadCounter != id.reload_counter_value)

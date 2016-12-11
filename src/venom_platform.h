@@ -41,13 +41,14 @@ static const U64 INVALID_U64 = 0xFFFFFFFFFFFFFFFF;
 #undef VENOM_PROFILER
 #endif//VENOM_RELEASE
 
-
 #include "venom_memory.h"
 #include "venom_math.h"
+#include "venom_asset.h"
 #include "venom_audio.h"
+#include "animation.h"
 #include "venom_render.h"
 #include "venom_physics.h"
-#include "venom_asset.h"
+#include "asset_data.h"
 
 
 #include "debug_renderer.h"

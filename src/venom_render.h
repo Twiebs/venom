@@ -18,11 +18,7 @@ struct VenomModelDrawCommand {
   V3 scale;
 };
 
-struct Animation_State {
-  U32 joint_count;
-  Animation_Joint *joints;
-  F32 animation_time;
-};
+
 
 struct Animated_Model_Draw_Command {
   ModelAsset *model;

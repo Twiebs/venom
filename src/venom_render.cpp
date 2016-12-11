@@ -1,4 +1,5 @@
 #include "renderer_data.cpp"
+#include "animation.cpp"
 
 #ifdef VENOM_OPENGL
 #define _(signature, name) static signature name;

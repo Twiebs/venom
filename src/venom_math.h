@@ -3,14 +3,11 @@ static const float DEG2RAD = (PI32 / 180.0f);
 static const float RAD2DEG = (180.0f / PI32);
 
 #include <math.h>
-#include "math_vector.h"
-#include "math_matrix.h"
-#include "math_geometry.h"
-#include "math_procedural.h"
-
-struct Quaternion {
-  F32 x, y, z, w;
-};
+#include "math/vector.h"
+#include "math/matrix.h"
+#include "math/quaternion.h"
+#include "math/geometry.h"
+#include "math/random.h"
 
 template<typename T>
 inline void Swap(T* a, T* b){

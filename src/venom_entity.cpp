@@ -50,10 +50,7 @@ void assign_model_to_entity(EntityIndex index, Asset_ID id, AssetManifest *manif
   Entity *entity = &block->entities[index.slotIndex];
   ModelAsset *asset = GetModelAsset(id, manifest);
   if (asset->data.jointCount > 0) {
-    entity->animation_state.joint_count = asset->data.jointCount;
-    for (size_t i = 0; i < entity->animation_state.joint_count; i++) {
-      entity->animation_state.joints = asset->data.joints;
-    }
+    entity->animation_state.frames_per_second = 30.0f;
   } 
 
   entity->modelID = id;

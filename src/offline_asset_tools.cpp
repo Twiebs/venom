@@ -304,25 +304,25 @@ bool ImportExternalModelData(const char *filename, ModelData *data) {
       joint_animation->scalings.Resize(joint_animation->scaling_count);
 
       for (size_t k = 0; k < joint_animation->translation_count; k++) {
-        joint_animation->translations[k].time = node_anim->mPositionKeys->mTime;
-        joint_animation->translations[k].translation.x = node_anim->mPositionKeys->mValue.x;
-        joint_animation->translations[k].translation.y = node_anim->mPositionKeys->mValue.y;
-        joint_animation->translations[k].translation.z = node_anim->mPositionKeys->mValue.z;
+        joint_animation->translations[k].time = node_anim->mPositionKeys[k].mTime;
+        joint_animation->translations[k].translation.x = node_anim->mPositionKeys[k].mValue.x;
+        joint_animation->translations[k].translation.y = node_anim->mPositionKeys[k].mValue.y;
+        joint_animation->translations[k].translation.z = node_anim->mPositionKeys[k].mValue.z;
       }
 
       for (size_t k = 0; k < joint_animation->rotation_count; k++) {
-        joint_animation->rotations[k].time = node_anim->mRotationKeys->mTime;
-        joint_animation->rotations[k].rotation.x = node_anim->mRotationKeys->mValue.x;
-        joint_animation->rotations[k].rotation.y = node_anim->mRotationKeys->mValue.y;
-        joint_animation->rotations[k].rotation.z = node_anim->mRotationKeys->mValue.z;
-        joint_animation->rotations[k].rotation.w = node_anim->mRotationKeys->mValue.w;
+        joint_animation->rotations[k].time = node_anim->mRotationKeys[k].mTime;
+        joint_animation->rotations[k].rotation.x = node_anim->mRotationKeys[k].mValue.x;
+        joint_animation->rotations[k].rotation.y = node_anim->mRotationKeys[k].mValue.y;
+        joint_animation->rotations[k].rotation.z = node_anim->mRotationKeys[k].mValue.z;
+        joint_animation->rotations[k].rotation.w = node_anim->mRotationKeys[k].mValue.w;
       }
 
       for (size_t k = 0; k < joint_animation->scaling_count; k++) {
-        joint_animation->scalings[k].time = node_anim->mScalingKeys->mTime;
-        joint_animation->scalings[k].scale = node_anim->mScalingKeys->mValue.x;
-        bool is_valid = Equals(node_anim->mScalingKeys->mValue.x, node_anim->mScalingKeys->mValue.y);
-        is_valid = is_valid && Equals(node_anim->mScalingKeys->mValue.x, node_anim->mScalingKeys->mValue.z);
+        joint_animation->scalings[k].time = node_anim->mScalingKeys[k].mTime;
+        joint_animation->scalings[k].scale = node_anim->mScalingKeys[k].mValue.x;
+        bool is_valid = Equals(node_anim->mScalingKeys->mValue.x, node_anim->mScalingKeys[k].mValue.y);
+        is_valid = is_valid && Equals(node_anim->mScalingKeys->mValue.x, node_anim->mScalingKeys[k].mValue.z);
         if (is_valid == false) {
           LOG_ERROR("Animation encodes a non-uniform scale keyframe!");
           free(data);

@@ -1,10 +1,8 @@
-//Disable unhelpfull warnings when compiled with clang
 #ifdef __clang__
 #pragma clang diagnostic error "-Wreturn-type"
 #pragma clang diagnostic warning "-Wall"
 #pragma clang diagnostic warning "-Wextra"
 #pragma clang diagnostic ignored "-Wformat-security"
-
 #if !defined(VENOM_RELEASE) && !defined(VENOM_STRICT)
 #pragma clang diagnostic ignored "-Wunused-variable"
 #pragma clang diagnostic ignored "-Wunused-parameter"
@@ -30,13 +28,14 @@ static GameMemory* _venomEngineData;
 static VenomDebugData* _debugData;
 VenomDebugData *GetDebugData() { return _debugData; }
 GameMemory* GetVenomEngineData() { return _venomEngineData; };
+AssetManifest *get_asset_manifest() { return &_venomEngineData->assetManifest;  }
 #endif//VENOM_RELEASE
 
 //TODO(Torin) Move this somewhere usefull
 static int VenomCopyFile(const char *a, const char *b);
 
 #ifdef VENOM_SINGLE_TRANSLATION_UNIT
-#include "math_procedural.cpp"
+#include "math/math_procedural.cpp"
 #include "venom_debug.cpp"
 #include "venom_render.cpp"
 #include "venom_physics.cpp"
