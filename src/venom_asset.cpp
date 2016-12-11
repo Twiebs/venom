@@ -1,4 +1,5 @@
 
+#if 0
 static inline bool check_model_asset_for_errors(ModelAsset *model){
   MeshData *mesh_data = &model->data.meshData;
   if (mesh_data->joints > 0) {
@@ -20,8 +21,11 @@ static inline bool check_model_asset_for_errors(ModelAsset *model){
   return true;
 }
 
+#endif
 
-static inline bool CreateModelAssetFromFile(AssetSlot *slot, AssetManifest *manifest) {
+
+static inline bool CreateModelAssetFromFile(U32 slot_index, AssetManifest *manifest) {
+  AssetSlot *slot = &manifest->modelAssets[slot_index];
   assert(slot->asset == 0);
   assert(slot->filename != 0);
   assert(slot->name != 0);
@@ -29,15 +33,18 @@ static inline bool CreateModelAssetFromFile(AssetSlot *slot, AssetManifest *mani
   char filename[1024] = {};
   memcpy(filename, VENOM_ASSET_DIRECTORY, sizeof(VENOM_ASSET_DIRECTORY) - 2);
   strcpy(filename + sizeof(VENOM_ASSET_DIRECTORY) - 2, slot->filename);
+  slot->lastWriteTime = GetFileLastWriteTime(filename);
 
   slot->asset = malloc(sizeof(ModelAsset));
   memset(slot->asset, 0x00, sizeof(ModelAsset));
   ModelAsset* modelAsset = (ModelAsset *)slot->asset;
   if (ImportExternalModelData(filename, &modelAsset->data) == false) {
+    slot->asset = 0;
     slot->flags |= AssetFlag_INVALID;
     return false;
   }
 
+  modelAsset->slot_index = slot_index;
   modelAsset->aabb = ComputeAABB(&modelAsset->data.meshData);
   modelAsset->size = Abs(modelAsset->aabb.max - modelAsset->aabb.min);
   modelAsset->drawable.materials = (MaterialDrawable *)calloc(modelAsset->data.meshCount, sizeof(MaterialDrawable));
@@ -48,14 +55,15 @@ static inline bool CreateModelAssetFromFile(AssetSlot *slot, AssetManifest *mani
   drawable->jointCountPerMesh = modelAsset->data.joint_count_per_mesh;
   drawable->vertexArrayID = modelAsset->vertexArray.vertexArrayID;
   drawable->meshCount = modelAsset->data.meshCount;
-  drawable->joints = modelAsset->data.meshData.joints;
+  drawable->joints = modelAsset->data.joints;
+  drawable->joint_count = modelAsset->data.jointCount;
 
   slot->lastWriteTime = GetFileLastWriteTime(filename);
   for (size_t i = 0; i < modelAsset->data.meshCount; i++) {
     modelAsset->drawable.materials[i] = CreateMaterialDrawable(&modelAsset->data.materialDataPerMesh[i]);
   }
 
-  check_model_asset_for_errors(modelAsset);
+  //check_model_asset_for_errors(modelAsset);
 
   slot->flags |= AssetFlag_LOADED;
 }
@@ -71,7 +79,7 @@ void initalize_asset_manifest(AssetManifest *manifest) {
   slot->name = "null_model_asset";
   slot->filename = "/internal/null_model.fbx";
   slot->lastWriteTime = 0;
-  CreateModelAssetFromFile(slot, manifest);
+  CreateModelAssetFromFile(0, manifest);
 
   ReadAssetManifestFile("../project/assets.vsf", manifest);
 }
@@ -237,7 +245,7 @@ ModelAsset* GetModelAsset(Asset_ID& id, AssetManifest* manifest) {
       return GetModelAsset(null_id, manifest);
     }
 
-    if (CreateModelAssetFromFile(modelAssetSlot, manifest) == false) {
+    if (CreateModelAssetFromFile(id.slot_index, manifest) == false) {
       Asset_ID null_id = {};
       return GetModelAsset(null_id, manifest);
     }

@@ -77,6 +77,7 @@ struct MaterialAsset {
 //TODO(Torin) Seriously consider just conolodating all of this into one
 //structure... There really is not much reason to keep all of this stuff seperatly
 struct ModelAsset {
+  U32 slot_index;
   ModelData data;
   AABB aabb;
   V3 size;

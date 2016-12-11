@@ -70,6 +70,7 @@ bool ImportExternalModelData(const char *filename, ModelData *data) {
   //TODO(Torin) Just change this to a material count
   assert(scene->mNumMaterials == scene->mNumMeshes);
 	data->meshCount = scene->mNumMaterials;
+  data->animation_clip_count = scene->mNumAnimations;
   DynamicArray<aiNode *> joint_ptrs;
 	for (size_t i = 0; i < scene->mNumMeshes; i++) {
     aiMesh *mesh = scene->mMeshes[i];
@@ -87,7 +88,6 @@ bool ImportExternalModelData(const char *filename, ModelData *data) {
 	}
 
   data->jointCount = joint_ptrs.count;
-  free(joint_ptrs.data);
   if (data->jointCount > 254) {
     LOG_ERROR("Only 254 bones per mesh are premitted");
     return false;
@@ -127,7 +127,16 @@ bool ImportExternalModelData(const char *filename, ModelData *data) {
     joint->sibling_index = -1;
   }
 
-  size_t current_joint_offset = 0;
+  auto get_joint_index = [data](const char *name) -> S32 {
+    for (size_t i = 0; i < data->jointCount; i++) {
+      if (cstrings_are_equal(data->joints[i].name, name)) {
+        return (S32)i;
+      }
+    }
+    return -1;
+  };
+
+  size_t current_joint_count = 0;
   size_t currentVertexOffset = 0;
   size_t currentIndexOffset = 0;
   for (size_t material_index = 0; material_index < scene->mNumMaterials; material_index++) {
@@ -175,14 +184,7 @@ bool ImportExternalModelData(const char *filename, ModelData *data) {
         data->index_count_per_mesh[material_index] += scene->mMeshes[n]->mNumFaces * 3;
       }
 
-      auto get_joint_index = [data](const char *name) -> S32 {
-        for (size_t i = 0; i < data->jointCount; i++) {
-          if (cstrings_are_equal(data->joints[i].name, name)) {
-            return (S32)i;
-          }
-        }
-        return -1;
-      };
+
 
       
       { //NOTE(Torin) Now we process the joints for each mesh in the model
@@ -197,28 +199,28 @@ bool ImportExternalModelData(const char *filename, ModelData *data) {
           aiNode *bone_node = scene->mRootNode->FindNode(bone->mName);
           S32 joint_index = get_joint_index(bone->mName.data);
           if (joint_index == -1) {
+            joint_index = current_joint_count++;
             Animation_Joint *joint = &data->joints[joint_index];
             memcpy(joint->name, bone->mName.data, bone->mName.length+1);
             joint->bind_pose_matrix = aiMatrix_to_M4(bone->mOffsetMatrix);
             joint->inverse_bind_matrix = Inverse(joint->bind_pose_matrix);
             joint->parent_realtive_matrix = aiMatrix_to_M4(bone_node->mTransformation);
-            //XXX What's this purpose noww
-            data->joint_count_per_mesh[material_index]++;
+            data->joint_count_per_mesh[material_index]++;   //XXX What's this purpose noww
           }
 
           for (size_t j = 0; j < bone->mNumWeights; j++) {
             aiVertexWeight *weight = &bone->mWeights[j];
             AnimatedVertex *vertex = &data->meshData.vertices[weight->mVertexId + currentVertexOffset];
 
+            U8 vertex_joint_index = 0xFF;
             for (size_t i = 0; i < 4; i++) {
               if (vertex->joint_index[i] == joint_index) {
-                LOG_ERROR("Wierd joint error!");
-                free(data);
-                return false;
+                vertex_joint_index = i;
               }
 
               if (vertex->joint_index[i] == -1) {
                 vertex->joint_index[i] = joint_index;
+                vertex_joint_index = i;
                 break;
               }
             }
@@ -230,47 +232,49 @@ bool ImportExternalModelData(const char *filename, ModelData *data) {
             }
 
             assert(vertex_joint_index <= i);
+
+            if (vertex->weight[vertex_joint_index] != 0) {
+              if (vertex->weight[vertex_joint_index] != weight->mWeight) {
+                LOG_ERROR("FUCK FUCK SHIT BALLS ASS");
+              }
+            }
             vertex->weight[vertex_joint_index] = weight->mWeight;
           }
-
-
-
         }
-
-
-
-        for (size_t i = 0; i < assimpMesh->mNumBones; i++) {
-          Animation_Joint *joint = &joint_list[i];
-          aiNode *bone_node = scene->mRootNode->FindNode(joint->name);
-          S32 last_child_index = -1;
-          for (size_t c = 0; c < bone_node->mNumChildren; c++) {
-            aiNode *ai_child = bone_node->mChildren[c];
-
-            S32 child_index = get_joint_index(ai_child->mName.data);
-            if (child_index == -1) continue;
-            if (joint->child_index == -1) {
-              joint->child_index = child_index;
-            }
-
-            Animation_Joint *child_joint = &joint_list[child_index];
-            child_joint->parent_index = i;
-            if (last_child_index != -1) {
-              Animation_Joint *previous_child = &joint_list[last_child_index];
-              previous_child->sibling_index = child_index;
-            }
-            last_child_index = child_index;
-          }
-        }
-
-        if (joint_list != nullptr) {
-          normalize_vertex_joint_weights(data->meshData.vertices, data->meshData.vertexCount);
-        }
-
       }
+
+
+      for (size_t i = 0; i < data->jointCount; i++) {
+        Animation_Joint *joint = &data->joints[i];
+        aiNode *bone_node = scene->mRootNode->FindNode(joint->name);
+        S32 last_child_index = -1;
+        for (size_t c = 0; c < bone_node->mNumChildren; c++) {
+          aiNode *ai_child = bone_node->mChildren[c];
+
+          S32 child_index = get_joint_index(ai_child->mName.data);
+          if (child_index == -1) continue;
+          if (joint->child_index == -1) {
+            joint->child_index = child_index;
+          }
+
+          Animation_Joint *child_joint = &data->joints[child_index];
+          child_joint->parent_index = i;
+          if (last_child_index != -1) {
+            Animation_Joint *previous_child = &data->joints[last_child_index];
+            previous_child->sibling_index = child_index;
+          }
+          last_child_index = child_index;
+        }
+      }
+
+      if (data->jointCount > 0) {
+        normalize_vertex_joint_weights(data->meshData.vertices, data->meshData.vertexCount);
+      }
+      
+
 
       currentVertexOffset += scene->mMeshes[n]->mNumVertices;
       currentIndexOffset += scene->mMeshes[n]->mNumFaces * 3;
-      current_joint_offset += scene->mMeshes[n]->mNumBones;
 			}
 		}
 	}
@@ -288,8 +292,8 @@ bool ImportExternalModelData(const char *filename, ModelData *data) {
     memcpy(clip->name, animation->mName.data, animation->mName.length + 1);
     clip->joint_animations.Resize(clip->joint_count);
     
-    for (size_t j = 0; animation->mNumChannels; j++) {
-      aiNodeAnim *node_anim = animation->mChannels[j];      
+    for (size_t j = 0; j < animation->mNumChannels; j++) {
+      aiNodeAnim *node_anim = animation->mChannels[j];
       Joint_Animation *joint_animation = &clip->joint_animations[j];
       joint_animation->joint_index = get_joint_index(node_anim->mNodeName.data);
       joint_animation->translation_count = node_anim->mNumPositionKeys;
@@ -297,7 +301,7 @@ bool ImportExternalModelData(const char *filename, ModelData *data) {
       joint_animation->scaling_count = node_anim->mNumScalingKeys;
       joint_animation->translations.Resize(joint_animation->translation_count);
       joint_animation->rotations.Resize(joint_animation->rotation_count);
-      joint_animation->rotations.Resize(joint_animation->scaling_count);
+      joint_animation->scalings.Resize(joint_animation->scaling_count);
 
       for (size_t k = 0; k < joint_animation->translation_count; k++) {
         joint_animation->translations[k].time = node_anim->mPositionKeys->mTime;
@@ -317,8 +321,8 @@ bool ImportExternalModelData(const char *filename, ModelData *data) {
       for (size_t k = 0; k < joint_animation->scaling_count; k++) {
         joint_animation->scalings[k].time = node_anim->mScalingKeys->mTime;
         joint_animation->scalings[k].scale = node_anim->mScalingKeys->mValue.x;
-        bool is_valid = node_anim->mScalingKeys->mValue.x == node_anim->mScalingKeys->mValue.y;
-        is_valid = is_valid && (node_anim->mScalingKeys->mValue.x == node_anim->mScalingKeys->mValue.z);
+        bool is_valid = Equals(node_anim->mScalingKeys->mValue.x, node_anim->mScalingKeys->mValue.y);
+        is_valid = is_valid && Equals(node_anim->mScalingKeys->mValue.x, node_anim->mScalingKeys->mValue.z);
         if (is_valid == false) {
           LOG_ERROR("Animation encodes a non-uniform scale keyframe!");
           free(data);

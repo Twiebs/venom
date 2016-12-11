@@ -41,7 +41,7 @@ struct DynamicArray {
   }
 
   TElement& operator[](size_t index){
-    assert(index < count);
+    assert(index < capacity);
     return data[index];
   }
 

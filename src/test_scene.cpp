@@ -195,7 +195,7 @@ void VenomModuleRender(GameMemory* memory) {
       }
 
       ModelAsset *asset = GetModelAsset(entity->modelID, &memory->assetManifest);
-      bool is_entity_animated = asset->data.meshData.jointCount > 0;
+      bool is_entity_animated = asset->data.jointCount > 0;
       if (is_entity_animated) {
         entity->animation_state.animation_time += memory->deltaTime;
       }
@@ -209,7 +209,7 @@ void VenomModuleRender(GameMemory* memory) {
         } else if (is_entity_animated) {
           draw_animated_model(&rs->drawList, &memory->assetManifest, entity->modelID, &entity->animation_state, entity->position, entity->rotation);
         } else {
-          PushModelDrawCommand(entity->modelID.slot_index, &rs->drawList, entity->position, entity->rotation); 
+          PushModelDrawCommand(asset->slot_index, &rs->drawList, entity->position, entity->rotation); 
         }
 
         ModelAsset* modelAsset = GetModelAsset(entity->modelID, &memory->assetManifest);

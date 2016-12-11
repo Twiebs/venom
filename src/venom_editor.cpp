@@ -435,8 +435,8 @@ static void draw_asset_manifest_ui(AssetManifest* manifest) {
 
         ImGui::BeginChildFrame(0, ImVec2(400, 200));
         static int selected_bone = -1;
-        for (size_t i = 0; i < asset->data.meshData.jointCount; i++) {
-          Animation_Joint *joint = &asset->data.meshData.joints[i];
+        for (size_t i = 0; i < asset->data.jointCount; i++) {
+          Animation_Joint *joint = &asset->data.joints[i];
           if (ImGui::Selectable(joint->name, selected_bone == i)) {
             if (selected_bone == i) {
               selected_bone = -1;
@@ -449,9 +449,9 @@ static void draw_asset_manifest_ui(AssetManifest* manifest) {
 
         if (selected_bone != -1) {
           ImGui::Text("Inverse Bind Pose");
-          imgui_matrix(asset->data.meshData.joints[selected_bone].inverse_bind_matrix);
+          imgui_matrix(asset->data.joints[selected_bone].inverse_bind_matrix);
           ImGui::Text("Parent Realtive");
-          imgui_matrix(asset->data.meshData.joints[selected_bone].parent_realtive_matrix);
+          imgui_matrix(asset->data.joints[selected_bone].parent_realtive_matrix);
         }
 
         ImGui::EndChildFrame();

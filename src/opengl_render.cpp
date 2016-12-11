@@ -214,7 +214,7 @@ static inline void draw_model_with_materials_common(ModelDrawable *drawable, M4 
   static const U32 MODEL_MATRIX_LOCATION = 0;
   static const U32 NORMALMAP_PRESENT_LOCATION = 3;
   static const U32 SPECULARMAP_PRESENT_LOCATION = 4;
-  set_uniform(MODEL_MATRIX_LOCATION, model_matrix);
+  set_uniform(MODEL_MATRIX_LOCATION, Rotate(PI32*0.5f,0.0,0.0) * model_matrix);
   glBindVertexArray(drawable->vertexArrayID);
   U64 currentIndexOffset = 0;
   for (size_t j = 0; j < drawable->meshCount; j++) {
@@ -227,44 +227,27 @@ static inline void draw_model_with_materials_common(ModelDrawable *drawable, M4 
   }
 }
 
-
 static inline void draw_animated_model_with_materials(ModelDrawable *drawable, Animation_State *animation_state, M4 model_matrix) {
-  static const U32 MODEL_MATRIX_LOCATION = 0;
-  static const U32 NORMALMAP_PRESENT_LOCATION = 3;
-  static const U32 SPECULARMAP_PRESENT_LOCATION = 4;
   static const U32 BONE_OFFSET_LOCATION = 5;
   static const U32 IS_MESH_STATIC_LOCATION = 21;
-
   set_uniform(IS_MESH_STATIC_LOCATION, false);
-  set_uniform(MODEL_MATRIX_LOCATION, Rotate(PI32*0.5f, 0.0, 0.0) * model_matrix);
-  glBindVertexArray(drawable->vertexArrayID);
-
+  
   U32 current_index_offset = 0;
   M4 current_transform_matrices[16];
   Animation_Joint *joints = drawable->joints;
-  for (size_t i = 0; i < drawable->meshCount; i++) {
-    for (size_t j = 0; j < drawable->jointCountPerMesh[i]; j++) {
-      Animation_Joint *joint = &joints[j];
-      current_transform_matrices[j] = joint->parent_realtive_matrix;
-    }
-
-    for (size_t j = 0; j < drawable->jointCountPerMesh[i]; j++) {
-      Animation_Joint *joint = &joints[j];
-      M4 current_pose_matrix = calculate_current_pose_matrix((S32)j, joints, current_transform_matrices);
-      M4 final_skinning_matrix = joint->inverse_bind_matrix * current_pose_matrix;
-      set_uniform(BONE_OFFSET_LOCATION + i, final_skinning_matrix);
-    }
-
-    const MaterialDrawable &material = drawable->materials[i];
-    glUniform1i(NORMALMAP_PRESENT_LOCATION, material.flags & MaterialFlag_NORMAL);
-    glUniform1i(SPECULARMAP_PRESENT_LOCATION, material.flags & MaterialFlag_SPECULAR);
-    BindMaterial(material);
-    glDrawElements(GL_TRIANGLES, drawable->indexCountPerMesh[i], GL_UNSIGNED_INT, (GLvoid*)(sizeof(U32)*current_index_offset));
-
-    current_index_offset += drawable->indexCountPerMesh[i];
-    joints = joints + drawable->jointCountPerMesh[i];
+  for (size_t j = 0; j < drawable->joint_count; j++) {
+    Animation_Joint *joint = &joints[j];
+    current_transform_matrices[j] = joint->parent_realtive_matrix;
   }
 
+  for (size_t i = 0; i < drawable->joint_count; i++) {
+    Animation_Joint *joint = &joints[i];
+    M4 current_pose_matrix = calculate_current_pose_matrix((S32)i, joints, current_transform_matrices);
+    M4 final_skinning_matrix = joint->inverse_bind_matrix * current_pose_matrix;
+    set_uniform(BONE_OFFSET_LOCATION + i, final_skinning_matrix);
+  }
+
+  draw_model_with_materials_common(drawable, model_matrix);
   //current_transform_matrices[0] = Translate(4.0f*sin(animation_state->animation_time*0.25), 0.0f, 0.0f) * current_transform_matrices[0];
   //current_transform_matrices[2] = Translate(0.5*sin(animation_state->animation_time * 8), 0.0, 0.0) * current_transform_matrices[3];
 }

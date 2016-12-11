@@ -65,6 +65,7 @@ struct ModelDrawable {
 	U32 meshCount;
 	U32 *indexCountPerMesh;
   U32 *jointCountPerMesh;
+  U32 joint_count;
 	MaterialDrawable *materials;
   Animation_Joint *joints;
 }; //40 bytes
