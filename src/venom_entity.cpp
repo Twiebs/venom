@@ -1,6 +1,3 @@
-#define Align4(x) ((x + 0x3) & (~0x3))
-#define Align8(x) ((x + 0x7) & (~0x7))
-#define Align16(x) ((x + 0xF) & (~0xF))
 
 static inline
 EntityBlock* AllocateEntityBlock(const size_t entityCount){
@@ -24,7 +21,7 @@ EntityBlock* AllocateEntityBlock(const size_t entityCount){
   return result;
 }
 
-Entity* CreateEntity(EntityType type, 
+Entity* CreateEntity(EntityType type,
 EntityIndex* outIndex, EntityContainer* container) 
 {
   EntityBlock* block = container->firstAvaibleBlock;
@@ -38,7 +35,7 @@ EntityIndex* outIndex, EntityContainer* container)
     if((block->flags[i] & EntityFlag_PRESENT) == 0){
       entity = &block->entities[i];
       block->types[i] = type;
-      block->flags[i] = (EntityFlag)(EntityFlag_PRESENT | EntityFlag_Visible);
+      block->flags[i] = (EntityFlag)(EntityFlag_PRESENT | EntityFlag_VISIBLE);
       outIndex->blockIndex = 0;
       outIndex->slotIndex = i;
       block->currentAliveEntityCount++;
@@ -46,6 +43,20 @@ EntityIndex* outIndex, EntityContainer* container)
     }
   }
   return entity;
+}
+
+void assign_model_to_entity(EntityIndex index, Asset_ID id, AssetManifest *manifest, EntityContainer *container) {
+  EntityBlock *block = container->blocks[index.blockIndex];
+  Entity *entity = &block->entities[index.slotIndex];
+  ModelAsset *asset = GetModelAsset(id, manifest);
+  if (asset->data.meshData.jointCount > 0) {
+    entity->animation_state.joint_count = asset->data.meshData.jointCount;
+    for (size_t i = 0; i < entity->animation_state.joint_count; i++) {
+      entity->animation_state.joints = asset->data.meshData.joints;
+    }
+  } 
+
+  entity->modelID = id;
 }
 
 void EntityContainerInit(EntityContainer* container, 
@@ -58,7 +69,15 @@ void EntityContainerInit(EntityContainer* container,
   container->currentBlockCapacity = initalBlockCount;
 }
 
-Entity* GetEntity(U32 index, EntityContainer* container) {
-  return &container->firstAvaibleBlock->entities[index];
+
+Entity* GetEntity(EntityIndex index, EntityContainer* container) {
+  EntityBlock *block = container->blocks[index.blockIndex];
+  return &block->entities[index.slotIndex];
+}
+
+Entity *GetEntity(U32 index, EntityContainer *container) {
+  EntityIndex entity_index = {};
+  entity_index.slotIndex = index;
+  return GetEntity(entity_index, container);
 }
 

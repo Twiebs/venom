@@ -50,8 +50,9 @@ void VenomModuleStart(GameMemory* memory) {
   {
     AssetManifest *assetManifest = &memory->assetManifest;
     EntityContainer *entityContainer = &data->entityContainer;
-    Entity *player = CreateEntity(EntityType_Player, entityContainer);
-    player->modelID = GetModelID("player", assetManifest);
+    EntityIndex player_index;
+    Entity *player = CreateEntity(EntityType_Player, &player_index, entityContainer);
+    assign_model_to_entity(player_index, GetModelID("player", assetManifest), assetManifest, entityContainer);
 #if 0
     Entity *light = CreateEntity(EntityType_StaticObject, entityContainer);
     light->position = V3(0.0f, 3.0f, 0.0f);
@@ -174,15 +175,13 @@ void VenomModuleLoad(GameMemory* memory) {
   V3 structureSize = { 8, 2.6F, 5 };
 }
 
-
-
 void VenomModuleRender(GameMemory* memory) {
   RenderState* rs = &memory->renderState;
   GameData* data = (GameData*)memory->userdata;
   EditorData* editorData = &data->editorData;
   EditorData* editor = &data->editorData;
 
-  AddDirectionalLight(V3(1.0f, 0.0f, 0.0f), V3(1.0, 1.0, 1.0), &rs->drawList);
+  AddDirectionalLight(V3(1.0f, 0.5f, 0.0f), V3(1.0, 1.0, 1.0), &rs->drawList);
   
   const F32 deltaTime = memory->deltaTime;
   EntityContainer* entityContainer = &data->entityContainer;
@@ -193,12 +192,22 @@ void VenomModuleRender(GameMemory* memory) {
       if(block->types[i] == EntityType_PointLight) {
         AddShadowCastingPointLight(entity->position, entity->pointLight.color, 
           entity->pointLight.radius, &rs->drawList);
-      } 
+      }
+
+      ModelAsset *asset = GetModelAsset(entity->modelID, &memory->assetManifest);
+      bool is_entity_animated = asset->data.meshData.jointCount > 0;
+      if (is_entity_animated) {
+        entity->animation_state.animation_time += memory->deltaTime;
+      }
 
 
-      if (block->flags[i] & EntityFlag_Visible) {
-        if(editor->selectedEntities.ContainsValue(i)){
+
+      if (block->flags[i] & EntityFlag_VISIBLE) {
+        
+        if(editor->selectedEntities.ContainsValue(i)) {
           PushOutlinedModelDrawCommand(entity->modelID.slot_index, &rs->drawList, entity->position, entity->rotation); 
+        } else if (is_entity_animated) {
+          draw_animated_model(&rs->drawList, &memory->assetManifest, entity->modelID, &entity->animation_state, entity->position, entity->rotation);
         } else {
           PushModelDrawCommand(entity->modelID.slot_index, &rs->drawList, entity->position, entity->rotation); 
         }

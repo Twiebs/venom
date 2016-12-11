@@ -1,6 +1,7 @@
 
 #include "debug_renderer.cpp"
 
+static inline void set_uniform(GLint location, S32 value) { glUniform1i(location, value); }
 static inline void set_uniform(GLint location, F32 value) { glUniform1f(location, value); }
 static inline void set_uniform(GLint location, V2 value) { glUniform2f(location, value.x, value.y); }
 static inline void set_uniform(GLint location, V3 value) { glUniform3f(location, value.x, value.y, value.z); }
@@ -14,7 +15,7 @@ inline void InitalizeRenderState(RenderState* rs, SystemInfo* sys) {
   InitCascadedShadowMaps(&rs->csm, sys->screen_width, sys->screen_height, 45.0f*DEG2RAD);
   for (size_t i = 0; i < SHADOW_CASTING_POINT_LIGHT_MAX; i++) {
     InitOmnidirectionalShadowMap(&rs->osm[i]);
-  } 
+  }
 
 
   { //Setup the @skydome
@@ -81,65 +82,43 @@ void DrawTerrainGeometry(TerrainGenerationState *terrainGenState) {
   glBindTexture(GL_TEXTURE_2D_ARRAY, terrainGenState->normals_texture_array);
   glActiveTexture(GL_TEXTURE7);
   glBindTexture(GL_TEXTURE_2D_ARRAY, terrainGenState->detailmap_texture_array);
-
   glBindVertexArray(terrainGenState->base_mesh.vertexArrayID);
-  glDrawElementsInstanced(GL_TRIANGLES, TERRAIN_INDEX_COUNT_PER_CHUNK, 
-    GL_UNSIGNED_INT, 0, TERRAIN_TOTAL_CHUNK_COUNT);
+  glDrawElementsInstanced(GL_TRIANGLES, TERRAIN_INDEX_COUNT_PER_CHUNK, GL_UNSIGNED_INT, 0, TERRAIN_TOTAL_CHUNK_COUNT);
   glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
   glBindTexture(GL_TEXTURE_2D, 0);
   glBindVertexArray(0);
 };
 #endif
 
-static inline
-void SetLightingUniforms(const VenomDrawList* drawList, const Camera& camera) 
-{
-  static const U32 cameraViewPositionUniformLocation = 4;
-  static const U32 directionalLightCountUniformLocation = 5;
-  static const U32 pointLightCountUniformLocation = 6;
-  static const U32 shadowCastingPointLightLocation = 7; 
+static inline void SetLightingUniforms(const VenomDrawList* drawList, const Camera& camera) {
+  static const U32 CAMERA_VIEW_POSITON_LOCATION = 4;
+  static const U32 DIRECTIONAL_LIGHT_COUNT_LOCATION = 5;
+  static const U32 POINT_LIGHT_COUNT_LOCATION = 6;
+  static const U32 SHADOW_CASTING_POINT_LIGHT_LOCAION = 7; 
 
-  glUniform3f(cameraViewPositionUniformLocation,
-    camera.position.x, camera.position.y, camera.position.z);
-  glUniform1i(directionalLightCountUniformLocation, 
-    (int)drawList->directionalLightCount);
-  glUniform1i(pointLightCountUniformLocation,
-    (int)drawList->pointLightCount);
-  glUniform1i(shadowCastingPointLightLocation, 
-    (int)drawList->shadowCastingPointLightCount);
+  set_uniform(CAMERA_VIEW_POSITON_LOCATION, camera.position);
+  set_uniform(DIRECTIONAL_LIGHT_COUNT_LOCATION, (S32)drawList->directionalLightCount);
+  set_uniform(POINT_LIGHT_COUNT_LOCATION, (S32)drawList->pointLightCount);
+  set_uniform(SHADOW_CASTING_POINT_LIGHT_LOCAION, (S32)drawList->shadowCastingPointLightCount);
 
   for (size_t i = 0; i < drawList->directionalLightCount; i++) {
     const DirectionalLight& light = drawList->directionalLights[i];
-    glUniform3f(DIRECTIONAL_LIGHT_UNIFORM_LOCATION + 0 + 
-      (i*UNIFORM_COUNT_PER_DIRECTIONAL_LIGHT), light.direction.x,
-      light.direction.y, light.direction.z);
-    glUniform3f(DIRECTIONAL_LIGHT_UNIFORM_LOCATION + 1 + 
-      (i*UNIFORM_COUNT_PER_DIRECTIONAL_LIGHT), light.color.x,
-      light.color.y, light.color.z);		
+    set_uniform(DIRECTIONAL_LIGHT_UNIFORM_LOCATION + 0 + (i*UNIFORM_COUNT_PER_DIRECTIONAL_LIGHT), light.direction);
+    set_uniform(DIRECTIONAL_LIGHT_UNIFORM_LOCATION + 1 + (i*UNIFORM_COUNT_PER_DIRECTIONAL_LIGHT), light.color);
   }
 
   for (size_t i = 0; i < drawList->pointLightCount; i++) {
     const PointLight& light = drawList->pointLights[i];
-    glUniform3f(POINT_LIGHT_UNIFORM_LOCATION + 0 +
-      (i*UNIFORM_COUNT_PER_POINT_LIGHT), light.position.x,
-      light.position.y, light.position.z);
-    glUniform3f(POINT_LIGHT_UNIFORM_LOCATION + 1 +
-      (i*UNIFORM_COUNT_PER_POINT_LIGHT), light.color.x,
-      light.color.y, light.color.z);
-    glUniform1f(POINT_LIGHT_UNIFORM_LOCATION + 2 +
-      (i*UNIFORM_COUNT_PER_POINT_LIGHT), light.radius);
+    set_uniform(POINT_LIGHT_UNIFORM_LOCATION + 0 + (i*UNIFORM_COUNT_PER_POINT_LIGHT), light.position);
+    set_uniform(POINT_LIGHT_UNIFORM_LOCATION + 1 + (i*UNIFORM_COUNT_PER_POINT_LIGHT), light.color);
+    glUniform1f(POINT_LIGHT_UNIFORM_LOCATION + 2 + (i*UNIFORM_COUNT_PER_POINT_LIGHT), light.radius);
   }
 
   for (size_t i = 0; i < drawList->shadowCastingPointLightCount; i++) {
     const PointLight& light = drawList->shadowCastingPointLights[i];
-    glUniform3f(SHADOW_CASTING_POINT_LIGHT_UNIFORM_LOCATION + 0 +
-      (i*UNIFORM_COUNT_PER_POINT_LIGHT), light.position.x,
-      light.position.y, light.position.z);
-    glUniform3f(SHADOW_CASTING_POINT_LIGHT_UNIFORM_LOCATION + 1 +
-      (i*UNIFORM_COUNT_PER_POINT_LIGHT), light.color.x,
-      light.color.y, light.color.z);
-    glUniform1f(SHADOW_CASTING_POINT_LIGHT_UNIFORM_LOCATION + 2 +
-      (i*UNIFORM_COUNT_PER_POINT_LIGHT), light.radius);
+    set_uniform(SHADOW_CASTING_POINT_LIGHT_UNIFORM_LOCATION + 0 + (i*UNIFORM_COUNT_PER_POINT_LIGHT), light.position);
+    set_uniform(SHADOW_CASTING_POINT_LIGHT_UNIFORM_LOCATION + 1 + (i*UNIFORM_COUNT_PER_POINT_LIGHT), light.color);
+    set_uniform(SHADOW_CASTING_POINT_LIGHT_UNIFORM_LOCATION + 2 + (i*UNIFORM_COUNT_PER_POINT_LIGHT), light.radius);
   }
 }
 
@@ -182,6 +161,20 @@ void RenderDrawListWithGeometry(VenomDrawList* drawList, AssetManifest* manifest
 #endif//VENOM_RELEASE
 }
 
+static inline M4 calculate_current_pose_matrix(S32 joint_index, Animation_Joint *joints, M4 *current_transforms) {
+  M4 result = current_transforms[joint_index];
+  Animation_Joint *joint = &joints[joint_index];
+  S32 parent_index = joint->parent_index;
+  while (parent_index != -1) {
+    result = current_transforms[parent_index] * result;
+    Animation_Joint *parent = &joints[parent_index];
+    parent_index = parent->parent_index;
+  }
+
+  result = Inverse(result);
+  return result;
+}
+
 //==========================================================================
 
 static inline void draw_atmosphere_oneil(const RenderState *rs, const Camera *camera, AssetManifest *am) {
@@ -209,7 +202,7 @@ static inline void draw_atmosphere_glsl(RenderState *rs, Camera *camera, AssetMa
   GLuint program_id = GetShaderProgram(ShaderID_atmospheric_scattering_glsl, assetManifest);
   glUseProgram(program_id);
   set_uniform(SUN_POSITION_LOCATION, sun_position);
-  M4 mvp = Rotate(camera->pitch, camera->yaw, 0.0f);
+  M4 mvp = Rotate(-camera->pitch, -camera->yaw, 0.0f) * Translate(0.0f, 0.0f, 1.0f);
   set_uniform(CAMERA_POSITION_LOCATION, camera->position);
   set_uniform(CAMERA_DIRECTION_LOCATION, camera->front);
   set_uniform(VIEW_MATRIX_LOCATION, mvp);
@@ -217,24 +210,13 @@ static inline void draw_atmosphere_glsl(RenderState *rs, Camera *camera, AssetMa
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
 
-static inline void draw_model_with_materials(ModelDrawable* drawable, M4 modelMatrix){
+static inline void draw_model_with_materials_common(ModelDrawable *drawable, M4 model_matrix) {
   static const U32 MODEL_MATRIX_LOCATION = 0;
   static const U32 NORMALMAP_PRESENT_LOCATION = 3;
   static const U32 SPECULARMAP_PRESENT_LOCATION = 4;
-  static const U32 BONE_OFFSET_LOCATION = 5;
-  glUniformMatrix4fv(MODEL_MATRIX_LOCATION, 1, GL_FALSE, &modelMatrix[0][0]);
-  U64 currentIndexOffset = 0;
+  set_uniform(MODEL_MATRIX_LOCATION, model_matrix);
   glBindVertexArray(drawable->vertexArrayID);
-  if (drawable->bone_count > 0) {
-    for (size_t i = 0; i < drawable->bone_count; i++) {
-      set_uniform(BONE_OFFSET_LOCATION + i, drawable->bones[i].offset_matrix);
-    }
-  } else {
-    for (size_t i = 0; i < 16; i++) {
-      set_uniform(BONE_OFFSET_LOCATION + i, M4Identity());
-    }
-  }
-
+  U64 currentIndexOffset = 0;
   for (size_t j = 0; j < drawable->meshCount; j++) {
     const MaterialDrawable &material = drawable->materials[j];
     glUniform1i(NORMALMAP_PRESENT_LOCATION, material.flags & MaterialFlag_NORMAL);
@@ -243,13 +225,68 @@ static inline void draw_model_with_materials(ModelDrawable* drawable, M4 modelMa
     glDrawElements(GL_TRIANGLES, drawable->indexCountPerMesh[j], GL_UNSIGNED_INT, (GLvoid*)(sizeof(U32)*currentIndexOffset));
     currentIndexOffset += drawable->indexCountPerMesh[j];
   }
+}
 
+
+static inline void draw_animated_model_with_materials(ModelDrawable *drawable, Animation_State *animation_state, M4 model_matrix) {
+  static const U32 MODEL_MATRIX_LOCATION = 0;
+  static const U32 NORMALMAP_PRESENT_LOCATION = 3;
+  static const U32 SPECULARMAP_PRESENT_LOCATION = 4;
+  static const U32 BONE_OFFSET_LOCATION = 5;
+  static const U32 IS_MESH_STATIC_LOCATION = 21;
+
+  set_uniform(IS_MESH_STATIC_LOCATION, false);
+  set_uniform(MODEL_MATRIX_LOCATION, Rotate(PI32*0.5f, 0.0, 0.0) * model_matrix);
+  glBindVertexArray(drawable->vertexArrayID);
+
+  U32 current_index_offset = 0;
+  M4 current_transform_matrices[16];
+  Animation_Joint *joints = drawable->joints;
+  for (size_t i = 0; i < drawable->meshCount; i++) {
+    for (size_t j = 0; j < drawable->jointCountPerMesh[i]; j++) {
+      Animation_Joint *joint = &joints[j];
+      current_transform_matrices[j] = joint->parent_realtive_matrix;
+    }
+
+    for (size_t j = 0; j < drawable->jointCountPerMesh[i]; j++) {
+      Animation_Joint *joint = &joints[j];
+      M4 current_pose_matrix = calculate_current_pose_matrix((S32)j, joints, current_transform_matrices);
+      M4 final_skinning_matrix = joint->inverse_bind_matrix * current_pose_matrix;
+      set_uniform(BONE_OFFSET_LOCATION + i, final_skinning_matrix);
+    }
+
+    const MaterialDrawable &material = drawable->materials[i];
+    glUniform1i(NORMALMAP_PRESENT_LOCATION, material.flags & MaterialFlag_NORMAL);
+    glUniform1i(SPECULARMAP_PRESENT_LOCATION, material.flags & MaterialFlag_SPECULAR);
+    BindMaterial(material);
+    glDrawElements(GL_TRIANGLES, drawable->indexCountPerMesh[i], GL_UNSIGNED_INT, (GLvoid*)(sizeof(U32)*current_index_offset));
+
+    current_index_offset += drawable->indexCountPerMesh[i];
+    joints = joints + drawable->jointCountPerMesh[i];
+  }
+
+  //current_transform_matrices[0] = Translate(4.0f*sin(animation_state->animation_time*0.25), 0.0f, 0.0f) * current_transform_matrices[0];
+  //current_transform_matrices[2] = Translate(0.5*sin(animation_state->animation_time * 8), 0.0, 0.0) * current_transform_matrices[3];
+}
+
+static inline void draw_static_model_with_materials(ModelDrawable* drawable, M4 modelMatrix) {
+  static const U32 BONE_OFFSET_LOCATION = 5;
+  static const U32 IS_MESH_STATIC_LOCATION = 21;
+  set_uniform(IS_MESH_STATIC_LOCATION, true);
+
+  for (size_t i = 0; i < 16; i++) {
+    set_uniform(BONE_OFFSET_LOCATION + i, M4Identity());
+  }
+
+  draw_model_with_materials_common(drawable, modelMatrix);
 }
 
 static inline void draw_model_with_only_geometry(ModelDrawable* drawable, M4 modelMatrix) {
-  glUniformMatrix4fv(0, 1, GL_FALSE, &modelMatrix[0][0]);
+  static const U32 MODEL_MATRIX_LOCATION = 0;
+  static const U32 BONE_OFFSET_LOCATION = 5;
   U64 currentIndexOffset = 0;
   glBindVertexArray(drawable->vertexArrayID);
+  set_uniform(MODEL_MATRIX_LOCATION, modelMatrix);
   for (size_t j = 0; j < drawable->meshCount; j++) {
     glDrawElements(GL_TRIANGLES, drawable->indexCountPerMesh[j], GL_UNSIGNED_INT, (GLvoid*)(sizeof(U32)*currentIndexOffset));
     currentIndexOffset += drawable->indexCountPerMesh[j];
@@ -259,19 +296,27 @@ static inline void draw_model_with_only_geometry(ModelDrawable* drawable, M4 mod
 //==============================================================================
 
 static inline
-void RenderDrawListWithMaterials(VenomDrawList* drawList, AssetManifest* manifest) {
+void RenderDrawListWithMaterials(VenomDrawList* drawList, AssetManifest* manifest, float deltaTime) {
   for (size_t i = 0; i < drawList->drawCommandCount; i++) {
     VenomDrawCommand* drawCmd = &drawList->drawCommands[i];
     glBindVertexArray(drawCmd->vertexArrayID);
     glDrawElements(GL_TRIANGLES, drawCmd->indexCount, GL_UNSIGNED_INT, 0);
   }
 
+  for (size_t i = 0; i < drawList->animated_model_draw_commands.count; i++) {
+    Animated_Model_Draw_Command *draw_cmd = &drawList->animated_model_draw_commands[i];
+    ModelDrawable *drawable = &draw_cmd->model->drawable;
+    if (drawable == nullptr) continue;
+    draw_animated_model_with_materials(drawable, draw_cmd->animation_state, draw_cmd->model_matrix);
+  }
+    
+
   for(size_t i = 0; i < drawList->modelDrawComandCount; i++){
     VenomModelDrawCommand* drawCmd = &drawList->modelDrawCommands[i];
     ModelDrawable* drawable = GetModelDrawableFromIndex(drawCmd->modelID, manifest);
     //TODO(Torin) This should be an asset condition after default assets are added
     if (drawable == nullptr) continue;
-    draw_model_with_materials(drawable, drawCmd->modelMatrix);
+    draw_static_model_with_materials(drawable, drawCmd->modelMatrix);
   }
 
   for (size_t i = 0; i < drawList->meshDrawCommandCount; i++) {
@@ -407,8 +452,11 @@ void SetLightSpaceTransformUniforms(CascadedShadowMap* csm, GLuint programID) {
     &csm->shadowCascadeDistances[0]);
 }
 
-static inline void render_outlined_objects(RenderState *rs, Camera *camera, AssetManifest *assetManifest){
+static inline void render_outlined_objects(RenderState *rs, Camera *camera, AssetManifest *assetManifest, float deltaTime){
   glEnable(GL_STENCIL_TEST);
+
+  //TODO(Torin) Consolodaite this into a foward render pass procedure
+  //instead of duplicating the foward renderer and the outline code
 
   { //Foward opaque material shader pass
     static const U32 MODEL_MATRIX_LOCATION = 0;
@@ -425,7 +473,7 @@ static inline void render_outlined_objects(RenderState *rs, Camera *camera, Asse
     for (size_t i = 0; i < drawList->outlinedModelDrawCommandCount; i++) {
       VenomModelDrawCommand* drawCmd = &drawList->outlinedModelDrawCommands[i];
       ModelDrawable* drawable = GetModelDrawableFromIndex(drawCmd->modelID, assetManifest);
-      draw_model_with_materials(drawable, drawCmd->modelMatrix);
+      draw_static_model_with_materials(drawable, drawCmd->modelMatrix);
     }
   }
 
@@ -593,7 +641,7 @@ void VenomRenderScene(GameMemory* memory, Camera* camera) {
     glEnable(GL_STENCIL_TEST);
     glStencilOp(GL_KEEP, GL_REPLACE, GL_REPLACE);
     glStencilFunc(GL_ALWAYS, 1, 1);
-    RenderDrawListWithMaterials(drawList, assetManifest);
+    RenderDrawListWithMaterials(drawList, assetManifest, memory->deltaTime);
     glDisable(GL_STENCIL_TEST);
   }
 #endif
@@ -617,7 +665,7 @@ void VenomRenderScene(GameMemory* memory, Camera* camera) {
     glUniformMatrix4fv(SSAO_VIEW_LOCATION, 1, GL_FALSE, &camera->view[0][0]);
     glUniformMatrix4fv(SSAO_PROJECTION_LOCATION, 1, GL_FALSE, &camera->projection[0][0]);
     for (size_t i = 0; i < SSAO_SAMPLE_COUNT; i++) {
-      glUniform3fv(SSAO_SAMPLE_LOCATION + i, 1, &ssao->kernelSamples[i].x);
+      set_uniform(SSAO_SAMPLE_LOCATION + i, ssao->kernelSamples[i]);
     }
     glBindVertexArray(rs->quadVao);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
@@ -666,7 +714,7 @@ void VenomRenderScene(GameMemory* memory, Camera* camera) {
   render_debug_draw_commands(camera, assetManifest, memory->deltaTime);
   glDisable(GL_STENCIL_TEST);
 
-  render_outlined_objects(rs, camera, assetManifest);
+  render_outlined_objects(rs, camera, assetManifest, memory->deltaTime);
 
   //Render the atmosphere first
 #if 1
@@ -712,6 +760,7 @@ void VenomRenderScene(GameMemory* memory, Camera* camera) {
   drawList->pointLightCount = 0;
   drawList->directionalLightCount = 0;
   drawList->shadowCastingPointLightCount = 0;
+  drawList->animated_model_draw_commands.count = 0;
 
 
 

@@ -10,6 +10,16 @@ size_t LastOffsetOfChar(char c, const char *s){
   return 0;
 }
 
+inline bool cstrings_are_equal(const char *a, const char *b) {
+  while (*a != 0) {
+    if (*a != *b) return false;
+    a++;
+    b++;
+  }
+  return *a == *b;
+}
+
+
 inline int
 FindMatchingString(const char *source, const char **list, size_t listLength) {
   for (size_t i = 0; i < listLength; i++)

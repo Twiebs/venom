@@ -1,4 +1,26 @@
 
+static inline bool check_model_asset_for_errors(ModelAsset *model){
+  MeshData *mesh_data = &model->data.meshData;
+  if (mesh_data->joints > 0) {
+    for (size_t i = 0; i < mesh_data->vertexCount; i++) {
+      AnimatedVertex *vertex = &mesh_data->vertices[i];
+      float total_weight = 0.0f;
+      for (size_t j = 0; j < 4; j++) {
+        total_weight += vertex->weight[j];
+      }
+
+      if (abs(1.0 - total_weight) > 0.1) {
+        LogWarning("Vertex weights do not sum to 1.0!");
+        return false;
+      }
+    }
+  }
+
+
+  return true;
+}
+
+
 static inline bool CreateModelAssetFromFile(AssetSlot *slot, AssetManifest *manifest) {
   assert(slot->asset == 0);
   assert(slot->filename != 0);
@@ -20,15 +42,20 @@ static inline bool CreateModelAssetFromFile(AssetSlot *slot, AssetManifest *mani
   modelAsset->size = Abs(modelAsset->aabb.max - modelAsset->aabb.min);
   modelAsset->drawable.materials = (MaterialDrawable *)calloc(modelAsset->data.meshCount, sizeof(MaterialDrawable));
   create_indexed_animated_vertex_array(&modelAsset->vertexArray, &modelAsset->data.meshData);
-  modelAsset->drawable.indexCountPerMesh = modelAsset->data.indexCountPerMesh;
-  modelAsset->drawable.vertexArrayID = modelAsset->vertexArray.vertexArrayID;
-  modelAsset->drawable.meshCount = modelAsset->data.meshCount;
-  modelAsset->drawable.bone_count = modelAsset->data.meshData.boneCount;
-  modelAsset->drawable.bones = modelAsset->data.meshData.bones;
+  
+  ModelDrawable *drawable = &modelAsset->drawable;
+  drawable->indexCountPerMesh = modelAsset->data.index_count_per_mesh;
+  drawable->jointCountPerMesh = modelAsset->data.joint_count_per_mesh;
+  drawable->vertexArrayID = modelAsset->vertexArray.vertexArrayID;
+  drawable->meshCount = modelAsset->data.meshCount;
+  drawable->joints = modelAsset->data.meshData.joints;
+
   slot->lastWriteTime = GetFileLastWriteTime(filename);
   for (size_t i = 0; i < modelAsset->data.meshCount; i++) {
     modelAsset->drawable.materials[i] = CreateMaterialDrawable(&modelAsset->data.materialDataPerMesh[i]);
   }
+
+  check_model_asset_for_errors(modelAsset);
 
   slot->flags |= AssetFlag_LOADED;
 }
@@ -50,11 +77,9 @@ void initalize_asset_manifest(AssetManifest *manifest) {
 }
 
 
-static void UnloadModelAsset(ModelAsset* modelAsset);
 
 
-#ifndef VENOM_RELEASE
-//==========================================================================
+#ifndef VENOM_RELEASE //===========================================================
 //NOTE(Torin) The asset manifest is used to store asset information in
 //development builds for easy runtime modifcation of asset data without
 //using hardcoded values or requiring seperate metadata to be mantained
@@ -68,6 +93,63 @@ static inline void UnloadModelAsset(ModelAsset *modelAsset) {
   free(modelAsset->drawable.materials);
   free(modelAsset);
 }
+
+void hotload_modified_assets(AssetManifest *manifest) {
+  for (U32 i = 0; i < DEBUGShaderID_COUNT; i++) {
+    DEBUGLoadedShader *loadedShader = manifest->loadedShaders + i;
+    if (!loadedShader->is_loaded) continue;
+    for (auto n = 0; n < 4; n++) {
+      const char *filename = loadedShader->filenames[n];
+      if (filename != nullptr) {
+        U64 lastWriteTime = GetFileLastWriteTime(filename);
+        if (lastWriteTime != loadedShader->lastWriteTimes[n]) {
+          loadedShader->lastWriteTimes[0] =
+            GetFileLastWriteTime(loadedShader->filenames[0]);
+          loadedShader->lastWriteTimes[1] =
+            GetFileLastWriteTime(loadedShader->filenames[1]);
+          loadedShader->lastWriteTimes[2] =
+            GetFileLastWriteTime(loadedShader->filenames[2]);
+          GLuint newShader = DEBUGCreateShaderProgramFromFiles(loadedShader->filenames);
+          if (newShader != 0) {
+            glDeleteProgram(loadedShader->programHandle);
+            loadedShader->programHandle =
+              DEBUGCreateShaderProgramFromFiles(loadedShader->filenames);
+            glDeleteProgram(newShader);
+            LOG_DEBUG("Reloaded shader program");
+          }
+          break;
+        }
+      }
+    }
+  }
+
+
+  char modelFilename[1024] = {};
+  memcpy(modelFilename, VENOM_ASSET_DIRECTORY, sizeof(VENOM_ASSET_DIRECTORY) - 1);
+  char *modelFilenameWrite = modelFilename + sizeof(VENOM_ASSET_DIRECTORY) - 1;
+  for (size_t i = 0; i < manifest->modelAssets.count; i++) {
+    if (manifest->modelAssets[i].flags & AssetFlag_LOADED || manifest->modelAssets[i].flags & AssetFlag_INVALID) {
+      AssetSlot* modelSlot = &manifest->modelAssets[i];
+      ModelAsset* modelAsset = (ModelAsset *)manifest->modelAssets[i].asset;
+      strcpy(modelFilenameWrite, modelSlot->filename);
+      U64 lastWriteTime = GetFileLastWriteTime(modelFilename);
+      if (lastWriteTime != modelSlot->lastWriteTime) {
+        modelSlot->lastWriteTime = lastWriteTime;
+        if ((manifest->modelAssets[i].flags & AssetFlag_INVALID) == 0) {
+          UnloadModelAsset(modelAsset);
+        }
+
+        manifest->modelAssets[i].flags = 0;
+        manifest->modelAssets[i].asset = 0;
+        LogDebug("Unloaded model asset %s", modelSlot->name);
+      }
+    }
+  }
+}
+
+
+
+
 
 void RemoveModelFromManifest(U32 index, AssetManifest *manifest) {
   AssetSlot *slot = &manifest->modelAssets[index];
@@ -105,58 +187,6 @@ void ReadAssetManifestFile(const char *filename, AssetManifest *manifest){
     vs::EndGroupRead();
   }
   vs::EndFileRead();
-}
-
-static void HotloadShaders(AssetManifest *assets) {
-  for (U32 i = 0; i < DEBUGShaderID_COUNT; i++) {
-    DEBUGLoadedShader *loadedShader = assets->loadedShaders + i;
-    if (!loadedShader->is_loaded) continue;
-    for (auto n = 0; n < 4; n++) {
-      const char *filename = loadedShader->filenames[n];
-      if (filename != nullptr) {
-        U64 lastWriteTime = GetFileLastWriteTime(filename);
-        if (lastWriteTime != loadedShader->lastWriteTimes[n]) {
-          loadedShader->lastWriteTimes[0] =
-            GetFileLastWriteTime(loadedShader->filenames[0]);
-          loadedShader->lastWriteTimes[1] =
-            GetFileLastWriteTime(loadedShader->filenames[1]);
-          loadedShader->lastWriteTimes[2] =
-            GetFileLastWriteTime(loadedShader->filenames[2]);
-          GLuint newShader = DEBUGCreateShaderProgramFromFiles(loadedShader->filenames);
-          if (newShader != 0) {
-            glDeleteProgram(loadedShader->programHandle);
-            loadedShader->programHandle =
-              DEBUGCreateShaderProgramFromFiles(loadedShader->filenames);
-            glDeleteProgram(newShader);
-            LOG_DEBUG("Reloaded shader program");
-          }
-          break;
-        }
-      }
-    }
-  }
-}
-
-static inline
-void HotloadModels(AssetManifest* manifest) {
-  char modelFilename[1024] = {};
-  memcpy(modelFilename, VENOM_ASSET_DIRECTORY, sizeof(VENOM_ASSET_DIRECTORY) - 1);
-  char *modelFilenameWrite = modelFilename + sizeof(VENOM_ASSET_DIRECTORY) - 1;
-  for (size_t i = 0; i < manifest->modelAssets.count; i++) {
-    if (manifest->modelAssets[i].flags & AssetFlag_LOADED) {
-      AssetSlot* modelSlot = &manifest->modelAssets[i];
-      ModelAsset* modelAsset = (ModelAsset *)manifest->modelAssets[i].asset;
-      strcpy(modelFilenameWrite, modelSlot->filename);
-      U64 lastWriteTime = GetFileLastWriteTime(modelFilename);
-      if (lastWriteTime != modelSlot->lastWriteTime) {
-        modelSlot->lastWriteTime = lastWriteTime;
-        UnloadModelAsset(modelAsset);
-        manifest->modelAssets[i].flags = 0;
-        manifest->modelAssets[i].asset = 0;
-        LogDebug("Unloaded model asset %s", modelSlot->name);
-      }
-    }
-  }
 }
 
 bool manifest_contains_model(const char *name, AssetManifest *manifest, U32 *slot_index) {
@@ -207,7 +237,10 @@ ModelAsset* GetModelAsset(Asset_ID& id, AssetManifest* manifest) {
       return GetModelAsset(null_id, manifest);
     }
 
-    CreateModelAssetFromFile(modelAssetSlot, manifest);
+    if (CreateModelAssetFromFile(modelAssetSlot, manifest) == false) {
+      Asset_ID null_id = {};
+      return GetModelAsset(null_id, manifest);
+    }
   }
 
   ModelAsset *modelAsset = (ModelAsset *)manifest->modelAssets[id.slot_index].asset;

@@ -28,7 +28,8 @@ float LinearizeDepth(float depth) {
 
 void main() {
   vec3 normal = normalize(fsIn.normal);
-  if(isNormalmapPresent == 1){ //For Debugging
+  #if 0
+  if (isNormalmapPresent == 1) { //For Debugging
     vec3 fragmentNormal = normal; 
     vec3 fragmentTangent = normalize(fsIn.tangent);
     vec3 bitangent = cross(fragmentNormal, fragmentTangent);
@@ -37,6 +38,7 @@ void main() {
     normal = normalize((normal * 2.0) - 1.0);
     normal = tbn * normal; 
   }
+  #endif
 
   outPositionDepth.xyz = fsIn.position;
   outPositionDepth.a = fsIn.position.z;

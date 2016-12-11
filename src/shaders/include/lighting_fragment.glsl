@@ -36,12 +36,10 @@ uniform samplerCube uOmniShadowMapSampler[SHADOW_CASTING_POINT_LIGHT_MAX];
 uniform mat4 u_light_space_matrix[4];
 uniform float u_shadow_cascade_distance[4];
 
-vec3 ApplyDirectionalLight(DirectionalLight light, 
-FragmentInfo fragment, vec3 viewDirection) { 
+vec3 ApplyDirectionalLight(DirectionalLight light, FragmentInfo fragment, vec3 viewDirection) { 
   float diffuseFactor = max(dot(fragment.normal, light.direction), 0.0);
 	vec3 halfwayDirection = normalize(light.direction + viewDirection);
-	float specularFactor = pow(max(dot(fragment.normal, 
-    halfwayDirection), 0.0), fragment.specularExponent);
+	float specularFactor = pow(max(dot(fragment.normal, halfwayDirection), 0.0), fragment.specularExponent);
 	vec3 diffuseColor = light.color * fragment.color * diffuseFactor;
 	vec3 specularColor = light.color * fragment.color * specularFactor;
 	return diffuseColor + specularColor;
@@ -124,20 +122,26 @@ vec4 ApplyLighting(FragmentInfo fragment) {
   //vec3 viewDirection = normalize(-fragment.position);
 	vec3 resultColor = vec3(0.0);
 
+
+#if 1
 	for (int i = 0; i < directionalLightCount; i++) {
-		vec3 fragmentColor = ApplyDirectionalLight(directionalLights[i], 
-      fragment, viewDirection);
+		vec3 fragmentColor = ApplyDirectionalLight(directionalLights[i], fragment, viewDirection);
     //float resultLighting = CalculateShadowScalar(fragment.position);
     //fragmentColor *= 1.0 - resultLighting;
     resultColor += fragmentColor;
 	}
+#endif
 
+
+#if 0
   for (int i = 0; i < uPointLightCount; i++) {
     vec3 fragmentColor = ApplyPointLight(pointLights[i], fragment, viewDirection);
     resultColor += fragmentColor;
-
   }
+#endif
 
+
+#if 0
   for (int i = 0; i < uShadowCastingPointLightCount; i++) {
     vec3 fragmentColor = ApplyPointLight(shadowCastingPointLights[i], 
       fragment, viewDirection);
@@ -146,6 +150,7 @@ vec4 ApplyLighting(FragmentInfo fragment) {
     fragmentColor *= (1.0 - resultLighting) + 0.2;
     resultColor += fragmentColor;
   }
+#endif
 
 	return vec4(resultColor, 1.0);
 }

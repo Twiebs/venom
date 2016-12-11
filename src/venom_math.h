@@ -8,6 +8,10 @@ static const float RAD2DEG = (180.0f / PI32);
 #include "math_geometry.h"
 #include "math_procedural.h"
 
+struct Quaternion {
+  F32 x, y, z, w;
+};
+
 template<typename T>
 inline void Swap(T* a, T* b){
   T t = *a;
@@ -60,6 +64,19 @@ inline F32
 Max(F32 a, F32 b) {
 	F32 result = a > b ? a : b;
 	return result;
+}
+
+template <typename T>
+T min(T a, T b) {
+  T r0 = a < b ? a : b;
+  return r0;
+}
+
+template <typename T>
+T max3(T a, T b, T c) {
+  T r0 = a > b ? a : b;
+  T r1 = c > r0 ? c : r0;
+  return r1;
 }
 
 inline B8 

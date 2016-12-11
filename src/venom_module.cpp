@@ -368,12 +368,9 @@ EngineAPIList
 }
 
 extern "C" void _VenomModuleUpdate(GameMemory* memory) {
-  DEBUG_BeginProfileEntry("HotloadShaders");
-	HotloadShaders(&memory->assetManifest);
-  DEBUG_EndProfileEntry("HotloadShaders");
-  DEBUG_BeginProfileEntry("HotloadModels");
-  HotloadModels(&memory->assetManifest);
-  DEBUG_EndProfileEntry("HotloadModels");
+  DEBUG_BeginProfileEntry("HotloadAssets");
+  hotload_modified_assets(&memory->assetManifest);
+  DEBUG_EndProfileEntry("HotloadAssets");
 
   imgui_update_state(memory);
   ImGui::NewFrame();

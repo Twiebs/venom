@@ -57,3 +57,12 @@ V3 position, V3 rotation = V3{0,0,0})
    drawList->outlinedModelDrawCommands);
 }
 
+void draw_animated_model(VenomDrawList *draw_list, AssetManifest *assets, Asset_ID model_id, 
+Animation_State *animation_state, V3 position, V3 rotation = V3(0.0, 0.0, 0.0), V3 scale = V3(1.0, 1.0, 1.0)) 
+{  
+  Animated_Model_Draw_Command *draw_command = draw_list->animated_model_draw_commands.AddElement();
+  draw_command->model = GetModelAsset(model_id, assets);
+  draw_command->model_matrix = Translate(position) * Rotate(rotation) * Scale(scale);
+  draw_command->animation_state = animation_state;
+}
+

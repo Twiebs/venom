@@ -55,16 +55,19 @@ struct MaterialDrawable {
 	GLuint specular_texture_id;
 };
 
-#if 1
+//TODO(Torin) This thing is a massive
+//pain in the ass... remove it... mabye...
+//If they are stored in a different location
+//from the model asset it could prove to be usefull...
+
 struct ModelDrawable {
 	GLuint vertexArrayID;
 	U32 meshCount;
 	U32 *indexCountPerMesh;
+  U32 *jointCountPerMesh;
 	MaterialDrawable *materials;
-  U32 bone_count;
-  Animation_Bone *bones;
-};
-#endif
+  Animation_Joint *joints;
+}; //40 bytes
 
 
 

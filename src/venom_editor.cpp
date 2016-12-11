@@ -192,6 +192,10 @@ void process_editor_input(EditorData *editor, InputState *input) {
 void draw_entity_editor_ui(EditorData *editor, AssetManifest *manifest, EntityContainer *entityContainer) {
   ImGui::Text("Active Editor Command: %s", EditorCommandNames[editor->activeCommand]);
   ImGui::Text("SelectedEntityCount: %d", (int)editor->selectedEntities.count);
+  ImGui::SameLine();
+  if (ImGui::Button("Clear Selection")) {
+    editor->selectedEntities.count = 0;
+  }
 
   if (ImGui::Button("Save World")) {
     char temp[512];
@@ -297,6 +301,13 @@ void UpdateEntityGroupAABB(EditorData *editor, EntityContainer *ec, AssetManifes
 }
 #endif
 
+static inline void imgui_matrix(M4 m) {
+  ImGui::Text("%.2f, %.2f, %.2f, %.2f", m[0][0], m[1][0], m[2][0], m[3][0]);
+  ImGui::Text("%.2f, %.2f, %.2f, %.2f", m[0][1], m[1][1], m[2][1], m[3][1]);
+  ImGui::Text("%.2f, %.2f, %.2f, %.2f", m[0][2], m[1][2], m[2][2], m[3][2]);
+  ImGui::Text("%.2f, %.2f, %.2f, %.2f", m[0][3], m[1][3], m[2][3], m[3][3]);
+}
+
 static void draw_asset_manifest_ui(AssetManifest* manifest) {
   static int selectedAssetType = 0;
   static int lastSelectedIndex = -1;
@@ -381,10 +392,23 @@ static void draw_asset_manifest_ui(AssetManifest* manifest) {
 
   ImGui::NextColumn();
   if (selectedIndex != -1) {
+
+
+    if (selectedIndex != lastSelectedIndex) {
+      if (lastSelectedIndex != -1 && lastSelectedIndex != 0) {
+        
+      }
+
+
+
+    }
+
     static char nameBuffer[256] = {};
     static char filenameBuffer[256] = {};
     AssetSlot *slot = &slotArray->data[selectedIndex];
-    if (selectedIndex != lastSelectedIndex) {
+    bool name_modifed = ImGui::InputText("Name", nameBuffer, sizeof(nameBuffer), ImGuiInputTextFlags_EnterReturnsTrue);
+    bool filename_modifed = ImGui::InputText("Filename", filenameBuffer, sizeof(filenameBuffer), ImGuiInputTextFlags_EnterReturnsTrue);
+    if (name_modifed || filename_modifed || (selectedIndex != lastSelectedIndex)) {
       if (lastSelectedIndex != -1 && lastSelectedIndex != 0) {
         AssetSlot *lastSlot = &manifest->modelAssets[lastSelectedIndex];
         free(lastSlot->name);
@@ -392,14 +416,14 @@ static void draw_asset_manifest_ui(AssetManifest* manifest) {
         lastSlot->name = strdup(nameBuffer);
         lastSlot->filename = strdup(filenameBuffer);
       }
-
+      lastSelectedIndex = selectedIndex;
       strcpy(nameBuffer, slot->name);
       strcpy(filenameBuffer, slot->filename);
-      lastSelectedIndex = selectedIndex;
     }
+    
 
-    ImGui::InputText("Name", nameBuffer, sizeof(nameBuffer));
-    ImGui::InputText("Filename", filenameBuffer, sizeof(filenameBuffer));
+
+
 
     if (slot->asset != 0) {
       switch (selectedAssetType) {
@@ -408,6 +432,32 @@ static void draw_asset_manifest_ui(AssetManifest* manifest) {
         for (size_t i = 0; i < asset->data.meshCount; i++) {
           ShowMaterialDataInfo(&asset->data.materialDataPerMesh[i], lastSelectedIndex != selectedIndex);
         }
+
+        ImGui::BeginChildFrame(0, ImVec2(400, 200));
+        static int selected_bone = -1;
+        for (size_t i = 0; i < asset->data.meshData.jointCount; i++) {
+          Animation_Joint *joint = &asset->data.meshData.joints[i];
+          if (ImGui::Selectable(joint->name, selected_bone == i)) {
+            if (selected_bone == i) {
+              selected_bone = -1;
+            } else {
+              selected_bone = i;
+            }
+          }
+        }
+
+
+        if (selected_bone != -1) {
+          ImGui::Text("Inverse Bind Pose");
+          imgui_matrix(asset->data.meshData.joints[selected_bone].inverse_bind_matrix);
+          ImGui::Text("Parent Realtive");
+          imgui_matrix(asset->data.meshData.joints[selected_bone].parent_realtive_matrix);
+        }
+
+        ImGui::EndChildFrame();
+
+
+
       } break;
 
       case AssetType_MATERIAL: {
@@ -521,7 +571,9 @@ void ProcessEditorCommand(EditorData* editor, Camera* camera, GameMemory* memory
         }
 
         fori(editor->selectedEntities.count){
-          Entity *e = GetEntity(editor->selectedEntities[i], ec);
+          EntityIndex hack = {};
+          hack.slotIndex = editor->selectedEntities[i];
+          Entity *e = GetEntity(hack, ec);
           e->position = editor->originalEntityPositions[i] + totalDisplacement +
             V3{ 0, Abs(editor->groupAABB.max - editor->groupAABB.min).y * 0.5f, 0};
         }
@@ -594,7 +646,7 @@ void ProcessEditorCommand(EditorData* editor, Camera* camera, GameMemory* memory
 
       if(editor->lastCommand != EditorCommand_MeshEdit){
         EntityBlock *block = ec->firstAvaibleBlock;
-        block->flags[editor->selectedEntities[0]] &= ~EntityFlag_Visible;
+        block->flags[editor->selectedEntities[0]] &= ~EntityFlag_VISIBLE;
       }
 
       Entity *e = GetEntity(editor->selectedEntities[0], ec);

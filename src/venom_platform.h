@@ -20,6 +20,11 @@ typedef float    F32;
 typedef double   F64;
 typedef bool B8;
 
+static const U8 INVALID_U8 = 0xFF;
+static const U16 INVALID_U16 = 0xFFFF;
+static const U32 INAVLID_U32 = 0xFFFFFFFF;
+static const U64 INVALID_U64 = 0xFFFFFFFFFFFFFFFF;
+
 #define KILOBYTES(x) ((x) * 1024LL)
 #define MEGABYTES(x) (KILOBYTES(x) * 1024LL)
 #define GIGABYTES(x) (MEGABYTES(x) * 1024LL)
@@ -36,12 +41,15 @@ typedef bool B8;
 #undef VENOM_PROFILER
 #endif//VENOM_RELEASE
 
+
 #include "venom_memory.h"
 #include "venom_math.h"
 #include "venom_audio.h"
 #include "venom_render.h"
 #include "venom_physics.h"
 #include "venom_asset.h"
+
+
 #include "debug_renderer.h"
 #include "venom_entity.h"
 #ifndef VENOM_RELEASE

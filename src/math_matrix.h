@@ -105,6 +105,15 @@ inline M4 M4Zero()
 	return result;
 }
 
+inline bool Equals(M4& a, M4& b){
+  for (size_t i = 0; i < 4; i++) {
+    for (size_t j = 0; j < 4; j++) {
+      if (!Equals(a[i][j], b[i][j])) return false;
+    }
+  }
+  return true;
+}
+
 inline M4 M4Identity()
 {
 

@@ -1,10 +1,16 @@
-layout (location = 0) in vec3 inPosition;
-layout (location = 1) in vec3 inNormal;
-layout (location = 2) in vec3 inTangent;
-layout (location = 3) in vec2 inTexcoord;
-layout (location = 4) in ivec4 inBoneIndices;
-layout (location = 5) in vec4 inBoneWeights;
-layout (location = 6) in int inBoneCount;
+layout (location = 0) in vec3 in_position;
+layout (location = 1) in vec3 in_normal;
+layout (location = 2) in vec3 in_tangent;
+layout (location = 3) in vec2 in_texcoord;
+
+layout (location = 4) in ivec4 in_joint_indices;
+layout (location = 5) in vec4 in_joint_weights;
+
+layout (location = 0) uniform mat4 u_model_matrix;
+layout (location = 1) uniform mat4 u_view_matrix;
+layout (location = 2) uniform mat4 u_projection_matrix;
+layout (location = 5) uniform mat4 u_joint_matrices[16];
+layout (location = 21) uniform int u_is_mesh_static;
 
 out VertexShaderOut {
   vec3 position;
@@ -13,10 +19,6 @@ out VertexShaderOut {
   vec2 texcoord;
 } vsOut;
 
-layout (location = 0) uniform mat4 uModelMatrix;
-layout (location = 1) uniform mat4 uViewMatrix;
-layout (location = 2) uniform mat4 uProjectionMatrix;
-layout (location = 5) uniform mat4 uBoneOffsets[16];
 
 void main() {
   //mat4 modelViewMatrix = uViewMatrix * uModelMatrix;
@@ -25,37 +27,29 @@ void main() {
   //vsOut.position = viewspacePosition.xyz;
   //vsOut.normal = viewspaceNormal.xyz;
 
-  vec4 original_vertex = vec4(inPosition, 1.0);
-  vec4 original_normal = vec4(inNormal, 0.0);
-  vec4 transformed_vertex = vec4(0.0);
-  vec4 transformed_normal = vec4(0.0);
+  vec4 vertex_position = vec4(in_position, 1.0);
+  vec4 vertex_normal = vec4(in_normal, 0.0);
+  if (u_is_mesh_static == 0) {
+    mat4 joint_transform = mat4(0.0);
+    joint_transform += u_joint_matrices[in_joint_indices[0]] * in_joint_weights[0];
+    joint_transform += u_joint_matrices[in_joint_indices[1]] * in_joint_weights[1];
+    joint_transform += u_joint_matrices[in_joint_indices[2]] * in_joint_weights[2];
+    joint_transform += u_joint_matrices[in_joint_indices[3]] * in_joint_weights[3];
+    vertex_position = joint_transform * vec4(in_position, 1.0);
+    vertex_normal = joint_transform * vec4(in_normal, 0.0);
+    vertex_normal = normalize(vertex_normal);
+  } 
 
-#if 0
-  for(int i = 0; i < 4; i++) {
-    int index = inBoneIndices[i];
-    transformed_vertex += (uBoneOffsets[index] * original_vertex) * inBoneWeights[i];
-    transformed_normal += (uBoneOffsets[index] * original_normal) * inBoneWeights[i];
-  }
-#else
+  mat4 model_view_matrix = u_view_matrix * u_model_matrix;
+  mat4 normalMatrix = transpose(inverse(u_model_matrix));
 
-  transformed_vertex = original_vertex;
-  transformed_normal = original_normal;
-
-#endif
-
-
-
-
-  vec4 worldspacePosition = uModelMatrix * transformed_vertex;
+  vec4 worldspacePosition = u_model_matrix * vertex_position;
   worldspacePosition.w = 1.0;
 
-  mat4 normalMatrix = transpose(inverse(uModelMatrix));
-
   vsOut.position = worldspacePosition.xyz;
-  vsOut.normal = vec3(normalMatrix * transformed_normal);
-
-  vsOut.tangent = inTangent;
-  vsOut.texcoord = inTexcoord;
-  gl_Position = uProjectionMatrix * uViewMatrix * worldspacePosition; 
-  //gl_Position = uProjectionMatrix * viewspacePosition;
+  vsOut.normal = in_normal;
+  //vsOut.normal = vec3(transformed_normal);
+  vsOut.tangent = in_tangent;
+  vsOut.texcoord = in_texcoord;
+  gl_Position = u_projection_matrix * u_view_matrix * worldspacePosition; 
 }

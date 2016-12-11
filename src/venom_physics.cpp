@@ -205,7 +205,7 @@ AABB
 ComputeAABB(const MeshData* data) {
   AABB result = {};
   for (size_t i = 0; i < data->vertexCount; i++) {
-    Vertex3D *vertex = (Vertex3D *)&data->vertices[i];
+    AnimatedVertex *vertex = (AnimatedVertex *)&data->vertices[i];
     result.min.x = Min(result.min.x, vertex->position.x);
     result.min.y = Min(result.min.y, vertex->position.y);
     result.min.z = Min(result.min.z, vertex->position.z);

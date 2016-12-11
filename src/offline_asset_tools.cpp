@@ -7,8 +7,9 @@
 #include "stb_vorbis.c"
 #pragma clang diagnostic pop
 
-#include "venom_utils.h"
 
+#include "venom_utils.h"
+#include "mesh_utilites.cpp"
 
 SoundData LoadOGG(const char *filename) {
 	short *output = 0;
@@ -31,149 +32,301 @@ SoundData LoadOGG(const char *filename) {
 	return result;
 }
 
+static inline M4 aiMatrix_to_M4(const aiMatrix4x4& m) {
+  M4 r;
+  r[0][0] = m.a1;
+  r[1][0] = m.a2;
+  r[2][0] = m.a3;
+  r[3][0] = m.a4;
+  r[0][1] = m.b1;
+  r[1][1] = m.b2;
+  r[2][1] = m.b3;
+  r[3][1] = m.b4;
+  r[0][2] = m.c1;
+  r[1][2] = m.c2;
+  r[2][2] = m.c3;
+  r[3][2] = m.c4;
+  r[0][3] = m.d1;
+  r[1][3] = m.d2;
+  r[2][3] = m.d3;
+  r[3][3] = m.d4;
+  return r;
+}
+
 bool ImportExternalModelData(const char *filename, ModelData *data) {
 	Assimp::Importer importer;
-	const aiScene* scene = importer.ReadFile(filename, 0);
+  U32 flags = aiProcess_LimitBoneWeights | 
+    aiProcess_RemoveRedundantMaterials | 
+    aiProcess_JoinIdenticalVertices |
+    aiProcess_SortByPType |
+    aiProcess_Triangulate;
 
+	const aiScene* scene = importer.ReadFile(filename, flags);
 	if (!scene || scene->mFlags == AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
 		LOG_ERROR("Assimp failed to load file (%s): %s", filename, importer.GetErrorString());
     return false;
 	}
 
-
+  //TODO(Torin) Just change this to a material count
+  assert(scene->mNumMaterials == scene->mNumMeshes);
 	data->meshCount = scene->mNumMaterials;
-	for (U32 i = 0; i < scene->mNumMeshes; i++) {
-		data->meshData.vertexCount += scene->mMeshes[i]->mNumVertices;
-		data->meshData.indexCount += scene->mMeshes[i]->mNumFaces * 3;
-    data->meshData.boneCount += scene->mMeshes[i]->mNumBones;
+  DynamicArray<aiNode *> joint_ptrs;
+	for (size_t i = 0; i < scene->mNumMeshes; i++) {
+    aiMesh *mesh = scene->mMeshes[i];
+    if (mesh->mPrimitiveTypes != aiPrimitiveType_TRIANGLE) continue;;
+    data->meshData.vertexCount += mesh->mNumVertices;
+		data->meshData.indexCount += mesh->mNumFaces * 3;
+    for (size_t j = 0; j < mesh->mNumBones; j++) {
+      aiBone *bone = mesh->mBones[j];
+      aiNode *bone_node = scene->mRootNode->FindNode(bone->mName);
+      assert(bone_node != nullptr);
+      if (!joint_ptrs.ContainsValue(bone_node)) {
+        joint_ptrs.PushBack(bone_node);
+      }
+    }
 	}
 
-  size_t requiredMemory = sizeof(U32) * data->meshCount + 
-    sizeof(MaterialData) * data->meshCount + sizeof(U32) * data->meshData.indexCount;
-  requiredMemory += sizeof(AnimatedVertex) * data->meshData.vertexCount + (sizeof(Animation_Bone)*data->meshData.boneCount);
-
-  //TODO(Torin) Make sure these are aligned correctly
-	assert(data->meshCount == scene->mNumMaterials);
-  uint8_t* memory = (uint8_t*)calloc(requiredMemory, 1);
-  data->indexCountPerMesh = (U32*)memory;
-  data->materialDataPerMesh = (MaterialData*)(data->indexCountPerMesh  + data->meshCount);
-  data->meshData.vertices = (AnimatedVertex*)(data->materialDataPerMesh + data->meshCount);
-  data->meshData.indices = (U32*)(data->meshData.vertices + data->meshData.vertexCount);
-  if (data->meshData.boneCount > 0) {
-    data->meshData.bones = (Animation_Bone *)(data->meshData.indices + data->meshData.indexCount);
+  data->jointCount = joint_ptrs.count;
+  free(joint_ptrs.data);
+  if (data->jointCount > 254) {
+    LOG_ERROR("Only 254 bones per mesh are premitted");
+    return false;
   }
 
-  size_t total_bone_count = 0;
+  //TODO(Torin) Make sure these are aligned correctly
+  //TODO(Torin) Consider consolidating index count and bone
+  //count per mesh into a single structure for simplicity
+  size_t required_memory = 0;
+  required_memory += sizeof(U32) * data->meshCount; //index count per mesh
+  required_memory += sizeof(MaterialData) *data->meshCount;
+  required_memory += sizeof(U32) * data->meshData.indexCount;
+  required_memory += sizeof(AnimatedVertex) *data->meshData.vertexCount;
+  required_memory += sizeof(U32) * data->meshCount;
+  required_memory += sizeof(Animation_Joint) * data->jointCount;
+  required_memory += sizeof(U32) * data->meshCount; //joint count per mesh
+  required_memory += sizeof(Animation_Clip) * data->animation_clip_count;
+	
+  //TODO(Torin) Make this a call to a custom memory allocator
+  uint8_t *memory = (uint8_t *)calloc(required_memory, 1);
+  data->index_count_per_mesh = (U32 *)memory;
+  data->materialDataPerMesh = (MaterialData*)(data->index_count_per_mesh + data->meshCount);
+  data->meshData.vertices = (AnimatedVertex*)(data->materialDataPerMesh + data->meshCount);
+  data->meshData.indices = (U32*)(data->meshData.vertices + data->meshData.vertexCount);
+  if (data->jointCount > 0) {
+    data->joints = (Animation_Joint *)(data->meshData.indices + data->meshData.indexCount);
+    data->joint_count_per_mesh = (U32 *)(data->joints + data->jointCount);
+    data->animation_clips = (Animation_Clip *)(data->joint_count_per_mesh + data->meshCount);
+  }
+
+  //TODO(Torin) Change these to U8s and make invalid index 0xFF
+  for (size_t i = 0; i < data->jointCount; i++) {
+    Animation_Joint *joint = &data->joints[i];
+    memcpy(joint->name, "INVALID", sizeof("INVALID"));
+    joint->parent_index = -1;
+    joint->child_index = -1;
+    joint->sibling_index = -1;
+  }
+
+  size_t current_joint_offset = 0;
   size_t currentVertexOffset = 0;
   size_t currentIndexOffset = 0;
-	for (size_t i = 0; i < scene->mNumMaterials; i++) {
-		for (size_t n = 0; n < scene->mNumMeshes; n++) {
-			if (scene->mMeshes[n]->mMaterialIndex == i) {
-				aiMesh *assimpMesh = scene->mMeshes[n];
+  for (size_t material_index = 0; material_index < scene->mNumMaterials; material_index++) {
+    for (size_t n = 0; n < scene->mNumMeshes; n++) {
+      if (scene->mMeshes[n]->mMaterialIndex == material_index) {
+        aiMesh *assimpMesh = scene->mMeshes[n];
 
-        //TODO(Torin) This might need to be fast get rid of the branches
-        //Posibly change to inlined calls to static lambdas for setting each property
-        //because we need to set these differently for each type of  vertex!
-        //Mabye for now we should just use a single type of vertex and eat the memory wastage
-        AnimatedVertex *vertices = (AnimatedVertex *)data->meshData.vertices;
-        for (size_t j = 0; j < assimpMesh->mNumVertices; j++) {
-          size_t index = currentVertexOffset + j;
-          vertices[index].position.x = assimpMesh->mVertices[j].x;
-          vertices[index].position.y = assimpMesh->mVertices[j].z;
-          vertices[index].position.z = assimpMesh->mVertices[j].y;
-          vertices[index].normal.x = assimpMesh->mNormals[j].x;
-          vertices[index].normal.y = assimpMesh->mNormals[j].z;
-          vertices[index].normal.z = assimpMesh->mNormals[j].y;
+      //TODO(Torin) This might need to be fast get rid of the branches
+      //Posibly change to inlined calls to static lambdas for setting each property
+      //because we need to set these differently for each type of  vertex!
+      //Mabye for now we should just use a single type of vertex and eat the memory wastage
+      { //NOTE(Torin) Process the meshes vertices
+        AnimatedVertex *vertices = data->meshData.vertices + currentVertexOffset;
+        for (size_t i = 0; i < assimpMesh->mNumVertices; i++) {
+          vertices[i].position.x = assimpMesh->mVertices[i].x;
+          vertices[i].position.y = assimpMesh->mVertices[i].y;
+          vertices[i].position.z = assimpMesh->mVertices[i].z;
+          vertices[i].normal.x = assimpMesh->mNormals[i].x;
+          vertices[i].normal.y = assimpMesh->mNormals[i].y;
+          vertices[i].normal.z = assimpMesh->mNormals[i].z;
           if (assimpMesh->mTangents != nullptr) {
-            vertices[index].tangent.x = assimpMesh->mTangents[j].x;
-            vertices[index].tangent.y = assimpMesh->mTangents[j].z;
-            vertices[index].tangent.z = assimpMesh->mTangents[j].y;
+            vertices[i].tangent.x = assimpMesh->mTangents[i].x;
+            vertices[i].tangent.y = assimpMesh->mTangents[i].y;
+            vertices[i].tangent.z = assimpMesh->mTangents[i].z;
           }
-
           if (assimpMesh->mTextureCoords[0] != nullptr) {
-            vertices[index].texcoord.x = assimpMesh->mTextureCoords[0][j].x;
-            vertices[index].texcoord.y = assimpMesh->mTextureCoords[0][j].y;
+            vertices[i].texcoord.x = assimpMesh->mTextureCoords[0][i].x;
+            vertices[i].texcoord.y = assimpMesh->mTextureCoords[0][i].y;
           }
-
-          for (size_t bone_index = 0; bone_index < 4; bone_index++) {
-            vertices[index].bone_index[bone_index] = -1;
-            vertices[index].weight[bone_index] = 0.0f;
+          for (size_t j = 0; j < 4; j++) {
+            vertices[i].joint_index[j] = -1;
+            vertices[i].weight[j] = 0.0f;
           }
         }
+      }
 
-        for (size_t bone_index = 0; bone_index < assimpMesh->mNumBones; bone_index++) {
-          aiBone *bone = assimpMesh->mBones[bone_index];
-          for (size_t i = 0; i < bone->mNumWeights; i++) {
-            aiVertexWeight *weight = &bone->mWeights[i];
-            if (vertices[weight->mVertexId].bone_count >= 4) {
-              LOG_ERROR("Vertex is influenced by too many bones: %s", filename);
+      { //NOTE(Torin) Now the indices are processed and added to the model data
+        U32 *indices = data->meshData.indices + currentIndexOffset;
+        for (size_t j = 0; j < assimpMesh->mNumFaces; j++) {
+          indices[(j*3) + 0] = assimpMesh->mFaces[j].mIndices[0] + currentVertexOffset;
+          indices[(j*3) + 1] = assimpMesh->mFaces[j].mIndices[1] + currentVertexOffset;
+          indices[(j*3) + 2] = assimpMesh->mFaces[j].mIndices[2] + currentVertexOffset;
+        }
+
+        data->index_count_per_mesh[material_index] += scene->mMeshes[n]->mNumFaces * 3;
+      }
+
+      auto get_joint_index = [data](const char *name) -> S32 {
+        for (size_t i = 0; i < data->jointCount; i++) {
+          if (cstrings_are_equal(data->joints[i].name, name)) {
+            return (S32)i;
+          }
+        }
+        return -1;
+      };
+
+      
+      { //NOTE(Torin) Now we process the joints for each mesh in the model
+        for (size_t i = 0; i < assimpMesh->mNumBones; i++) {
+          aiBone *bone = assimpMesh->mBones[i];
+          if (bone->mName.length > 63) {
+            LOG_ERROR("Model contains bones with names larger than 64 chars");
+            free(data);
+            return false;
+          }
+
+          aiNode *bone_node = scene->mRootNode->FindNode(bone->mName);
+          S32 joint_index = get_joint_index(bone->mName.data);
+          if (joint_index == -1) {
+            Animation_Joint *joint = &data->joints[joint_index];
+            memcpy(joint->name, bone->mName.data, bone->mName.length+1);
+            joint->bind_pose_matrix = aiMatrix_to_M4(bone->mOffsetMatrix);
+            joint->inverse_bind_matrix = Inverse(joint->bind_pose_matrix);
+            joint->parent_realtive_matrix = aiMatrix_to_M4(bone_node->mTransformation);
+            //XXX What's this purpose noww
+            data->joint_count_per_mesh[material_index]++;
+          }
+
+          for (size_t j = 0; j < bone->mNumWeights; j++) {
+            aiVertexWeight *weight = &bone->mWeights[j];
+            AnimatedVertex *vertex = &data->meshData.vertices[weight->mVertexId + currentVertexOffset];
+
+            for (size_t i = 0; i < 4; i++) {
+              if (vertex->joint_index[i] == joint_index) {
+                LOG_ERROR("Wierd joint error!");
+                free(data);
+                return false;
+              }
+
+              if (vertex->joint_index[i] == -1) {
+                vertex->joint_index[i] = joint_index;
+                break;
+              }
+            }
+
+            if (vertex_joint_index == 0xFF) {
+              LogError("More than 4 joints influences this vertex!");
               free(memory);
               return false;
             }
 
-            //Does not account for total number of bones in the mesh!
-            AnimatedVertex *vertex = &vertices[weight->mVertexId];
-            vertex->bone_index[vertex->bone_count] = bone_index + total_bone_count;
-            vertex->weight[vertex->bone_count] = weight->mWeight;
-            vertex->bone_count++;
+            assert(vertex_joint_index <= i);
+            vertex->weight[vertex_joint_index] = weight->mWeight;
           }
 
-          assert(bone->mName.length < 64);
-          memcpy(data->meshData.bones[total_bone_count].name, bone->mName.data, bone->mName.length);
-          M4 &offset_matrix = data->meshData.bones[total_bone_count].offset_matrix;
-#if 1
-          offset_matrix[0][0] = bone->mOffsetMatrix.a1;
-          offset_matrix[1][0] = bone->mOffsetMatrix.a2;
-          offset_matrix[2][0] = bone->mOffsetMatrix.a3;
-          offset_matrix[3][0] = bone->mOffsetMatrix.a4;
-          offset_matrix[0][1] = bone->mOffsetMatrix.c1;
-          offset_matrix[1][1] = bone->mOffsetMatrix.c2;
-          offset_matrix[2][1] = bone->mOffsetMatrix.c3;
-          offset_matrix[3][1] = bone->mOffsetMatrix.c4;
-          offset_matrix[0][2] = bone->mOffsetMatrix.b1;
-          offset_matrix[1][2] = bone->mOffsetMatrix.b2;
-          offset_matrix[2][2] = bone->mOffsetMatrix.b3;
-          offset_matrix[3][2] = bone->mOffsetMatrix.b4;
-          offset_matrix[0][3] = bone->mOffsetMatrix.d1;
-          offset_matrix[1][3] = bone->mOffsetMatrix.d2;
-          offset_matrix[2][3] = bone->mOffsetMatrix.d3;
-          offset_matrix[3][3] = bone->mOffsetMatrix.d4;
-#else
-          offset_matrix[0][0] = bone->mOffsetMatrix.a1;
-          offset_matrix[0][1] = bone->mOffsetMatrix.a2;
-          offset_matrix[0][2] = bone->mOffsetMatrix.a3;
-          offset_matrix[0][3] = bone->mOffsetMatrix.a4;
-          offset_matrix[1][0] = bone->mOffsetMatrix.b1;
-          offset_matrix[1][1] = bone->mOffsetMatrix.b2;
-          offset_matrix[1][2] = bone->mOffsetMatrix.b3;
-          offset_matrix[1][3] = bone->mOffsetMatrix.b4;
-          offset_matrix[2][0] = bone->mOffsetMatrix.c1;
-          offset_matrix[2][1] = bone->mOffsetMatrix.c2;
-          offset_matrix[2][2] = bone->mOffsetMatrix.c3;
-          offset_matrix[2][3] = bone->mOffsetMatrix.c4;
-          offset_matrix[3][0] = bone->mOffsetMatrix.d1;
-          offset_matrix[3][1] = bone->mOffsetMatrix.d2;
-          offset_matrix[3][2] = bone->mOffsetMatrix.d3;
-          offset_matrix[3][3] = bone->mOffsetMatrix.d4;
-#endif
-          total_bone_count++;
+
+
         }
 
-				U32 lastIndexOffset = currentIndexOffset;
-				for (size_t j = 0; j < assimpMesh->mNumFaces; j++) {
-					data->meshData.indices[currentIndexOffset + 0] = assimpMesh->mFaces[j].mIndices[0] + currentVertexOffset;
-					data->meshData.indices[currentIndexOffset + 1] = assimpMesh->mFaces[j].mIndices[1] + currentVertexOffset;
-					data->meshData.indices[currentIndexOffset + 2] = assimpMesh->mFaces[j].mIndices[2] + currentVertexOffset;
-					currentIndexOffset += 3;
-				}
 
 
-				assert(currentIndexOffset == lastIndexOffset + (assimpMesh->mNumFaces * 3));
-				currentVertexOffset += scene->mMeshes[n]->mNumVertices;
-				data->indexCountPerMesh[i] += scene->mMeshes[n]->mNumFaces * 3;
+        for (size_t i = 0; i < assimpMesh->mNumBones; i++) {
+          Animation_Joint *joint = &joint_list[i];
+          aiNode *bone_node = scene->mRootNode->FindNode(joint->name);
+          S32 last_child_index = -1;
+          for (size_t c = 0; c < bone_node->mNumChildren; c++) {
+            aiNode *ai_child = bone_node->mChildren[c];
+
+            S32 child_index = get_joint_index(ai_child->mName.data);
+            if (child_index == -1) continue;
+            if (joint->child_index == -1) {
+              joint->child_index = child_index;
+            }
+
+            Animation_Joint *child_joint = &joint_list[child_index];
+            child_joint->parent_index = i;
+            if (last_child_index != -1) {
+              Animation_Joint *previous_child = &joint_list[last_child_index];
+              previous_child->sibling_index = child_index;
+            }
+            last_child_index = child_index;
+          }
+        }
+
+        if (joint_list != nullptr) {
+          normalize_vertex_joint_weights(data->meshData.vertices, data->meshData.vertexCount);
+        }
+
+      }
+
+      currentVertexOffset += scene->mMeshes[n]->mNumVertices;
+      currentIndexOffset += scene->mMeshes[n]->mNumFaces * 3;
+      current_joint_offset += scene->mMeshes[n]->mNumBones;
 			}
 		}
 	}
+
+
+
+
+  
+
+  for (size_t i = 0; i < scene->mNumAnimations; i++) {
+    aiAnimation *animation = scene->mAnimations[i];
+    Animation_Clip *clip = &data->animation_clips[i];
+    clip->duration = animation->mDuration;
+    clip->joint_count = animation->mNumChannels;
+    memcpy(clip->name, animation->mName.data, animation->mName.length + 1);
+    clip->joint_animations.Resize(clip->joint_count);
+    
+    for (size_t j = 0; animation->mNumChannels; j++) {
+      aiNodeAnim *node_anim = animation->mChannels[j];      
+      Joint_Animation *joint_animation = &clip->joint_animations[j];
+      joint_animation->joint_index = get_joint_index(node_anim->mNodeName.data);
+      joint_animation->translation_count = node_anim->mNumPositionKeys;
+      joint_animation->rotation_count = node_anim->mNumRotationKeys;
+      joint_animation->scaling_count = node_anim->mNumScalingKeys;
+      joint_animation->translations.Resize(joint_animation->translation_count);
+      joint_animation->rotations.Resize(joint_animation->rotation_count);
+      joint_animation->rotations.Resize(joint_animation->scaling_count);
+
+      for (size_t k = 0; k < joint_animation->translation_count; k++) {
+        joint_animation->translations[k].time = node_anim->mPositionKeys->mTime;
+        joint_animation->translations[k].translation.x = node_anim->mPositionKeys->mValue.x;
+        joint_animation->translations[k].translation.y = node_anim->mPositionKeys->mValue.y;
+        joint_animation->translations[k].translation.z = node_anim->mPositionKeys->mValue.z;
+      }
+
+      for (size_t k = 0; k < joint_animation->rotation_count; k++) {
+        joint_animation->rotations[k].time = node_anim->mRotationKeys->mTime;
+        joint_animation->rotations[k].rotation.x = node_anim->mRotationKeys->mValue.x;
+        joint_animation->rotations[k].rotation.y = node_anim->mRotationKeys->mValue.y;
+        joint_animation->rotations[k].rotation.z = node_anim->mRotationKeys->mValue.z;
+        joint_animation->rotations[k].rotation.w = node_anim->mRotationKeys->mValue.w;
+      }
+
+      for (size_t k = 0; k < joint_animation->scaling_count; k++) {
+        joint_animation->scalings[k].time = node_anim->mScalingKeys->mTime;
+        joint_animation->scalings[k].scale = node_anim->mScalingKeys->mValue.x;
+        bool is_valid = node_anim->mScalingKeys->mValue.x == node_anim->mScalingKeys->mValue.y;
+        is_valid = is_valid && (node_anim->mScalingKeys->mValue.x == node_anim->mScalingKeys->mValue.z);
+        if (is_valid == false) {
+          LOG_ERROR("Animation encodes a non-uniform scale keyframe!");
+          free(data);
+          return false;
+        }
+      }
+    }
+  }
 
   auto GetTextureFilename = [&filename](MaterialTextureType type, char *out, aiMaterial *material) -> int { 
     const aiTextureType aiTextureTypeLookupTable[] = {

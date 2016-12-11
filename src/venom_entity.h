@@ -34,6 +34,7 @@ struct Entity {
   V3 rotation;
   V3 velocity;
   Asset_ID modelID;
+  Animation_State animation_state;
 
   union {
     PointLightEntity pointLight;
@@ -57,7 +58,7 @@ EntityTypeList
 
 enum EntityFlag {
   EntityFlag_PRESENT = 1 << 0,
-  EntityFlag_Visible = 1 << 1,
+  EntityFlag_VISIBLE = 1 << 1,
 };
 
 struct EntityIndex {
@@ -90,7 +91,9 @@ struct EntityContainer {
 void EntityContainerInit(EntityContainer* container, U32 entityCountPerBlock, U32 initalBlockCount);
 Entity* CreateEntity(EntityType type, EntityIndex* outIndex, EntityContainer* entities);
 void DestroyEntity(EntityType type, EntityContainer* entities);
-Entity* GetEntity(U32 entityIndex, EntityContainer* container);
+
+Entity* GetEntity(EntityIndex index, EntityContainer* container);
+Entity *GetEntity(U32 index, EntityContainer *container);
 
 inline void 
 DestroyEntity(EntityIndex index, EntityContainer* container){

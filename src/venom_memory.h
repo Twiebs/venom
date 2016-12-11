@@ -1,3 +1,9 @@
+
+#define Align4(x) ((x + 0x3) & (~0x3))
+#define Align8(x) ((x + 0x7) & (~0x7))
+#define Align16(x) ((x + 0xF) & (~0xF))
+
+
 #define MEMORY_BLOCK_MAX_CHILDREN 8
 
 #define PushStruct(structType, memblock) (structType*)PushSize(sizeof(structType), memblock)
@@ -9,6 +15,14 @@
 #define StaticArray(TElement, TSize) \
 struct { TElement data[TSize]; size_t count; } 
 
+void *memory_allocate(size_t size, const char *file) {
+  void *result = malloc(size);
+  return result;
+}
+
+void memory_free(void *memory, const char *file) {
+  free(memory);
+}
 
 template<typename TElement>
 struct DynamicArray {

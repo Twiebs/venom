@@ -174,7 +174,9 @@ const MaterialDrawable& GetMaterial(U32 id, AssetManifest* assets);
 void WriteAssetManifestFile(const char *filename, AssetManifest *manifest);
 void ReadAssetManifestFile(const char *filename, AssetManifest *manifest);
 static void HotloadShaders(AssetManifest *assets);
-static void HotloadModels(AssetManifest* manifest);
+
+
+//static void HotloadModels(AssetManifest* manifest);
 
 Asset_ID GetModelID(const char *name, AssetManifest* assets);
 

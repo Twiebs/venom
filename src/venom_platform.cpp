@@ -259,5 +259,3 @@ using namespace Win32;
 #include "imgui_draw.cpp"
 #include "imgui_demo.cpp"
 #endif//VENOM_RELEASE
-
-

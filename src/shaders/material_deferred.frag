@@ -23,6 +23,8 @@ void main() {
   FragmentInfo fragInfo;
   UnpackGBuffer(texcoord, fragInfo);
   outFragmentColor = ApplyLighting(fragInfo);
+  
+  //outFragmentColor = vec4(fragInfo.normal, 1.0);
 
   //float depth = texelFetch(uPositionDepthSampler, texcoord, 0).r;
   //outFragmentColor = vec4(vec3(depth * 0.1), 1.0);

@@ -223,9 +223,8 @@ void create_indexed_animated_vertex_array(GLuint *vertexArray, GLuint *vertexBuf
   glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(AnimatedVertex), (GLvoid*)offsetof(AnimatedVertex, normal));
   glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(AnimatedVertex), (GLvoid*)offsetof(AnimatedVertex, tangent));
   glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(AnimatedVertex), (GLvoid*)offsetof(AnimatedVertex, texcoord));
-  glVertexAttribPointer(4, 4, GL_INT, GL_FALSE, sizeof(AnimatedVertex), (GLvoid*)offsetof(AnimatedVertex, bone_index));
+  glVertexAttribIPointer(4, 4, GL_INT, sizeof(AnimatedVertex), (GLvoid*)offsetof(AnimatedVertex, joint_index));
   glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(AnimatedVertex), (GLvoid*)offsetof(AnimatedVertex, weight));
-  //glVertexAttribPointer(6, 1, GL_INT, GL_FALSE, sizeof(AnimatedVertex), (GLvoid*)offsetof(AnimatedVertex, bone_count));
   glBindVertexArray(0);
 }
 

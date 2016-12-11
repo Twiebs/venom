@@ -179,5 +179,7 @@ void DestroyModelData(ModelData* data){
   fori(data->meshCount){
     DestroyMaterialData(&data->materialDataPerMesh[i]);
   }
-  free(data->indexCountPerMesh);
+
+  //This is the pointer returned by allocator
+  free(data->index_count_per_mesh);
 }

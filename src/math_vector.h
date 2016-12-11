@@ -263,7 +263,6 @@ inline V3 Abs(const V3& v) {
   return result;
 }
 
-
 inline V2 Normalize(const V2& v)
 {
 	float magnitude = Magnitude(v);

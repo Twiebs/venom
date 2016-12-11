@@ -1,5 +1,9 @@
 #include "renderer_data.h"
 
+
+
+struct ModelAsset;
+
 struct VenomDrawCommand {
   U32 vertexArrayID;
   U32 indexCount;
@@ -12,6 +16,18 @@ struct VenomModelDrawCommand {
   V3 position;
   V3 rotation;
   V3 scale;
+};
+
+struct Animation_State {
+  U32 joint_count;
+  Animation_Joint *joints;
+  F32 animation_time;
+};
+
+struct Animated_Model_Draw_Command {
+  ModelAsset *model;
+  Animation_State *animation_state;
+  M4 model_matrix;
 };
 
 struct VenomMeshDrawCommand {
@@ -53,7 +69,9 @@ struct VenomDrawList {
   U32 meshDrawCommandCount;
   VenomMeshDrawCommand meshDrawCommands[1000];
   U32 outlinedModelDrawCommandCount;
-  VenomModelDrawCommand outlinedModelDrawCommands[8]; 
+  VenomModelDrawCommand outlinedModelDrawCommands[8];
+
+  DynamicArray<Animated_Model_Draw_Command> animated_model_draw_commands;
 
   U32 directionalLightCount;
   DirectionalLight directionalLights[DIRECTIONAL_LIGHTS_MAX];
@@ -63,8 +81,12 @@ struct VenomDrawList {
   PointLight shadowCastingPointLights[SHADOW_CASTING_POINT_LIGHT_MAX];
 };
 
-static inline void set_uniform(int location, V3 value);
-static inline void set_uniform(int location, M4 value);
+static inline void set_uniform(S32 location, S32 value);
+static inline void set_uniform(S32 location, F32 value);
+static inline void set_uniform(S32 location, V2 value);
+static inline void set_uniform(S32 location, V3 value);
+static inline void set_uniform(S32 location, V4 value);
+static inline void set_uniform(S32 location, M4 value);
 
 inline void 
 AddPointLight(const V3 position, const V3 color, const F32 radius, VenomDrawList* list) {
@@ -90,7 +112,7 @@ inline void
 AddDirectionalLight(const V3 direction, const V3 color, VenomDrawList* list) {
   assert(list->directionalLightCount + 1 <= (int)ARRAY_COUNT(list->directionalLights));
   DirectionalLight& light = list->directionalLights[list->directionalLightCount++];
-  light.direction = direction;
+  light.direction = Normalize(direction);
   light.color = color;
 }
 
