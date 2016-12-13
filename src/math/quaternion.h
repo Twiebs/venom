@@ -1,6 +1,6 @@
 
 struct Quaternion {
-  F32 x, y, z, w;
+  F32 w, x, y, z;
 };
 
 inline Quaternion operator+(Quaternion& a, Quaternion& b) {
@@ -71,43 +71,40 @@ inline Quaternion QuaternionFromEulerAngles(F32 x, F32 y, F32 z) {
   return q;
 }
 
-#if 1
-inline M4 QuaternionToMatrix(Quaternion& quaternion) {
-  Quaternion q = Normalize(quaternion);
+
+inline M4 QuaternionToMatrix(Quaternion& q) {
+  M4 r;
 
   F32 x2 = q.x*q.x;
   F32 y2 = q.y*q.y;
   F32 z2 = q.z*q.z;
   F32 w2 = q.w*q.w;
 
-  M4 r;
+  r[0][0] = 1 - (2 * y2) - (2 * z2);
+  r[0][1] = (2 * q.x * q.y) - (2 * q.w * q.z);
+  r[0][2] = (2 * q.x * q.z) + (2 * q.w * q.y);
+  r[0][3] = 0.0f;
 
+  r[1][0] = (2 * q.x * q.y) + (2 * q.w * q.z);
+  r[1][1] = 1.0f - (2.0f * x2) - (2.0f * z2);
+  r[1][2] = (2 * q.y * q.z) - (2 * q.w * q.x);
+  r[1][3] = 0.0f;
 
-  r[0][0] = w2 + x2 - y2 - z2;
-  r[0][1] = (2*q.x*q.y) + (2*q.w*q.z);
-  r[0][2] = (2*q.x*q.z) - (2*q.w*q.y);
-  r[0][3] = 0;
+  r[2][0] = (2 * q.x * q.z) - (2 * q.w * q.y);
+  r[2][1] = (2 * q.y * q.z) + (2 * q.w * q.x);
+  r[2][2] = 1.0f - (2 * x2) - (2 * y2);
+  r[2][3] = 0.0f;
 
-  r[1][0] = (2 * q.x*q.y) - (2 * q.w*q.z);
-  r[1][1] = (w2 - x2 + y2 - z2);
-  r[1][2] = (2 * q.y*q.z) - (2 * q.w*q.x);
-  r[1][3] = 0;
-
-  r[2][0] = (2 * q.x*q.z) + (2 * q.w*q.y);
-  r[2][1] = (2 * q.y*q.z) + (2 * q.w*q.x);
-  r[2][2] = w2 - x2 - y2 + z2;
-  r[2][3] = 0;
-
-  r[3][0] = 0;
-  r[3][1] = 0;
-  r[3][2] = 0;
-  r[3][3] = 1;
+  r[3][0] = 0.0f;
+  r[3][1] = 0.0f;
+  r[3][2] = 0.0f;
+  r[3][3] = 1.0f;
 
   return r;
 }
-#else
 
 
 
-#endif
+
+
 

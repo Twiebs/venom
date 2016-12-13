@@ -204,7 +204,7 @@ static inline void draw_model_with_materials_common(ModelDrawable *drawable, M4 
   static const U32 SPECULARMAP_PRESENT_LOCATION = 4;
 
   static float time = 0.0f;
-  Quaternion q = QuaternionFromEulerAngles(0.0f, 0.0f, 10.0f*DEG2RAD*sin(time));
+  Quaternion q = { 0.991, 0.0, 0.0, -0.131 };
   M4 rotation = QuaternionToMatrix(q);
   time += 0.016f;
 
@@ -212,6 +212,7 @@ static inline void draw_model_with_materials_common(ModelDrawable *drawable, M4 
   glBindVertexArray(drawable->vertexArrayID);
   U64 currentIndexOffset = 0;
   for (size_t j = 0; j < drawable->meshCount; j++) {
+
     const MaterialDrawable &material = drawable->materials[j];
     glUniform1i(NORMALMAP_PRESENT_LOCATION, material.flags & MaterialFlag_NORMAL);
     glUniform1i(SPECULARMAP_PRESENT_LOCATION, material.flags & MaterialFlag_SPECULAR);
@@ -226,11 +227,22 @@ static inline void draw_animated_model_with_materials(ModelDrawable *drawable, A
   static const U32 IS_MESH_STATIC_LOCATION = 21;
   set_uniform(IS_MESH_STATIC_LOCATION, false);
   
+  Animation_Joint *joints = drawable->joints;
   U32 current_index_offset = 0;
   assert(drawable->joint_count < 16);
   M4 local_joint_poses[16];
 
-  Animation_Joint *joints = drawable->joints;
+#if 0
+  ModelAsset *model = GetModelAsset(animation_state->model_id);
+  assert(model->data.animation_clip_count != 0);
+  Animation_Clip *clip = &model->data.animation_clips[0];
+  
+  M4 local_pose = QuaternionToMatrix(clip->joint_animations[0].rotations[1].rotation);
+  M4 global_pose = joints->parent_realtive_matrix * local_pose;
+  set_uniform(BONE_OFFSET_LOCATION, joints->inverse_bind_matrix * global_pose);
+#endif
+
+#if 1
   for (size_t i = 0; i < drawable->joint_count; i++) {
     Animation_Joint *joint = &joints[i];
     local_joint_poses[i] = CalculateLocalJointPose(i, joint, animation_state);
@@ -242,6 +254,7 @@ static inline void draw_animated_model_with_materials(ModelDrawable *drawable, A
     M4 final_skinning_matrix = joint->inverse_bind_matrix * global_joint_pose;
     set_uniform(BONE_OFFSET_LOCATION + i, final_skinning_matrix);
   }
+#endif
 
   draw_model_with_materials_common(drawable, model_matrix);
 }

@@ -3,8 +3,8 @@
 
 M4 CalculateLocalJointPose(S32 joint_index, Animation_Joint *joint, Animation_State *state) {
   ModelAsset *model = GetModelAsset(state->model_id);
-  if (model == nullptr) return M4Identity();
-  if (model->data.animation_clip_count == 0 || state->current_clip >= model->data.animation_clip_count) return M4Identity();
+  if (model == nullptr) return joint->bind_pose_matrix;
+  if (model->data.animation_clip_count == 0 || state->current_clip >= model->data.animation_clip_count) return joint->bind_pose_matrix;
   Animation_Clip *clip = &model->data.animation_clips[state->current_clip];
 
   F32 inverse_fps = 1.0f;
@@ -69,10 +69,17 @@ M4 CalculateLocalJointPose(S32 joint_index, Animation_Joint *joint, Animation_St
     }
   }
 
-  M4 result = joint_rotation;
+  M4 result = joint_translation * joint_rotation;
   return result;
 }
 
+void CalculateGlobalJointPoses(Animation_Joint *joints, M4 *global_poses, M4 *local_poses, size_t count) {
+  for (size_t i = 0; i < count; i++) {
+    
+
+
+  }
+}
 
 M4 CalculateGlobalJointPose(S32 joint_index, Animation_Joint *joint_list, M4 *local_poses) {
   M4 result = local_poses[joint_index];
@@ -85,5 +92,6 @@ M4 CalculateGlobalJointPose(S32 joint_index, Animation_Joint *joint_list, M4 *lo
   }
 
   //result = joint_list[0].parent_realtive_matrix * result;
-  return result;
+  //return result;
+  return local_poses[joint_index];
 }

@@ -66,14 +66,16 @@ d:\workspace\venom\src\opengl_render.cpp(114): warning C4267: 'argument': conver
 d:\workspace\venom\src\opengl_render.cpp(119): warning C4267: 'argument': conversion from 'size_t' to 'S32', possible loss of data
 d:\workspace\venom\src\opengl_render.cpp(120): warning C4267: 'argument': conversion from 'size_t' to 'S32', possible loss of data
 d:\workspace\venom\src\opengl_render.cpp(121): warning C4267: 'argument': conversion from 'size_t' to 'S32', possible loss of data
-d:\workspace\venom\src\opengl_render.cpp(236): warning C4267: 'argument': conversion from 'size_t' to 'S32', possible loss of data
-d:\workspace\venom\src\opengl_render.cpp(241): warning C4267: 'argument': conversion from 'size_t' to 'S32', possible loss of data
-d:\workspace\venom\src\opengl_render.cpp(243): warning C4267: 'argument': conversion from 'size_t' to 'S32', possible loss of data
+d:\workspace\venom\src\opengl_render.cpp(207): warning C4838: conversion from 'double' to 'F32' requires a narrowing conversion
+d:\workspace\venom\src\opengl_render.cpp(207): warning C4305: 'initializing': truncation from 'double' to 'F32'
+d:\workspace\venom\src\opengl_render.cpp(248): warning C4267: 'argument': conversion from 'size_t' to 'S32', possible loss of data
+d:\workspace\venom\src\opengl_render.cpp(253): warning C4267: 'argument': conversion from 'size_t' to 'S32', possible loss of data
 d:\workspace\venom\src\opengl_render.cpp(255): warning C4267: 'argument': conversion from 'size_t' to 'S32', possible loss of data
-d:\workspace\venom\src\opengl_render.cpp(472): warning C4305: 'argument': truncation from 'double' to 'float'
-d:\workspace\venom\src\opengl_render.cpp(489): warning C4244: 'argument': conversion from 'F32' to 'GLsizei', possible loss of data
-d:\workspace\venom\src\opengl_render.cpp(609): warning C4244: 'argument': conversion from 'F32' to 'GLsizei', possible loss of data
-d:\workspace\venom\src\opengl_render.cpp(685): warning C4244: 'argument': conversion from 'F32' to 'GLint', possible loss of data
+d:\workspace\venom\src\opengl_render.cpp(268): warning C4267: 'argument': conversion from 'size_t' to 'S32', possible loss of data
+d:\workspace\venom\src\opengl_render.cpp(485): warning C4305: 'argument': truncation from 'double' to 'float'
+d:\workspace\venom\src\opengl_render.cpp(502): warning C4244: 'argument': conversion from 'F32' to 'GLsizei', possible loss of data
+d:\workspace\venom\src\opengl_render.cpp(622): warning C4244: 'argument': conversion from 'F32' to 'GLsizei', possible loss of data
+d:\workspace\venom\src\opengl_render.cpp(698): warning C4244: 'argument': conversion from 'F32' to 'GLint', possible loss of data
 d:\workspace\venom\src\offline_asset_tools.cpp(1): warning C4068: unknown pragma
 d:\workspace\venom\src\offline_asset_tools.cpp(2): warning C4068: unknown pragma
 d:\workspace\venom\src\stb_vorbis.c(4432): warning C4244: 'return': conversion from '__int64' to 'int', possible loss of data
