@@ -17,23 +17,14 @@ static const U32 TERRAIN_INDEX_COUNT_PER_CHUNK =
 
 static const U32 TERRAIN_ORIGIN_TO_CENTER_CHUNK_OFFSET = (TERRAIN_CHUNK_PER_EDGE - 1) / 2;
 
-
-static const U32 TERRAIN_TOTAL_VERTEX_COUNT = 
-  TERRAIN_TOTAL_CHUNK_COUNT * TERRAIN_VERTEX_COUNT_PER_CHUNK;
-static const U32 TERRAIN_TOTAL_INDEX_COUNT = 
-  TERRAIN_TOTAL_CHUNK_COUNT * TERRAIN_INDEX_COUNT_PER_CHUNK;
-
-
+static const U32 TERRAIN_TOTAL_VERTEX_COUNT = TERRAIN_TOTAL_CHUNK_COUNT * TERRAIN_VERTEX_COUNT_PER_CHUNK;
+static const U32 TERRAIN_TOTAL_INDEX_COUNT = TERRAIN_TOTAL_CHUNK_COUNT * TERRAIN_INDEX_COUNT_PER_CHUNK;
 
 struct TerrainEntity {
 	V3 position;
 	V3 rotation;
 	V3 scale;
   U32 modelID;
-};
-
-struct TerrainGenerationParameters {
-	U64 seed;
 };
 
 //TODO(Torin) Somthing smarter with terrain entities
@@ -45,7 +36,6 @@ struct TerrainGenerationState {
 	S32 currentOriginX, currentOriginZ;
 	S32 gpuMemoryOriginX, gpuMemoryOriginZ;
 	float lastGenerationTriggerX, lastGenerationTriggerZ;
-	
   V2 vertices[TERRAIN_VERTEX_COUNT_PER_CHUNK];
 	U32 indices[TERRAIN_INDEX_COUNT_PER_CHUNK];
 	M4 instanceModelMatrices[TERRAIN_TOTAL_CHUNK_COUNT];
@@ -62,13 +52,14 @@ struct TerrainGenerationState {
 	GLuint normals_texture_array;
 };
 
+void InitalizeTerrainGenerator(TerrainGenerationState* terrainGenState, MemoryBlock* memory, V3 generationOrigin);
 
-static inline U32 GetTerrainChunkMemoryIndex(TerrainGenerationState *terrGenState, 
-  U32 chunkIndexX, U32 chunkIndexZ) 
-{ 
+
+
+static inline U32 GetTerrainChunkMemoryIndex(TerrainGenerationState *terrGenState, U32 chunkIndexX, U32 chunkIndexZ) { 
   U32 chunkWriteIndexX = terrGenState->gpuMemoryOriginX + chunkIndexX;
 	U32 chunkWriteIndexZ = terrGenState->gpuMemoryOriginZ + chunkIndexZ;
-	if (chunkWriteIndexX >= TERRAIN_CHUNK_PER_EDGE) 
+	if (chunkWriteIndexX >= TERRAIN_CHUNK_PER_EDGE)
     chunkWriteIndexX -= TERRAIN_CHUNK_PER_EDGE;
 	if (chunkWriteIndexZ >= TERRAIN_CHUNK_PER_EDGE) 
     chunkWriteIndexZ -= TERRAIN_CHUNK_PER_EDGE;

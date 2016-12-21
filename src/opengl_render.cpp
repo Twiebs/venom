@@ -1,57 +1,14 @@
 
 #include "debug_renderer.cpp"
 
+//===========================================================================================================
+
 static inline void set_uniform(GLint location, S32 value) { glUniform1i(location, value); }
 static inline void set_uniform(GLint location, F32 value) { glUniform1f(location, value); }
 static inline void set_uniform(GLint location, V2 value) { glUniform2f(location, value.x, value.y); }
 static inline void set_uniform(GLint location, V3 value) { glUniform3f(location, value.x, value.y, value.z); }
 static inline void set_uniform(GLint location, V4 value) { glUniform4f(location, value.x, value.y, value.z, value.w); }
 static inline void set_uniform(GLint location, M4 value) { glUniformMatrix4fv(location, 1, GL_FALSE, &value[0][0]); }
-
-inline void InitalizeRenderState(RenderState* rs, SystemInfo* sys) {
-  glGenVertexArrays(1, &rs->quadVao);
-  InitGBuffer(&rs->gbuffer, sys->screen_width, sys->screen_height);
-  SSAOInit(&rs->ssao, sys->screen_width, sys->screen_height);
-  InitCascadedShadowMaps(&rs->csm, sys->screen_width, sys->screen_height, 45.0f*DEG2RAD);
-  for (size_t i = 0; i < SHADOW_CASTING_POINT_LIGHT_MAX; i++) {
-    InitOmnidirectionalShadowMap(&rs->osm[i]);
-  }
-
-
-  { //Setup the @skydome
-    U32 vertexCount = 0, indexCount = 0;
-    static const int skydomeResolution = 8;
-    GetSubdiviedCubeVertexAndIndexCount(skydomeResolution, &vertexCount, &indexCount);
-    CreateIndexedVertex1PArray(&rs->skydomeIVA, vertexCount, indexCount, GL_DYNAMIC_DRAW);
-
-    V3 *vertices = 0;
-    U32 *indices = 0;
-    MapIndexedVertex1PArray(&rs->skydomeIVA, &vertices, &indices, GL_MAP_WRITE_BIT | GL_MAP_READ_BIT);
-    GenerateSubdiviedCubeMeshData(skydomeResolution,
-      vertexCount, indexCount,vertices, indices);
-    for (U32 i = 0; i < vertexCount; i++)
-      vertices[i] = Normalize(vertices[i]);
-    UnmapIndexedVertexArray(&rs->skydomeIVA);
-  }
-    
-  initalize_debug_renderer();
-}
-
-static inline
-void UpdateCSMFustrums(CascadedShadowMap* csm, Camera* camera) {
-  Frustum *f = csm->cascadeFrustums;
-  float clip_plane_distance_ratio = camera->far_clip / camera->near_clip;
-  f[0].near_plane_distance = camera->near_clip;
-  for (U32 i = 1; i < SHADOW_MAP_CASCADE_COUNT; i++) {
-    float scalar = (float)i / (float)SHADOW_MAP_CASCADE_COUNT;
-    f[i].near_plane_distance = SHADOW_MAP_CASCADE_WEIGHT *
-      (camera->near_clip * powf(clip_plane_distance_ratio, scalar)) +
-      (1 - SHADOW_MAP_CASCADE_WEIGHT) * (camera->near_clip + 
-      (camera->far_clip - camera->near_clip) * scalar);
-    f[i - 1].far_plane_distance = f[i].near_plane_distance * SHADOW_MAP_CASCADE_TOLERANCE;
-  }
-  f[SHADOW_MAP_CASCADE_COUNT - 1].far_plane_distance = camera->far_clip;
-}
 
 static inline void BindMaterial(const MaterialDrawable& material) {
   glActiveTexture(GL_TEXTURE0);
@@ -62,39 +19,11 @@ static inline void BindMaterial(const MaterialDrawable& material) {
   glBindTexture(GL_TEXTURE_2D, material.specular_texture_id);
 };
 
-#if 0
-static inline
-void RenderAtmosphere(const RenderState *rs, const Camera *camera, AssetManifest *am) {
-  glDisable(GL_CULL_FACE);
-  glUseProgram(GetShaderProgram(ShaderID_Atmosphere, am));
-  glBindVertexArray(rs->quadVao);
-  glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-  glEnable(GL_CULL_FACE);
-}
-#endif
-
-#if 0
-static inline 
-void DrawTerrainGeometry(TerrainGenerationState *terrainGenState) {
-  glActiveTexture(GL_TEXTURE5);
-  glBindTexture(GL_TEXTURE_2D_ARRAY, terrainGenState->heightmap_texture_array);
-  glActiveTexture(GL_TEXTURE6);
-  glBindTexture(GL_TEXTURE_2D_ARRAY, terrainGenState->normals_texture_array);
-  glActiveTexture(GL_TEXTURE7);
-  glBindTexture(GL_TEXTURE_2D_ARRAY, terrainGenState->detailmap_texture_array);
-  glBindVertexArray(terrainGenState->base_mesh.vertexArrayID);
-  glDrawElementsInstanced(GL_TRIANGLES, TERRAIN_INDEX_COUNT_PER_CHUNK, GL_UNSIGNED_INT, 0, TERRAIN_TOTAL_CHUNK_COUNT);
-  glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
-  glBindTexture(GL_TEXTURE_2D, 0);
-  glBindVertexArray(0);
-};
-#endif
-
 static inline void SetLightingUniforms(const VenomDrawList* drawList, const Camera& camera) {
   static const U32 CAMERA_VIEW_POSITON_LOCATION = 4;
   static const U32 DIRECTIONAL_LIGHT_COUNT_LOCATION = 5;
   static const U32 POINT_LIGHT_COUNT_LOCATION = 6;
-  static const U32 SHADOW_CASTING_POINT_LIGHT_LOCAION = 7; 
+  static const U32 SHADOW_CASTING_POINT_LIGHT_LOCAION = 7;
 
   set_uniform(CAMERA_VIEW_POSITON_LOCATION, camera.position);
   set_uniform(DIRECTIONAL_LIGHT_COUNT_LOCATION, (S32)drawList->directionalLightCount);
@@ -122,48 +51,79 @@ static inline void SetLightingUniforms(const VenomDrawList* drawList, const Came
   }
 }
 
-static inline
-void RenderDrawListWithGeometry(VenomDrawList* drawList, AssetManifest* manifest) {
-  for (size_t i = 0; i < drawList->drawCommandCount; i++) {
-    VenomDrawCommand* drawCmd = &drawList->drawCommands[i];
-    glBindVertexArray(drawCmd->vertexArrayID);
-    glDrawElements(GL_TRIANGLES, drawCmd->indexCount, GL_UNSIGNED_INT, 0);
-  }
-
-  for (size_t i = 0; i < drawList->modelDrawComandCount; i++) {
-    VenomModelDrawCommand* drawCmd = &drawList->modelDrawCommands[i];
-    ModelDrawable* drawable = GetModelDrawableFromIndex(drawCmd->modelID, manifest);
-    //TODO(Torin) This should be an asset condition after default assets are added
-    if (drawable == nullptr) continue;
-
-    glUniformMatrix4fv(0, 1, GL_FALSE, &drawCmd->modelMatrix[0][0]);
-    U64 currentIndexOffset = 0;
-    glBindVertexArray(drawable->vertexArrayID);
-    for (U64 j = 0; j < drawable->meshCount; j++) {
-      glDrawElements(GL_TRIANGLES, drawable->indexCountPerMesh[j], 
-        GL_UNSIGNED_INT, (GLvoid*)(sizeof(U32)*currentIndexOffset));
-      currentIndexOffset += drawable->indexCountPerMesh[j];
-    }
-  }
-
-  for (size_t i = 0; i < drawList->meshDrawCommandCount; i++) {
-    VenomMeshDrawCommand* cmd = &drawList->meshDrawCommands[i];
-    M4 model = M4Identity();
-    glUniformMatrix4fv(0, 1, GL_FALSE, &model[0][0]);
-    glBindVertexArray(cmd->vertexArrayID);
-    glDrawElements(GL_TRIANGLES, cmd->indexCount, GL_UNSIGNED_INT, (GLvoid*)(cmd->indexOffset * sizeof(U32)));
-  }
-
-#ifndef VENOM_RELEASE
-  auto frameInfo = GetDebugRenderFrameInfo();
-  frameInfo->totalDrawListsRendered++;
-  frameInfo->totalDrawListCommandsExecuted += drawList->drawCommandCount;
-#endif//VENOM_RELEASE
+static inline void SetLightSpaceTransformUniforms(CascadedShadowMap* csm, GLuint programID) {
+  GLint matrixLocation = glGetUniformLocation(programID, "u_light_space_matrix");
+  GLint distanceLocation = glGetUniformLocation(programID, "u_shadow_cascade_distance");
+  glUniformMatrix4fv(matrixLocation, SHADOW_MAP_CASCADE_COUNT,
+    GL_FALSE, &csm->lightSpaceTransforms[0][0][0]);
+  glUniform1fv(distanceLocation, SHADOW_MAP_CASCADE_COUNT,
+    &csm->shadowCascadeDistances[0]);
 }
 
+//=========================================================================================================
 
+#if 0
+static inline void DrawTerrainGeometry(TerrainGenerationState *terrainGenState) {
+  glActiveTexture(GL_TEXTURE5);
+  glBindTexture(GL_TEXTURE_2D_ARRAY, terrainGenState->heightmap_texture_array);
+  glActiveTexture(GL_TEXTURE6);
+  glBindTexture(GL_TEXTURE_2D_ARRAY, terrainGenState->normals_texture_array);
+  glActiveTexture(GL_TEXTURE7);
+  glBindTexture(GL_TEXTURE_2D_ARRAY, terrainGenState->detailmap_texture_array);
+  glBindVertexArray(terrainGenState->base_mesh.vertexArrayID);
+  glDrawElementsInstanced(GL_TRIANGLES, TERRAIN_INDEX_COUNT_PER_CHUNK, GL_UNSIGNED_INT, 0, TERRAIN_TOTAL_CHUNK_COUNT);
+  glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+  glBindTexture(GL_TEXTURE_2D, 0);
+  glBindVertexArray(0);
+};
 
-//==========================================================================
+static inline void DrawTerrain(RenderState *rs, TerrainGenerationState *terrain) {
+  glUseProgram(rs->terrain_shader);
+  SetLightingUniforms(rs->lightingState, *camera);
+  SetLightSpaceTransformUniforms(rs->terrain_shader);
+  model = M4Identity();
+  model = Translate(entities->player.pos);
+  glUniformMatrix4fv(0, 1, GL_FALSE, &model[0][0]);
+  glUniformMatrix4fv(1, 1, GL_FALSE, &view[0][0]);
+  glUniformMatrix4fv(2, 1, GL_FALSE, &proj[0][0]);
+
+  //TODO(Torin) Give the terrain a better material system
+  auto& material0 = GetMaterial(&memory->assets, MaterialID_dirt00);
+  auto& material1 = GetMaterial(&memory->assets, MaterialID_grass01);
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, material0.diffuse_texture_id);
+  glActiveTexture(GL_TEXTURE1);
+  glBindTexture(GL_TEXTURE_2D, material1.diffuse_texture_id);
+  DrawTerrainGeometry(terrainGenState);
+}
+#endif
+
+static void DrawBone(S32 jointIndex, Animation_Joint *jointList, M4 *globalTransforms) {
+  static const V4 LINE_COLOR = COLOR_YELLOW;
+  Animation_Joint *joint = &jointList[jointIndex];
+  if (joint->child_index != -1) {
+    V4 start = globalTransforms[jointIndex] * V4(0.0f, 0.0f, 0.0f, 1.0f);
+    V4 end = globalTransforms[joint->child_index] * V4(0.0f, 0.0f, 0.0f, 1.0f);
+    draw_debug_line(V3(start), V3(end), LINE_COLOR);
+  } else {
+    V4 start = globalTransforms[jointIndex] * V4(0.0f, 0.0f, 0.0f, 1.0f);
+    V4 end = globalTransforms[jointIndex] * V4(0.0f, 1.0f, 0.0f, 1.0f);
+    draw_debug_line(V3(start), V3(end), LINE_COLOR);
+  }
+}
+
+static inline void DrawSkeleton(Animation_Joint *jointList, size_t jointCount, Animation_State *animState) {
+  M4 localJointTransforms[16];
+  M4 globalJointTransforms[16];
+  CalculateLocalJointPoses(jointList, jointCount, animState, localJointTransforms);
+  CalculateGobalJointPoses(jointList, jointCount, localJointTransforms, globalJointTransforms);
+
+  for (size_t i = 0; i < jointCount; i++) {
+    Animation_Joint *joint = &jointList[i];
+    DrawBone((S32)i, jointList, globalJointTransforms);
+  }
+}
+
 
 static inline void draw_atmosphere_oneil(const RenderState *rs, const Camera *camera, AssetManifest *am) {
   static const U32 MVP_MATRIX_LOCATION = 0;
@@ -203,16 +163,10 @@ static inline void draw_model_with_materials_common(ModelDrawable *drawable, M4 
   static const U32 NORMALMAP_PRESENT_LOCATION = 3;
   static const U32 SPECULARMAP_PRESENT_LOCATION = 4;
 
-  static float time = 0.0f;
-  Quaternion q = { 0.991, 0.0, 0.0, -0.131 };
-  M4 rotation = QuaternionToMatrix(q);
-  time += 0.016f;
-
   set_uniform(MODEL_MATRIX_LOCATION, model_matrix);
   glBindVertexArray(drawable->vertexArrayID);
   U64 currentIndexOffset = 0;
   for (size_t j = 0; j < drawable->meshCount; j++) {
-
     const MaterialDrawable &material = drawable->materials[j];
     glUniform1i(NORMALMAP_PRESENT_LOCATION, material.flags & MaterialFlag_NORMAL);
     glUniform1i(SPECULARMAP_PRESENT_LOCATION, material.flags & MaterialFlag_SPECULAR);
@@ -226,23 +180,12 @@ static inline void draw_animated_model_with_materials(ModelDrawable *drawable, A
   static const U32 BONE_OFFSET_LOCATION = 5;
   static const U32 IS_MESH_STATIC_LOCATION = 21;
   set_uniform(IS_MESH_STATIC_LOCATION, false);
-  
+
   Animation_Joint *joints = drawable->joints;
   U32 current_index_offset = 0;
   assert(drawable->joint_count < 16);
   M4 local_joint_poses[16];
 
-#if 0
-  ModelAsset *model = GetModelAsset(animation_state->model_id);
-  assert(model->data.animation_clip_count != 0);
-  Animation_Clip *clip = &model->data.animation_clips[0];
-  
-  M4 local_pose = QuaternionToMatrix(clip->joint_animations[0].rotations[1].rotation);
-  M4 global_pose = joints->parent_realtive_matrix * local_pose;
-  set_uniform(BONE_OFFSET_LOCATION, joints->inverse_bind_matrix * global_pose);
-#endif
-
-#if 1
   for (size_t i = 0; i < drawable->joint_count; i++) {
     Animation_Joint *joint = &joints[i];
     local_joint_poses[i] = CalculateLocalJointPose(i, joint, animation_state);
@@ -251,10 +194,9 @@ static inline void draw_animated_model_with_materials(ModelDrawable *drawable, A
   for (size_t i = 0; i < drawable->joint_count; i++) {
     Animation_Joint *joint = &joints[i];
     M4 global_joint_pose = CalculateGlobalJointPose(i, drawable->joints, local_joint_poses);
-    M4 final_skinning_matrix = joint->inverse_bind_matrix * global_joint_pose;
+    M4 final_skinning_matrix = CalculateSkinningMatrix(joint, global_joint_pose);
     set_uniform(BONE_OFFSET_LOCATION + i, final_skinning_matrix);
   }
-#endif
 
   draw_model_with_materials_common(drawable, model_matrix);
 }
@@ -283,10 +225,48 @@ static inline void draw_model_with_only_geometry(ModelDrawable* drawable, M4 mod
   }
 }
 
-//==============================================================================
 
-static inline
-void RenderDrawListWithMaterials(VenomDrawList* drawList, AssetManifest* manifest, float deltaTime) {
+//============================================================================================================
+
+static inline void RenderDrawListWithGeometry(VenomDrawList* drawList, AssetManifest* manifest) {
+  for (size_t i = 0; i < drawList->drawCommandCount; i++) {
+    VenomDrawCommand* drawCmd = &drawList->drawCommands[i];
+    glBindVertexArray(drawCmd->vertexArrayID);
+    glDrawElements(GL_TRIANGLES, drawCmd->indexCount, GL_UNSIGNED_INT, 0);
+  }
+
+  for (size_t i = 0; i < drawList->modelDrawComandCount; i++) {
+    VenomModelDrawCommand* drawCmd = &drawList->modelDrawCommands[i];
+    ModelDrawable* drawable = GetModelDrawableFromIndex(drawCmd->modelID, manifest);
+    //TODO(Torin) This should be an asset condition after default assets are added
+    if (drawable == nullptr) continue;
+
+    glUniformMatrix4fv(0, 1, GL_FALSE, &drawCmd->modelMatrix[0][0]);
+    U64 currentIndexOffset = 0;
+    glBindVertexArray(drawable->vertexArrayID);
+    for (U64 j = 0; j < drawable->meshCount; j++) {
+      glDrawElements(GL_TRIANGLES, drawable->indexCountPerMesh[j],
+        GL_UNSIGNED_INT, (GLvoid*)(sizeof(U32)*currentIndexOffset));
+      currentIndexOffset += drawable->indexCountPerMesh[j];
+    }
+  }
+
+  for (size_t i = 0; i < drawList->meshDrawCommandCount; i++) {
+    VenomMeshDrawCommand* cmd = &drawList->meshDrawCommands[i];
+    M4 model = M4Identity();
+    glUniformMatrix4fv(0, 1, GL_FALSE, &model[0][0]);
+    glBindVertexArray(cmd->vertexArrayID);
+    glDrawElements(GL_TRIANGLES, cmd->indexCount, GL_UNSIGNED_INT, (GLvoid*)(cmd->indexOffset * sizeof(U32)));
+  }
+
+#ifndef VENOM_RELEASE
+  auto frameInfo = GetDebugRenderFrameInfo();
+  frameInfo->totalDrawListsRendered++;
+  frameInfo->totalDrawListCommandsExecuted += drawList->drawCommandCount;
+#endif//VENOM_RELEASE
+}
+
+static inline void RenderDrawListWithMaterials(VenomDrawList* drawList, AssetManifest* manifest, float deltaTime) {
   for (size_t i = 0; i < drawList->drawCommandCount; i++) {
     VenomDrawCommand* drawCmd = &drawList->drawCommands[i];
     glBindVertexArray(drawCmd->vertexArrayID);
@@ -299,9 +279,9 @@ void RenderDrawListWithMaterials(VenomDrawList* drawList, AssetManifest* manifes
     if (drawable == nullptr) continue;
     draw_animated_model_with_materials(drawable, draw_cmd->animation_state, draw_cmd->model_matrix);
   }
-    
 
-  for(size_t i = 0; i < drawList->modelDrawComandCount; i++){
+
+  for (size_t i = 0; i < drawList->modelDrawComandCount; i++) {
     VenomModelDrawCommand* drawCmd = &drawList->modelDrawCommands[i];
     ModelDrawable* drawable = GetModelDrawableFromIndex(drawCmd->modelID, manifest);
     //TODO(Torin) This should be an asset condition after default assets are added
@@ -326,120 +306,145 @@ void RenderDrawListWithMaterials(VenomDrawList* drawList, AssetManifest* manifes
 #endif//VENOM_RELEASE
 }
 
-static inline
-void RenderCSM(CascadedShadowMap* csm, Camera* camera, 
-  DirectionalLight* light, VenomDrawList* drawList, AssetManifest* manifest) 
-{
-	M4 light_view = LookAt(V3(0.0f), -light->direction, V3(-1.0f, 0.0f, 0.0f));
-	for (U32 i = 0; i < SHADOW_MAP_CASCADE_COUNT; i++) {
-		//Compute cascade frustum points	
-		Frustum *f = csm->cascadeFrustums + i;
-		csm->shadowCascadeDistances[i] = 0.5f * (-f->far_plane_distance * 
-      camera->projection[2][2] + camera->projection[3][2]) / 
+
+//===========================================================================================================
+
+inline void InitalizeRenderState(RenderState* rs, SystemInfo* sys) {
+  glGenVertexArrays(1, &rs->quadVao);
+  InitGBuffer(&rs->gbuffer, sys->screen_width, sys->screen_height);
+  SSAOInit(&rs->ssao, sys->screen_width, sys->screen_height);
+  InitCascadedShadowMaps(&rs->csm, sys->screen_width, sys->screen_height, 45.0f*DEG2RAD);
+  for (size_t i = 0; i < SHADOW_CASTING_POINT_LIGHT_MAX; i++) {
+    InitOmnidirectionalShadowMap(&rs->osm[i]);
+  }
+
+
+  { //Setup the @skydome
+    U32 vertexCount = 0, indexCount = 0;
+    static const int skydomeResolution = 8;
+    GetSubdiviedCubeVertexAndIndexCount(skydomeResolution, &vertexCount, &indexCount);
+    CreateIndexedVertex1PArray(&rs->skydomeIVA, vertexCount, indexCount, GL_DYNAMIC_DRAW);
+
+    V3 *vertices = 0;
+    U32 *indices = 0;
+    MapIndexedVertex1PArray(&rs->skydomeIVA, &vertices, &indices, GL_MAP_WRITE_BIT | GL_MAP_READ_BIT);
+    GenerateSubdiviedCubeMeshData(skydomeResolution,
+      vertexCount, indexCount,vertices, indices);
+    for (U32 i = 0; i < vertexCount; i++)
+      vertices[i] = Normalize(vertices[i]);
+    UnmapIndexedVertexArray(&rs->skydomeIVA);
+  }
+    
+  initalize_debug_renderer();
+}
+
+static inline void UpdateCSMFustrums(CascadedShadowMap* csm, Camera* camera) {
+  Frustum *f = csm->cascadeFrustums;
+  float clip_plane_distance_ratio = camera->far_clip / camera->near_clip;
+  f[0].near_plane_distance = camera->near_clip;
+  for (U32 i = 1; i < SHADOW_MAP_CASCADE_COUNT; i++) {
+    float scalar = (float)i / (float)SHADOW_MAP_CASCADE_COUNT;
+    f[i].near_plane_distance = SHADOW_MAP_CASCADE_WEIGHT *
+      (camera->near_clip * powf(clip_plane_distance_ratio, scalar)) +
+      (1 - SHADOW_MAP_CASCADE_WEIGHT) * (camera->near_clip + 
+      (camera->far_clip - camera->near_clip) * scalar);
+    f[i - 1].far_plane_distance = f[i].near_plane_distance * SHADOW_MAP_CASCADE_TOLERANCE;
+  }
+  f[SHADOW_MAP_CASCADE_COUNT - 1].far_plane_distance = camera->far_clip;
+}
+
+static inline void RenderCSM(CascadedShadowMap* csm, Camera* camera, DirectionalLight* light, VenomDrawList* drawList, AssetManifest* manifest) {
+  M4 light_view = LookAt(V3(0.0f), -light->direction, V3(-1.0f, 0.0f, 0.0f));
+  for (U32 i = 0; i < SHADOW_MAP_CASCADE_COUNT; i++) {
+    //Compute cascade frustum points	
+    Frustum *f = csm->cascadeFrustums + i;
+    csm->shadowCascadeDistances[i] = 0.5f * (-f->far_plane_distance *
+      camera->projection[2][2] + camera->projection[3][2]) /
       f->far_plane_distance + 0.5f;
 
-		V3 up = V3(0.0f, 1.0f, 0.0f);
-		V3 view_direction = camera->front;
-		V3 center = camera->position;
-		V3 right = Cross(view_direction, up);
+    V3 up = V3(0.0f, 1.0f, 0.0f);
+    V3 view_direction = camera->front;
+    V3 center = camera->position;
+    V3 right = Cross(view_direction, up);
 
-		right = Normalize(right);
-		up = Normalize(Cross(right, view_direction));
+    right = Normalize(right);
+    up = Normalize(Cross(right, view_direction));
 
-		V3 far_plane_center = center + (view_direction * f->far_plane_distance);
-		V3 near_plane_center = center + (view_direction * f->near_plane_distance);
+    V3 far_plane_center = center + (view_direction * f->far_plane_distance);
+    V3 near_plane_center = center + (view_direction * f->near_plane_distance);
 
-		float tan_half_fov = tanf(f->field_of_view / 2.0f);
-		float near_half_height = tan_half_fov * f->near_plane_distance;
-		float near_half_width = near_half_height * f->aspect_ratio;
-		float far_half_height = tan_half_fov * f->far_plane_distance;
-		float far_half_width = far_half_height * f->aspect_ratio;
+    float tan_half_fov = tanf(f->field_of_view / 2.0f);
+    float near_half_height = tan_half_fov * f->near_plane_distance;
+    float near_half_width = near_half_height * f->aspect_ratio;
+    float far_half_height = tan_half_fov * f->far_plane_distance;
+    float far_half_width = far_half_height * f->aspect_ratio;
 
-		f->points[0] = near_plane_center - (up * near_half_height) - (right * near_half_width);
-		f->points[1] = near_plane_center + (up * near_half_height) - (right * near_half_width);
-		f->points[2] = near_plane_center + (up * near_half_height) + (right * near_half_width);
-		f->points[3] = near_plane_center - (up * near_half_height) + (right * near_half_width);
+    f->points[0] = near_plane_center - (up * near_half_height) - (right * near_half_width);
+    f->points[1] = near_plane_center + (up * near_half_height) - (right * near_half_width);
+    f->points[2] = near_plane_center + (up * near_half_height) + (right * near_half_width);
+    f->points[3] = near_plane_center - (up * near_half_height) + (right * near_half_width);
 
-		f->points[4] = far_plane_center - (up * far_half_height) - (right * far_half_width);
-		f->points[5] = far_plane_center + (up * far_half_height) - (right * far_half_width);
-		f->points[6] = far_plane_center + (up * far_half_height) + (right * far_half_width);
-		f->points[7] = far_plane_center - (up * far_half_height) + (right * far_half_width);
+    f->points[4] = far_plane_center - (up * far_half_height) - (right * far_half_width);
+    f->points[5] = far_plane_center + (up * far_half_height) - (right * far_half_width);
+    f->points[6] = far_plane_center + (up * far_half_height) + (right * far_half_width);
+    f->points[7] = far_plane_center - (up * far_half_height) + (right * far_half_width);
 
-		float minZ, maxZ;
-		{
-			V4 view_space = light_view * V4(f->points[i], 1.0f);
-			minZ = view_space.z;
-			maxZ = view_space.z;
-		}
+    float minZ, maxZ;
+    {
+      V4 view_space = light_view * V4(f->points[i], 1.0f);
+      minZ = view_space.z;
+      maxZ = view_space.z;
+    }
 
-		for (int i = 1; i < 8; i++) {
-			V4 view_space = light_view * V4(f->points[i], 1.0f);
-			maxZ = view_space.z > maxZ ? view_space.z : maxZ;
-			minZ = view_space.z < minZ ? view_space.z : minZ;
-		}
+    for (int i = 1; i < 8; i++) {
+      V4 view_space = light_view * V4(f->points[i], 1.0f);
+      maxZ = view_space.z > maxZ ? view_space.z : maxZ;
+      minZ = view_space.z < minZ ? view_space.z : minZ;
+    }
 
-		//TODO(Torin) Insure all loaded objects that cast shadows fall inside the frustum 
+    //TODO(Torin) Insure all loaded objects that cast shadows fall inside the frustum 
 
-		csm->lightProjectionMatrices[i] = Orthographic(-1.0f, 1.0f, 
+    csm->lightProjectionMatrices[i] = Orthographic(-1.0f, 1.0f,
       -1.0f, 1.0f, -maxZ, -minZ, 1.0);
-		M4 light_transform = csm->lightProjectionMatrices[i] * light_view;
+    M4 light_transform = csm->lightProjectionMatrices[i] * light_view;
 
-		float maxX = -1000000, minX = 1000000;
-		float maxY = -1000000, minY = 1000000;
-		for (U32 i = 0; i < 8; i++) {
-			V4 light_space = light_transform * V4(f->points[i], 1.0f);
-			light_space.x /= light_space.w;
-			light_space.y /= light_space.w;
+    float maxX = -1000000, minX = 1000000;
+    float maxY = -1000000, minY = 1000000;
+    for (U32 i = 0; i < 8; i++) {
+      V4 light_space = light_transform * V4(f->points[i], 1.0f);
+      light_space.x /= light_space.w;
+      light_space.y /= light_space.w;
 
-			maxX = Max(maxX, light_space.x);
-			minX = Min(minX, light_space.x);
-			maxY = Max(maxY, light_space.y);
-			minY = Min(minY, light_space.y);
-		}
+      maxX = Max(maxX, light_space.x);
+      minX = Min(minX, light_space.x);
+      maxY = Max(maxY, light_space.y);
+      minY = Min(minY, light_space.y);
+    }
 
-		float scaleX = 2.0f / (maxX - minX);
-		float scaleY = 2.0f / (maxY - minY);
-		float offsetX = -0.5f * (maxX + minX) * scaleX;
-		float offsetY = -0.5f * (maxY + minY) * scaleY;
+    float scaleX = 2.0f / (maxX - minX);
+    float scaleY = 2.0f / (maxY - minY);
+    float offsetX = -0.5f * (maxX + minX) * scaleX;
+    float offsetY = -0.5f * (maxY + minY) * scaleY;
 
-		M4 crop_matrix = M4Identity();
-		crop_matrix[0][0] = scaleX;
-		crop_matrix[1][1] = scaleY;
-		crop_matrix[3][0] = offsetX;
-		crop_matrix[3][1] = offsetY;
+    M4 crop_matrix = M4Identity();
+    crop_matrix[0][0] = scaleX;
+    crop_matrix[1][1] = scaleY;
+    crop_matrix[3][0] = offsetX;
+    crop_matrix[3][1] = offsetY;
 
-		csm->lightProjectionMatrices[i] = csm->lightProjectionMatrices[i] * crop_matrix;
-		light_transform = csm->lightProjectionMatrices[i] * light_view;
-		csm->lightSpaceTransforms[i] = light_transform;
+    csm->lightProjectionMatrices[i] = csm->lightProjectionMatrices[i] * crop_matrix;
+    light_transform = csm->lightProjectionMatrices[i] * light_view;
+    csm->lightSpaceTransforms[i] = light_transform;
 
 
     static const U32 lightSpaceTransformLocation = 3;
-		glViewport(0, 0, SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION);
-		glFramebufferTextureLayer(GL_FRAMEBUFFER, 
+    glViewport(0, 0, SHADOW_MAP_RESOLUTION, SHADOW_MAP_RESOLUTION);
+    glFramebufferTextureLayer(GL_FRAMEBUFFER,
       GL_DEPTH_ATTACHMENT, csm->depthTexture, 0, i);
-		glClear(GL_DEPTH_BUFFER_BIT);
-		glUniformMatrix4fv(lightSpaceTransformLocation, 1, 0, &light_transform[0][0]);
+    glClear(GL_DEPTH_BUFFER_BIT);
+    glUniformMatrix4fv(lightSpaceTransformLocation, 1, 0, &light_transform[0][0]);
     RenderDrawListWithGeometry(drawList, manifest);
-	}
-}
-
-#ifndef VENOM_RELEASE
-#define DebugEnableIf(expr) if (expr)
-#define DebugDisableIf(expr) if(!expr)
-#define DEBUG_DisableIf(expr) if(!expr)
-#else//VENOM_RELEASE
-#define DebugDisableIf(expr) if (1)
-#define DebugEnableIf(expr) if (0)
-#endif//VENOM_RELEASE
-
-static inline 
-void SetLightSpaceTransformUniforms(CascadedShadowMap* csm, GLuint programID) {
-  GLint matrixLocation = glGetUniformLocation(programID, "u_light_space_matrix");
-  GLint distanceLocation = glGetUniformLocation(programID, "u_shadow_cascade_distance");
-	glUniformMatrix4fv(matrixLocation, SHADOW_MAP_CASCADE_COUNT, 
-    GL_FALSE, &csm->lightSpaceTransforms[0][0][0]);
-  glUniform1fv(distanceLocation, SHADOW_MAP_CASCADE_COUNT, 
-    &csm->shadowCascadeDistances[0]);
+  }
 }
 
 static inline void render_outlined_objects(RenderState *rs, Camera *camera, AssetManifest *assetManifest, float deltaTime){
@@ -489,6 +494,14 @@ static inline void render_outlined_objects(RenderState *rs, Camera *camera, Asse
   }
 
   glDisable(GL_STENCIL_TEST);
+}
+
+static inline void DebugRenderPass(RenderState *rs) {
+  for (size_t i = 0; i < rs->drawList.animated_model_draw_commands.count; i++) {
+    Animated_Model_Draw_Command *cmd = &rs->drawList.animated_model_draw_commands[i];
+    ModelAsset *model = cmd->model;
+    DrawSkeleton(model->data.joints, model->data.jointCount, cmd->animation_state);
+  }
 }
 
 void VenomRenderScene(GameMemory* memory, Camera* camera) {
@@ -702,6 +715,7 @@ void VenomRenderScene(GameMemory* memory, Camera* camera) {
   //Foward render our debug primatives storing the stencil info
   glEnable(GL_STENCIL_TEST);
   render_debug_draw_commands(camera, assetManifest, memory->deltaTime);
+  DebugRenderPass(rs);
   glDisable(GL_STENCIL_TEST);
 
   render_outlined_objects(rs, camera, assetManifest, memory->deltaTime);
@@ -743,6 +757,8 @@ void VenomRenderScene(GameMemory* memory, Camera* camera) {
   }
 #endif
 
+
+
   drawList->drawCommandCount = 0;
   drawList->modelDrawComandCount = 0;
   drawList->meshDrawCommandCount = 0;
@@ -751,8 +767,6 @@ void VenomRenderScene(GameMemory* memory, Camera* camera) {
   drawList->directionalLightCount = 0;
   drawList->shadowCastingPointLightCount = 0;
   drawList->animated_model_draw_commands.count = 0;
-
-
 
 #ifndef VENOM_RELEASE
   auto frameInfo = GetDebugRenderFrameInfo();

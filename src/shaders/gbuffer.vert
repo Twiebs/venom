@@ -27,22 +27,20 @@ void main() {
   //vsOut.position = viewspacePosition.xyz;
   //vsOut.normal = viewspaceNormal.xyz;
 
-  vec4 vertex_position = vec4(in_position, 1.0);
-  vec4 vertex_normal = vec4(in_normal, 0.0);
+  vec4 vertex_position = vec4(0.0, 0.0, 0.0, 1.0);
+  vec4 vertex_normal = vec4(0.0, 0.0, 0.0, 0.0);
   if (u_is_mesh_static == 0) {
-    mat4 joint_transform = mat4(0.0);
-    joint_transform += u_joint_matrices[in_joint_indices[0]] * in_joint_weights[0];
-    joint_transform += u_joint_matrices[in_joint_indices[1]] * in_joint_weights[1];
-    joint_transform += u_joint_matrices[in_joint_indices[2]] * in_joint_weights[2];
-    joint_transform += u_joint_matrices[in_joint_indices[3]] * in_joint_weights[3];
-    vertex_position = joint_transform * vec4(in_position, 1.0);
-    vertex_normal = joint_transform * vec4(in_normal, 0.0);
+  	vertex_position += (u_joint_matrices[in_joint_indices[0]] * vec4(in_position, 1.0)) * in_joint_weights[0];
+  	vertex_position += (u_joint_matrices[in_joint_indices[1]] * vec4(in_position, 1.0)) * in_joint_weights[1];
+  	vertex_position += (u_joint_matrices[in_joint_indices[2]] * vec4(in_position, 1.0)) * in_joint_weights[2];
+  	vertex_position += (u_joint_matrices[in_joint_indices[3]] * vec4(in_position, 1.0)) * in_joint_weights[3];
     vertex_normal = normalize(vertex_normal);
   } 
 
   mat4 model_view_matrix = u_view_matrix * u_model_matrix;
   mat4 normalMatrix = transpose(inverse(u_model_matrix));
 
+  vertex_position.w = 1.0;
   vec4 worldspacePosition = u_model_matrix * vertex_position;
   worldspacePosition.w = 1.0;
 

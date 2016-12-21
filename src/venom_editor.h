@@ -33,22 +33,38 @@ enum EditorTransformConstraint {
   EditorTransformConstraint_ZAxis = 1 << 2,
 };
 
+enum EditorViewMode {
+  EditorViewMode_Assets,
+  EditorViewMode_Entities,
+  EditorViewMode_Debug,
+  EditorViewMode_Player,
+};
+
 struct EditorData {
   EditorCommand lastCommand;
   EditorCommand activeCommand;
   EditorSelectMode selectMode;
+  EditorViewMode viewMode;
   EditorTransformConstraint transformConstraints;
 
   Camera *activeCamera;
   Camera editorCamera;
 
+  //EditorViewMode_Assets
+  int selectedAssetType;
+  int lastSelectedIndex;
+  int selectedIndex;
+
+  //EditorViewMode_Entities
   DynamicArray<U32> selectedEntities;
   DynamicArray<V3> originalEntityPositions;
-
-  AABB groupAABB;
-
   V3 originalGroupPosition;
   V3 currentGroupPosition;
   V3 currentGroupRotation;
+  AABB groupAABB;
+
+  B8 isEditorVisible;
+  B8 isSearchWindowOpen;
 };
 
+void InitalizeEditor(EditorData *editor);

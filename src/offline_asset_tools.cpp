@@ -32,7 +32,7 @@ SoundData LoadOGG(const char *filename) {
 	return result;
 }
 
-static inline M4 aiMatrix_to_M4(const aiMatrix4x4& m) {
+static inline M4 AssimpMatrixToM4(const aiMatrix4x4& m) {
   M4 r;
   r[0][0] = m.a1;
   r[1][0] = m.a2;
@@ -103,7 +103,6 @@ bool ImportExternalModelData(const char *filename, ModelData *data) {
   required_memory += sizeof(AnimatedVertex) *data->meshData.vertexCount;
   required_memory += sizeof(U32) * data->meshCount;
   required_memory += sizeof(Animation_Joint) * data->jointCount;
-  required_memory += sizeof(U32) * data->meshCount; //joint count per mesh
   required_memory += sizeof(Animation_Clip) * data->animation_clip_count;
 	
   //TODO(Torin) Make this a call to a custom memory allocator
@@ -114,8 +113,7 @@ bool ImportExternalModelData(const char *filename, ModelData *data) {
   data->meshData.indices = (U32*)(data->meshData.vertices + data->meshData.vertexCount);
   if (data->jointCount > 0) {
     data->joints = (Animation_Joint *)(data->meshData.indices + data->meshData.indexCount);
-    data->joint_count_per_mesh = (U32 *)(data->joints + data->jointCount);
-    data->animation_clips = (Animation_Clip *)(data->joint_count_per_mesh + data->meshCount);
+    data->animation_clips = (Animation_Clip *)(data->joints + data->jointCount);
   }
 
   //TODO(Torin) Change these to U8s and make invalid index 0xFF
@@ -136,18 +134,28 @@ bool ImportExternalModelData(const char *filename, ModelData *data) {
     return -1;
   };
 
+  M4 root_transform = AssimpMatrixToM4(scene->mRootNode->mTransformation);
+  M4 inverseRootTransform = Inverse(root_transform);
+
   size_t current_joint_count = 0;
   size_t currentVertexOffset = 0;
   size_t currentIndexOffset = 0;
+
+  for (size_t meshIndex = 0; meshIndex < scene->mNumMeshes; meshIndex++) {
+    aiMesh *mesh = scene->mMeshes[meshIndex];
+    for (size_t i = 0; i < mesh->mNumBones; i++) {
+      aiBone *bone = mesh->mBones[i];
+      aiNode *boneNode = scene->mRootNode->FindNode(bone->mName);
+
+    }
+  }
+
+
   for (size_t material_index = 0; material_index < scene->mNumMaterials; material_index++) {
     for (size_t n = 0; n < scene->mNumMeshes; n++) {
       if (scene->mMeshes[n]->mMaterialIndex == material_index) {
         aiMesh *assimpMesh = scene->mMeshes[n];
 
-      //TODO(Torin) This might need to be fast get rid of the branches
-      //Posibly change to inlined calls to static lambdas for setting each property
-      //because we need to set these differently for each type of  vertex!
-      //Mabye for now we should just use a single type of vertex and eat the memory wastage
       { //NOTE(Torin) Process the meshes vertices
         AnimatedVertex *vertices = data->meshData.vertices + currentVertexOffset;
         for (size_t i = 0; i < assimpMesh->mNumVertices; i++) {
@@ -157,21 +165,28 @@ bool ImportExternalModelData(const char *filename, ModelData *data) {
           vertices[i].normal.x = assimpMesh->mNormals[i].x;
           vertices[i].normal.y = assimpMesh->mNormals[i].y;
           vertices[i].normal.z = assimpMesh->mNormals[i].z;
+          vertices[i].position = V3(root_transform * V4(vertices[i].position, 1.0));
+          vertices[i].normal = V3(root_transform * V4(vertices[i].normal, 0.0));
           if (assimpMesh->mTangents != nullptr) {
             vertices[i].tangent.x = assimpMesh->mTangents[i].x;
             vertices[i].tangent.y = assimpMesh->mTangents[i].y;
             vertices[i].tangent.z = assimpMesh->mTangents[i].z;
+            vertices[i].tangent = V3(root_transform * V4(vertices[i].tangent, 0.0));
           }
+
           if (assimpMesh->mTextureCoords[0] != nullptr) {
+            //TODO(Torin) How do we check if these need to be fliped?
             vertices[i].texcoord.x = assimpMesh->mTextureCoords[0][i].x;
             vertices[i].texcoord.y = assimpMesh->mTextureCoords[0][i].y;
           }
+
           for (size_t j = 0; j < 4; j++) {
             vertices[i].joint_index[j] = -1;
             vertices[i].weight[j] = 0.0f;
           }
         }
       }
+
 
       { //NOTE(Torin) Now the indices are processed and added to the model data
         U32 *indices = data->meshData.indices + currentIndexOffset;
@@ -184,28 +199,22 @@ bool ImportExternalModelData(const char *filename, ModelData *data) {
         data->index_count_per_mesh[material_index] += scene->mMeshes[n]->mNumFaces * 3;
       }
 
-
-
-      
       { //NOTE(Torin) Now we process the joints for each mesh in the model
         for (size_t i = 0; i < assimpMesh->mNumBones; i++) {
           aiBone *bone = assimpMesh->mBones[i];
+          aiNode *bone_node = scene->mRootNode->FindNode(bone->mName);
           if (bone->mName.length > 63) {
             LOG_ERROR("Model contains bones with names larger than 64 chars");
             free(data);
             return false;
           }
 
-          aiNode *bone_node = scene->mRootNode->FindNode(bone->mName);
           S32 joint_index = get_joint_index(bone->mName.data);
           if (joint_index == -1) {
             joint_index = current_joint_count++;
             Animation_Joint *joint = &data->joints[joint_index];
             memcpy(joint->name, bone->mName.data, bone->mName.length+1);
-            joint->bind_pose_matrix = aiMatrix_to_M4(bone->mOffsetMatrix);
-            joint->inverse_bind_matrix = Inverse(joint->bind_pose_matrix);
-            joint->parent_realtive_matrix = aiMatrix_to_M4(bone_node->mTransformation);
-            data->joint_count_per_mesh[material_index]++;   //XXX What's this purpose noww
+            joint->localTransform = AssimpMatrixToM4(bone_node->mTransformation);
           }
 
           for (size_t j = 0; j < bone->mNumWeights; j++) {
@@ -243,46 +252,79 @@ bool ImportExternalModelData(const char *filename, ModelData *data) {
         }
       }
 
-
-      for (size_t i = 0; i < data->jointCount; i++) {
-        Animation_Joint *joint = &data->joints[i];
-        aiNode *bone_node = scene->mRootNode->FindNode(joint->name);
-        S32 last_child_index = -1;
-        for (size_t c = 0; c < bone_node->mNumChildren; c++) {
-          aiNode *ai_child = bone_node->mChildren[c];
-
-          S32 child_index = get_joint_index(ai_child->mName.data);
-          if (child_index == -1) continue;
-          if (joint->child_index == -1) {
-            joint->child_index = child_index;
-          }
-
-          Animation_Joint *child_joint = &data->joints[child_index];
-          child_joint->parent_index = i;
-          if (last_child_index != -1) {
-            Animation_Joint *previous_child = &data->joints[last_child_index];
-            previous_child->sibling_index = child_index;
-          }
-          last_child_index = child_index;
-        }
-      }
-
-      if (data->jointCount > 0) {
-        normalize_vertex_joint_weights(data->meshData.vertices, data->meshData.vertexCount);
-      }
-      
-
-
       currentVertexOffset += scene->mMeshes[n]->mNumVertices;
       currentIndexOffset += scene->mMeshes[n]->mNumFaces * 3;
 			}
 		}
 	}
 
+  for (size_t i = 0; i < data->jointCount; i++) {
+    Animation_Joint *joint = &data->joints[i];
+    aiNode *bone_node = scene->mRootNode->FindNode(joint->name);
+    if (joint->parent_index == -1) {
+      joint->localTransform = root_transform * joint->localTransform;
+    }
+
+    assert(bone_node != nullptr);
+    S32 last_child_index = -1;
+    for (size_t c = 0; c < bone_node->mNumChildren; c++) {
+      aiNode *ai_child = bone_node->mChildren[c];
+
+      S32 child_index = get_joint_index(ai_child->mName.data);
+      if (child_index == -1) continue;
+      if (joint->child_index == -1) {
+        joint->child_index = child_index;
+      }
+
+      Animation_Joint *child_joint = &data->joints[child_index];
+      child_joint->parent_index = i;
+      if (last_child_index != -1) {
+        Animation_Joint *previous_child = &data->joints[last_child_index];
+        previous_child->sibling_index = child_index;
+      }
+      last_child_index = child_index;
+    }
+  }
 
 
+
+
+  if (data->jointCount > 0) {
+
+    { //Make each root joint a sibling of the previous root joint
+      Animation_Joint *current_parent = &data->joints[0];
+      for (size_t i = 1; i < data->jointCount; i++) {
+        Animation_Joint *joint = &data->joints[i];
+        if (joint->parent_index == -1) {
+          current_parent->sibling_index = i;
+          current_parent = joint;
+        }
+      }
+    }
 
   
+#if 1
+
+    //TODO(Torin) Make sure joints are created in correct order
+    //Reorder them here to remap the indices correctly
+    for (size_t i = 0; i < data->jointCount; i++) {
+      Animation_Joint *joint = &data->joints[i];
+      if (joint->parent_index == -1) {
+        joint->globalTransform = joint->localTransform;
+      } else {
+        Animation_Joint *parent = &data->joints[joint->parent_index];
+        joint->globalTransform = parent->globalTransform * joint->localTransform;
+      }
+      joint->inverseBindPose = Inverse(joint->globalTransform);
+    }
+
+
+#endif
+
+
+
+    //normalize_vertex_joint_weights(data->meshData.vertices, data->meshData.vertexCount);
+  }
 
   for (size_t i = 0; i < scene->mNumAnimations; i++) {
     aiAnimation *animation = scene->mAnimations[i];
@@ -290,6 +332,10 @@ bool ImportExternalModelData(const char *filename, ModelData *data) {
     clip->duration = animation->mDuration;
     clip->joint_count = animation->mNumChannels;
     memcpy(clip->name, animation->mName.data, animation->mName.length + 1);
+    if (cstrings_are_equal(clip->name, "")) {
+      snprintf(clip->name, sizeof(clip->name), "animation%.2u", (U32)i);
+    }
+
     clip->joint_animations.Resize(clip->joint_count);
     
     for (size_t j = 0; j < animation->mNumChannels; j++) {
@@ -302,12 +348,14 @@ bool ImportExternalModelData(const char *filename, ModelData *data) {
       joint_animation->translations.Resize(joint_animation->translation_count);
       joint_animation->rotations.Resize(joint_animation->rotation_count);
       joint_animation->scalings.Resize(joint_animation->scaling_count);
+      Animation_Joint *joint = &data->joints[joint_animation->joint_index];
 
       for (size_t k = 0; k < joint_animation->translation_count; k++) {
         joint_animation->translations[k].time = node_anim->mPositionKeys[k].mTime;
         joint_animation->translations[k].translation.x = node_anim->mPositionKeys[k].mValue.x;
         joint_animation->translations[k].translation.y = node_anim->mPositionKeys[k].mValue.y;
         joint_animation->translations[k].translation.z = node_anim->mPositionKeys[k].mValue.z;
+        //joint_animation->translations[k].translation = V3(root_transform * V4(joint_animation->translations[k].translation, 1.0));
       }
 
       for (size_t k = 0; k < joint_animation->rotation_count; k++) {
@@ -316,6 +364,10 @@ bool ImportExternalModelData(const char *filename, ModelData *data) {
         joint_animation->rotations[k].rotation.y = node_anim->mRotationKeys[k].mValue.y;
         joint_animation->rotations[k].rotation.z = node_anim->mRotationKeys[k].mValue.z;
         joint_animation->rotations[k].rotation.w = node_anim->mRotationKeys[k].mValue.w;
+        if (joint->parent_index == -1) {
+          M4 rotation_matrix = root_transform * QuaternionToMatrix(joint_animation->rotations[k].rotation);
+          joint_animation->rotations[k].rotation = MatrixToQuaternion(rotation_matrix);
+        }
       }
 
       for (size_t k = 0; k < joint_animation->scaling_count; k++) {

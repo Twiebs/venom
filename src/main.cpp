@@ -389,41 +389,7 @@ void VenomModuleUpdate(GameMemory *memory)
 
 #if 0
 	{ //@Terrain Generation
-		TerrainGenerationState *terrainGenState = &memory->terrainGenState;
-		V3 view_position = gameplay_settings->use_debug_camera ? camera->position : entities->player.pos;
-		float offsetFromCurrentChunkX = view_position.x - terrainGenState->lastGenerationTriggerX;
-		float offsetFromCurrentChunkZ = view_position.z - terrainGenState->lastGenerationTriggerZ;
-		
-		if (!gameplay_settings->disable_terrain_generation)
-		{
-			if (offsetFromCurrentChunkX > TERRAIN_CHUNK_SIZE || offsetFromCurrentChunkX < (-(S32)TERRAIN_CHUNK_SIZE))
-			{
-				terrainGenState->gpuMemoryOriginX += (offsetFromCurrentChunkX > 0.0f ? 1 : -1);
-				if (terrainGenState->gpuMemoryOriginX >= (S32)TERRAIN_CHUNK_PER_EDGE) terrainGenState->gpuMemoryOriginX = 0;
-				if (terrainGenState->gpuMemoryOriginX < 0) terrainGenState->gpuMemoryOriginX = TERRAIN_CHUNK_PER_EDGE - 1;
-				terrainGenState->lastGenerationTriggerX = view_position.x;
-				
-				U32 generationChunkIndexX = offsetFromCurrentChunkX > 0 ? (TERRAIN_CHUNK_PER_EDGE - 1) : 0;
-				terrainGenState->currentOriginX += offsetFromCurrentChunkX > 0 ? 1 : -1;
-				for (U64 i = 0; i < TERRAIN_CHUNK_PER_EDGE; i++) {
-					GenerateTerrainChunk(terrainGenState, &memory->assets, generationChunkIndexX, i);
-				}	
-			}
-
-			if (offsetFromCurrentChunkZ > TERRAIN_CHUNK_SIZE || offsetFromCurrentChunkZ < -(S32)TERRAIN_CHUNK_SIZE)
-			{
-				terrainGenState->gpuMemoryOriginZ += (offsetFromCurrentChunkZ > 0.0f ? 1 : -1);
-				if (terrainGenState->gpuMemoryOriginZ >= (S32)TERRAIN_CHUNK_PER_EDGE) terrainGenState->gpuMemoryOriginZ = 0;
-				if (terrainGenState->gpuMemoryOriginZ < 0) terrainGenState->gpuMemoryOriginZ = TERRAIN_CHUNK_PER_EDGE - 1;
-				terrainGenState->lastGenerationTriggerZ = view_position.z;
-
-				U32 generationChunkIndexZ = offsetFromCurrentChunkZ > 0 ? (TERRAIN_CHUNK_PER_EDGE - 1) : 0;
-				terrainGenState->currentOriginZ += offsetFromCurrentChunkZ > 0 ? 1 : -1;
-				for (U64 i = 0; i < TERRAIN_CHUNK_PER_EDGE; i++) {
-					GenerateTerrainChunk(terrainGenState, &memory->assets, i, generationChunkIndexZ);
-				};
-			}
-		}
+	
 		
 
 		ImGui::Begin("TerrainGenState");

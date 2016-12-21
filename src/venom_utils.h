@@ -27,6 +27,38 @@ FindMatchingString(const char *source, const char **list, size_t listLength) {
   return -1;
 }
 
+int CalculateFuzzyScore(const char *input, const char *target) {
+  int finalScore = -1;
+  const char* searchPos = target;
+  size_t inputLength = strlen(input);
+
+  while (*searchPos != 0) {
+    int score = -1;
+    int lastMatchIndex = -1;
+    int currentInputIndex = 0;
+    const char* searchChar = searchPos;
+    while (*searchChar != 0) {
+      if (input[currentInputIndex] == 0) break;
+      if (*searchChar == input[currentInputIndex] ||
+        ((input[currentInputIndex] >= 'a' && input[currentInputIndex] <= 'z') &&
+        (input[currentInputIndex] - ('a' - 'A')) == (*searchChar)))
+      {
+        score += (currentInputIndex - lastMatchIndex);
+        lastMatchIndex = currentInputIndex;
+        currentInputIndex++;
+      }
+
+      searchChar++;
+    }
+
+    if (currentInputIndex != (int)inputLength) score = -1;
+    if (score != -1 && (score < finalScore || finalScore == -1))
+      finalScore = score;
+    searchPos++;
+  }
+  return finalScore;
+}
+
 
 static void
 FuzzyFind(const char *input, const char** searchList, size_t searchListCount, bool *output) {

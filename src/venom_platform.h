@@ -42,14 +42,14 @@ static const U64 INVALID_U64 = 0xFFFFFFFFFFFFFFFF;
 #endif//VENOM_RELEASE
 
 #include "venom_memory.h"
-#include "venom_math.h"
+#include "math/venom_math.h"
 #include "venom_asset.h"
 #include "venom_audio.h"
 #include "animation.h"
 #include "venom_render.h"
 #include "venom_physics.h"
 #include "asset_data.h"
-
+#include "terrain.h"
 
 #include "debug_renderer.h"
 #include "venom_entity.h"
@@ -57,6 +57,15 @@ static const U64 INVALID_U64 = 0xFFFFFFFFFFFFFFFF;
 #include "venom_serializer.h"
 #include "venom_debug.h"
 #include "venom_editor.h"
+#endif//VENOM_RELEASE
+
+#ifndef VENOM_RELEASE
+#define DebugEnableIf(expr) if (expr)
+#define DebugDisableIf(expr) if(!expr)
+#define DEBUG_DisableIf(expr) if(!expr)
+#else//VENOM_RELEASE
+#define DebugDisableIf(expr) if (1)
+#define DebugEnableIf(expr) if (0)
 #endif//VENOM_RELEASE
 
 struct GameMemory;
@@ -167,6 +176,7 @@ struct GameMemory {
 	AudioState audioState;
   AssetManifest assetManifest;
 	MemoryBlock mainBlock;
+  EditorData editor;
 
   B8 isRunning;
 	F32 deltaTime;

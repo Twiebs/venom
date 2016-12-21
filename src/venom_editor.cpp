@@ -1,4 +1,24 @@
 
+inline void ImGuiV3(const char *name, V3& v) {
+  ImGui::InputFloat3(name, &v.x, 3, ImGuiInputTextFlags_ReadOnly);
+}
+
+inline void ImGuiTransform(const char *name, Transform& t) {
+  V3 eulerRotation = QuaternionToEuler(t.rotation);
+  eulerRotation *= RAD2DEG;
+  ImGui::Text(name);
+  ImGuiV3("translation", t.translation);
+  ImGuiV3("rotation", eulerRotation);
+  ImGuiV3("scale", t.scale);
+}
+
+inline void ImGuiMatrix(const char *name, M4& m) {
+  ImGui::Text("%.2f, %.2f, %.2f, %.2f", m[0][0], m[1][0], m[2][0], m[3][0]);
+  ImGui::Text("%.2f, %.2f, %.2f, %.2f", m[0][1], m[1][1], m[2][1], m[3][1]);
+  ImGui::Text("%.2f, %.2f, %.2f, %.2f", m[0][2], m[1][2], m[2][2], m[3][2]);
+  ImGui::Text("%.2f, %.2f, %.2f, %.2f", m[0][3], m[1][3], m[2][3], m[3][3]);
+}
+
 static inline
 void ReadWorldFile(const char *filename, EntityContainer *container, AssetManifest *manifest)
 {
@@ -301,21 +321,90 @@ void UpdateEntityGroupAABB(EditorData *editor, EntityContainer *ec, AssetManifes
 }
 #endif
 
-static inline void imgui_matrix(M4 m) {
-  ImGui::Text("%.2f, %.2f, %.2f, %.2f", m[0][0], m[1][0], m[2][0], m[3][0]);
-  ImGui::Text("%.2f, %.2f, %.2f, %.2f", m[0][1], m[1][1], m[2][1], m[3][1]);
-  ImGui::Text("%.2f, %.2f, %.2f, %.2f", m[0][2], m[1][2], m[2][2], m[3][2]);
-  ImGui::Text("%.2f, %.2f, %.2f, %.2f", m[0][3], m[1][3], m[2][3], m[3][3]);
+
+
+static inline void imgui_draw_joint_tree(S32 joint_index, Animation_Joint *joint_list, S32 *selected_index) {
+  Animation_Joint *joint = &joint_list[joint_index];
+  ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnDoubleClick;
+  bool is_node_open = ImGui::TreeNodeEx(joint->name, flags);
+  if (ImGui::IsItemClicked()) {
+    *selected_index = joint_index;
+  }
+
+  if (is_node_open) {
+    S32 child_index = joint->child_index;
+    while (child_index != -1) {
+      Animation_Joint *child = &joint_list[child_index];
+      imgui_draw_joint_tree(child_index, joint_list, selected_index);
+      child_index = child->sibling_index;
+    }
+    ImGui::TreePop();
+  }
 }
 
-static void draw_asset_manifest_ui(AssetManifest* manifest) {
-  static int selectedAssetType = 0;
-  static int lastSelectedIndex = -1;
-  static int selectedIndex = -1;
+static inline void DrawEditorSearchWindow(EditorData *editor) {
+  ImGuiWindowFlags flags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar;
+  ImGui::Begin("Search", 0, ImVec2(600, 800), 1.0f, flags);
 
-  if (ImGui::Combo("Asset Type", &selectedAssetType, AssetTypeNames, AssetType_COUNT)) {
-    selectedIndex = -1;
-    lastSelectedIndex = -1;
+  struct FuzzyFindEntry {
+    int score;
+    AssetSlot *slot;
+    U32 index;
+  };
+
+  static char inputBuffer[128] = {};
+  static DynamicArray<FuzzyFindEntry> fuzzyScores;
+
+  InputState *input = &GetVenomEngineData()->inputState;
+
+  ImGui::SetKeyboardFocusHere();
+  if (ImGui::InputText("Search", inputBuffer, sizeof(inputBuffer)), ImGuiInputTextFlags_EnterReturnsTrue) {
+    if (input->isKeyDown[KEYCODE_ENTER]) {
+      if (fuzzyScores.count > 0) {
+        FuzzyFindEntry *entry = &fuzzyScores[0];
+        memset(inputBuffer, 0x00, sizeof(inputBuffer));
+        fuzzyScores.count = 0;
+        editor->isSearchWindowOpen = false;
+        editor->viewMode = EditorViewMode_Assets;
+        editor->selectedAssetType = AssetType_MODEL;
+        editor->selectedIndex = entry->index;
+        editor->isEditorVisible = true;
+      }
+    }
+
+  }
+
+  fuzzyScores.count = 0;
+  AssetManifest *assets = GetAssetManifest();
+  for (size_t i = 0; i < assets->modelAssets.count; i++) {
+    AssetSlot *slot = &assets->modelAssets[i];
+    int fuzzyScore = CalculateFuzzyScore(inputBuffer, slot->name);
+    if (fuzzyScore != -1) {
+      FuzzyFindEntry *entry = fuzzyScores.AddElement();
+      entry->score = fuzzyScore;
+      entry->slot = slot;
+      entry->index = i;
+    }
+  }
+
+  ImGui::Columns(2);
+  for (size_t i = 0; i < fuzzyScores.count; i++) {
+    FuzzyFindEntry *entry = &fuzzyScores[i];
+    ImGui::Text(entry->slot->name);
+    ImGui::NextColumn();
+    ImGui::Text("Model");
+    ImGui::NextColumn();
+  }
+
+  ImGui::End();
+}
+
+
+static void draw_asset_manifest_ui(EditorData *editor, AssetManifest* manifest) {
+
+  if (ImGui::Combo("Asset Type", &editor->selectedAssetType, AssetTypeNames, AssetType_COUNT)) {
+    editor->selectedIndex = -1;
+    editor->lastSelectedIndex = -1;
   }
   ImGui::SameLine();
   if (ImGui::Button("SaveManifest")) {
@@ -329,7 +418,7 @@ static void draw_asset_manifest_ui(AssetManifest* manifest) {
   ImGui::Columns(2);
 
 
-  DynamicArray<AssetSlot> *slotArray = &manifest->assetSlotArrays[selectedAssetType];
+  DynamicArray<AssetSlot> *slotArray = &manifest->assetSlotArrays[editor->selectedAssetType];
   ImGui::BeginChild("AssetList");
   ImGui::Columns(2);
   ImGui::Text("Name");
@@ -341,8 +430,8 @@ static void draw_asset_manifest_ui(AssetManifest* manifest) {
   for (size_t i = 0; i < slotArray->count; i++) {
     AssetSlot *slot = &slotArray->data[i];
     ImGui::PushID(i);
-    if (ImGui::Selectable(slot->name, selectedIndex == (int)i)) {
-      selectedIndex = i;
+    if (ImGui::Selectable(slot->name, editor->selectedIndex == (int)i)) {
+      editor->selectedIndex = i;
     }
     ImGui::PopID();
 
@@ -363,17 +452,17 @@ static void draw_asset_manifest_ui(AssetManifest* manifest) {
   ImGui::EndChild();
 
   ImGui::BeginChild("Buttons");
-  ImGui::Text("Selcted Index: %d", selectedIndex);
+  ImGui::Text("Selcted Index: %d", editor->selectedIndex);
   ImGui::SameLine();
   if (ImGui::Button("New Asset")) {
     ImGui::OpenPopup("New Asset");
   }
   ImGui::SameLine();
   if (ImGui::Button("Delete Asset")) {
-    if (selectedIndex != -1) {
-      RemoveModelFromManifest(selectedIndex, manifest);
-      selectedIndex = -1;
-      lastSelectedIndex = -1;
+    if (editor->selectedIndex != -1) {
+      RemoveModelFromManifest(editor->selectedIndex, manifest);
+      editor->selectedIndex = -1;
+      editor->lastSelectedIndex = -1;
       manifest->modelReloadCounter++;
     }
   }
@@ -391,11 +480,11 @@ static void draw_asset_manifest_ui(AssetManifest* manifest) {
   }
 
   ImGui::NextColumn();
-  if (selectedIndex != -1) {
+  if (editor->selectedIndex != -1) {
 
 
-    if (selectedIndex != lastSelectedIndex) {
-      if (lastSelectedIndex != -1 && lastSelectedIndex != 0) {
+    if (editor->selectedIndex != editor->lastSelectedIndex) {
+      if (editor->lastSelectedIndex != -1 && editor->lastSelectedIndex != 0) {
         
       }
 
@@ -405,18 +494,18 @@ static void draw_asset_manifest_ui(AssetManifest* manifest) {
 
     static char nameBuffer[256] = {};
     static char filenameBuffer[256] = {};
-    AssetSlot *slot = &slotArray->data[selectedIndex];
+    AssetSlot *slot = &slotArray->data[editor->selectedIndex];
     bool name_modifed = ImGui::InputText("Name", nameBuffer, sizeof(nameBuffer), ImGuiInputTextFlags_EnterReturnsTrue);
     bool filename_modifed = ImGui::InputText("Filename", filenameBuffer, sizeof(filenameBuffer), ImGuiInputTextFlags_EnterReturnsTrue);
-    if (name_modifed || filename_modifed || (selectedIndex != lastSelectedIndex)) {
-      if (lastSelectedIndex != -1 && lastSelectedIndex != 0) {
-        AssetSlot *lastSlot = &manifest->modelAssets[lastSelectedIndex];
+    if (name_modifed || filename_modifed || (editor->selectedIndex != editor->lastSelectedIndex)) {
+      if (editor->lastSelectedIndex != -1 && editor->lastSelectedIndex != 0) {
+        AssetSlot *lastSlot = &manifest->modelAssets[editor->lastSelectedIndex];
         free(lastSlot->name);
         free(lastSlot->filename);
         lastSlot->name = strdup(nameBuffer);
         lastSlot->filename = strdup(filenameBuffer);
       }
-      lastSelectedIndex = selectedIndex;
+      editor->lastSelectedIndex = editor->selectedIndex;
       strcpy(nameBuffer, slot->name);
       strcpy(filenameBuffer, slot->filename);
     }
@@ -426,42 +515,92 @@ static void draw_asset_manifest_ui(AssetManifest* manifest) {
 
 
     if (slot->asset != 0) {
-      switch (selectedAssetType) {
+      switch (editor->selectedAssetType) {
       case AssetType_MODEL: {
         ModelAsset *asset = (ModelAsset *)slot->asset;
         for (size_t i = 0; i < asset->data.meshCount; i++) {
-          ShowMaterialDataInfo(&asset->data.materialDataPerMesh[i], lastSelectedIndex != selectedIndex);
+          ShowMaterialDataInfo(&asset->data.materialDataPerMesh[i], editor->lastSelectedIndex != editor->selectedIndex);
         }
 
-        ImGui::BeginChildFrame(0, ImVec2(400, 200));
-        static int selected_bone = -1;
-        for (size_t i = 0; i < asset->data.jointCount; i++) {
-          Animation_Joint *joint = &asset->data.joints[i];
-          if (ImGui::Selectable(joint->name, selected_bone == i)) {
-            if (selected_bone == i) {
-              selected_bone = -1;
-            } else {
-              selected_bone = i;
+        if (asset->data.jointCount > 0) {
+          if (ImGui::CollapsingHeader("Animation")) {
+            static S32 selected_joint = -1;
+            static S32 selectedAnimationClip = -1;
+            static F32 currentAnimationTime = 0.0f;
+
+            ImGui::BeginChildFrame(0, ImVec2(400, 200));
+            imgui_draw_joint_tree(0, asset->data.joints, &selected_joint);
+            S32 next_root_node_index = asset->data.joints->sibling_index;
+            while (next_root_node_index != -1) {
+              Animation_Joint *next = &asset->data.joints[next_root_node_index];
+              imgui_draw_joint_tree(next_root_node_index, asset->data.joints, &selected_joint);
+              next_root_node_index = next->sibling_index;
             }
+            
+            ImGui::EndChildFrame();
+            ImGui::SameLine();
+            ImGui::BeginChildFrame(1, ImVec2(400, 400));
+
+
+            if (selected_joint != -1) {
+
+              //TODO(Torin) Temporary Memory to hold each joint info
+              
+              Animation_State animState = {};
+              animState.animation_time = currentAnimationTime;
+              animState.current_clip = selectedAnimationClip;
+              animState.frames_per_second = 30.0f;
+              animState.model_id = GetModelID(slot->name, manifest);
+
+              Animation_Joint *joint = &asset->data.joints[selected_joint];
+
+              M4 localPoses[16];
+              M4 globalPoses[16];
+              CalculateLocalJointPoses(asset->data.joints, asset->data.jointCount, &animState, localPoses);
+              CalculateGobalJointPoses(asset->data.joints, asset->data.jointCount, localPoses, globalPoses);
+              M4 skinningMatrix = CalculateSkinningMatrix(joint, globalPoses[selected_joint]);
+              
+              ImGui::Text("Joint Name: %s", joint->name);
+
+              M4 inverseLocalTransform = Inverse(joint->localTransform);
+              M4 localOffsetMatrix = inverseLocalTransform * localPoses[selected_joint];
+              Transform localTransform = DecomposeTransformationMatrix(localPoses[selected_joint]);
+              Transform localOffsetTransform = DecomposeTransformationMatrix(localOffsetMatrix);
+              Transform globalTransform = DecomposeTransformationMatrix(globalPoses[selected_joint]);
+              Transform skinningTransform = DecomposeTransformationMatrix(skinningMatrix);
+              ImGuiTransform("LocalPose Transform", localTransform);
+              ImGuiMatrix("LocalPose Matrix", localPoses[selected_joint]);
+              ImGuiTransform("LocalOffset Transform", localOffsetTransform);
+              ImGuiMatrix("LocalOffset Matrix", localOffsetMatrix);
+              ImGuiTransform("GlobalPose Transform", globalTransform);
+              ImGuiTransform("Skinning Transform", skinningTransform);
+            }
+
+            ImGui::EndChildFrame();
+
+
+            ImGui::BeginChildFrame(2, ImVec2(400, 200));
+            for (size_t i = 0; i < asset->data.animation_clip_count; i++) {
+              Animation_Clip *clip = &asset->data.animation_clips[i];
+              if (ImGui::Selectable(clip->name)) {
+                selectedAnimationClip = i;
+              }
+            }
+            ImGui::EndChildFrame();
+
+            if (selectedAnimationClip != -1) {
+              Animation_Clip *clip = &asset->data.animation_clips[selectedAnimationClip];
+              ImGui::SliderFloat("Time", &currentAnimationTime, 0.0f, clip->duration);
+            }
+
           }
         }
-
-
-        if (selected_bone != -1) {
-          ImGui::Text("Inverse Bind Pose");
-          imgui_matrix(asset->data.joints[selected_bone].inverse_bind_matrix);
-          ImGui::Text("Parent Realtive");
-          imgui_matrix(asset->data.joints[selected_bone].parent_realtive_matrix);
-        }
-
-        ImGui::EndChildFrame();
-
 
 
       } break;
 
       case AssetType_MATERIAL: {
-        const MaterialAsset *material = &manifest->materialAssetList.materials[selectedIndex];
+        const MaterialAsset *material = &manifest->materialAssetList.materials[editor->selectedIndex];
         static const U32 textureDisplaySize = 256;
         ImVec2 textureBounds = ImVec2(textureDisplaySize, textureDisplaySize);
         ImGui::BeginChild("diffuse", ImVec2(textureDisplaySize, textureDisplaySize + 18));
@@ -667,6 +806,8 @@ void ProcessEditorCommand(EditorData* editor, Camera* camera, GameMemory* memory
   editor->lastCommand = editor->activeCommand;
 }
 
+
+
 void process_editor_mode(GameMemory *memory, EntityContainer *entityContainer, EditorData *editor, InputState *input, Camera * camera) {
   process_editor_input(editor, input);
 
@@ -696,31 +837,56 @@ void process_editor_mode(GameMemory *memory, EntityContainer *entityContainer, E
     ImGui::End();
   }
 
-  if (memory->debugData.isEditorVisible) {
-    ImGui::Begin("Editor");
-    static int current_editor_view = 0;
-    if (ImGui::Button("Entities")) current_editor_view = 0;
-    ImGui::SameLine();
-    if (ImGui::Button("Assets")) current_editor_view = 1;
-    ImGui::SameLine();
-    if (ImGui::Button("Debug")) current_editor_view = 2;
-    ImGui::SameLine();
-    if (ImGui::Button("Player")) current_editor_view = 3;
 
-    if (current_editor_view == 0) {
-      draw_entity_editor_ui(editor, &memory->assetManifest, entityContainer);
-    } else if (current_editor_view == 1) {
-      draw_asset_manifest_ui(&memory->assetManifest);
-    } else if (current_editor_view == 2) {
+
+  if (editor->isSearchWindowOpen) {
+    DrawEditorSearchWindow(editor);
+  }
+
+  if (editor->isEditorVisible) {
+    ImGui::Begin("Editor");
+    if (ImGui::Button("Entities")) editor->viewMode = EditorViewMode_Entities;
+    ImGui::SameLine();
+    if (ImGui::Button("Assets")) editor->viewMode = EditorViewMode_Assets;
+    ImGui::SameLine();
+    if (ImGui::Button("Debug")) editor->viewMode = EditorViewMode_Debug;
+    ImGui::SameLine();
+    if (ImGui::Button("Player")) editor->viewMode = EditorViewMode_Player;
+
+
+    switch (editor->viewMode) {
+    case EditorViewMode_Entities: {
+      //draw_entity_editor_ui(editor, assets, entityContainer);
+    } break;
+
+    case EditorViewMode_Assets: {
+      AssetManifest *assets = GetAssetManifest();
+      draw_asset_manifest_ui(editor, assets);
+    } break;
+
+    case EditorViewMode_Debug: {
       draw_debug_render_info_ui(&memory->renderState.debugRenderFrameInfo, &memory->renderState.debugRenderSettings);
       ImGui::BeginGroup();
       draw_profiler_ui(&memory->debugData.profileData, &memory->mainBlock);
       ImGui::EndGroup();
-    } else if (current_editor_view == 3) {
-      draw_camera_info_ui(camera);
-    }
+    } break;
 
-    ImGui::End();
-    ProcessEditorCommand(editor, camera, memory, entityContainer);
+    case EditorViewMode_Player: {
+      draw_camera_info_ui(camera);
+    } break;
+
   }
+
+  ImGui::End();
+  }
+
+  ProcessEditorCommand(editor, camera, memory, entityContainer);
+
+}
+
+
+void InitalizeEditor(EditorData *editor) {
+  editor->selectedAssetType = -1;
+  editor->lastSelectedIndex = -1;
+  editor->selectedIndex = -1;
 }

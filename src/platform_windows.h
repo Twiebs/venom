@@ -21,6 +21,7 @@
 #define KEYCODE_Q 'Q'
 #define KEYCODE_W 'W'
 #define KEYCODE_E 'E'
+#define KEYCODE_R 'R'
 #define KEYCODE_S 'S' 
 #define KEYCODE_A 'A'
 #define KEYCODE_C 'C'
@@ -30,6 +31,7 @@
 #define KEYCODE_V 'V'
 #define KEYCODE_D 'D'
 #define KEYCODE_G 'G'
+#define KEYCODE_P 'P'
 
 #define KEYCODE_F1 0x70
 #define KEYCODE_F2 0x71

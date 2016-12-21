@@ -29,6 +29,7 @@ static VenomDebugData* _debugData;
 VenomDebugData *GetDebugData() { return _debugData; }
 GameMemory* GetVenomEngineData() { return _venomEngineData; };
 AssetManifest *get_asset_manifest() { return &_venomEngineData->assetManifest;  }
+AssetManifest *GetAssetManifest() { return &_venomEngineData->assetManifest; };
 #endif//VENOM_RELEASE
 
 //TODO(Torin) Move this somewhere usefull
@@ -68,7 +69,6 @@ static inline void ReloadVenomModuleIfModified(VenomModule *module);
 #else//!VENOM_HOTLOAD
 #include "test_scene.cpp"
 #endif//VENOM_HOTLOAD
-
 
 struct UserConfig {
 	U16 screen_width;
@@ -187,8 +187,15 @@ void PlatformKeyEventHandler(GameMemory *memory, int keycode, int keysym, int is
     } break;
 
     case KEYCODE_F2: {
-      memory->debugData.isEditorVisible = !memory->debugData.isEditorVisible;
-    }
+      memory->editor.isEditorVisible = !memory->editor.isEditorVisible;
+    } break;
+
+    case KEYCODE_F3: {
+      memory->editor.isSearchWindowOpen = !memory->editor.isSearchWindowOpen;
+
+    } break;
+
+               
 
 	  } 
   }

@@ -5,8 +5,8 @@
       <author>Blender User</author>
       <authoring_tool>Blender 2.78.0 commit date:2016-10-24, commit time:12:20, hash:e8299c8</authoring_tool>
     </contributor>
-    <created>2016-12-12T21:21:28</created>
-    <modified>2016-12-12T21:21:28</modified>
+    <created>2016-12-20T01:29:37</created>
+    <modified>2016-12-20T01:29:37</modified>
     <unit name="meter" meter="1"/>
     <up_axis>Z_UP</up_axis>
   </asset>
@@ -185,96 +185,139 @@
     </geometry>
   </library_geometries>
   <library_animations>
-    <animation id="Skelleton_Bone_pose_matrix">
-      <source id="Skelleton_Bone_pose_matrix-input">
-        <float_array id="Skelleton_Bone_pose_matrix-input-array" count="3">0 0.625 1.25</float_array>
+    <animation id="Armature_UpperLeg_pose_matrix">
+      <source id="Armature_UpperLeg_pose_matrix-input">
+        <float_array id="Armature_UpperLeg_pose_matrix-input-array" count="3">0 0.625 1.25</float_array>
         <technique_common>
-          <accessor source="#Skelleton_Bone_pose_matrix-input-array" count="3" stride="1">
+          <accessor source="#Armature_UpperLeg_pose_matrix-input-array" count="3" stride="1">
             <param name="TIME" type="float"/>
           </accessor>
         </technique_common>
       </source>
-      <source id="Skelleton_Bone_pose_matrix-output">
-        <float_array id="Skelleton_Bone_pose_matrix-output-array" count="48">1 -5.94556e-5 -3.72529e-8 0 -3.72534e-8 -9.15416e-9 -1 0 5.94556e-5 1 -9.15638e-9 0 0 0 0 1 0.8660551 0.4999485 -1.42933e-8 0 -4.93591e-9 -2.00391e-8 -1 0 -0.4999485 0.8660551 -1.48872e-8 0 0 0 0 1 1 -5.95152e-5 -3.72529e-8 0 -3.72534e-8 -9.15416e-9 -1 0 5.95152e-5 1 -9.15638e-9 0 0 0 0 1</float_array>
+      <source id="Armature_UpperLeg_pose_matrix-output">
+        <float_array id="Armature_UpperLeg_pose_matrix-output-array" count="48">1 0 2.38419e-7 0.2346172 -2.26966e-7 0.3062085 0.9519645 -0.7305446 -7.30058e-8 -0.9519645 0.3062084 1.2 0 0 0 1 1 0 2.38419e-7 0.2346172 -2.26966e-7 0.3062085 0.9519645 -0.7305446 -7.30058e-8 -0.9519645 0.3062084 1.2 0 0 0 1 1 0 2.38419e-7 0.2346172 -2.26966e-7 0.3062085 0.9519645 -0.7305446 -7.30058e-8 -0.9519645 0.3062084 1.2 0 0 0 1</float_array>
         <technique_common>
-          <accessor source="#Skelleton_Bone_pose_matrix-output-array" count="3" stride="16">
+          <accessor source="#Armature_UpperLeg_pose_matrix-output-array" count="3" stride="16">
             <param name="TRANSFORM" type="float4x4"/>
           </accessor>
         </technique_common>
       </source>
-      <source id="Skelleton_Bone_pose_matrix-interpolation">
-        <Name_array id="Skelleton_Bone_pose_matrix-interpolation-array" count="3">LINEAR LINEAR LINEAR</Name_array>
+      <source id="Armature_UpperLeg_pose_matrix-interpolation">
+        <Name_array id="Armature_UpperLeg_pose_matrix-interpolation-array" count="3">LINEAR LINEAR LINEAR</Name_array>
         <technique_common>
-          <accessor source="#Skelleton_Bone_pose_matrix-interpolation-array" count="3" stride="1">
+          <accessor source="#Armature_UpperLeg_pose_matrix-interpolation-array" count="3" stride="1">
             <param name="INTERPOLATION" type="name"/>
           </accessor>
         </technique_common>
       </source>
-      <sampler id="Skelleton_Bone_pose_matrix-sampler">
-        <input semantic="INPUT" source="#Skelleton_Bone_pose_matrix-input"/>
-        <input semantic="OUTPUT" source="#Skelleton_Bone_pose_matrix-output"/>
-        <input semantic="INTERPOLATION" source="#Skelleton_Bone_pose_matrix-interpolation"/>
+      <sampler id="Armature_UpperLeg_pose_matrix-sampler">
+        <input semantic="INPUT" source="#Armature_UpperLeg_pose_matrix-input"/>
+        <input semantic="OUTPUT" source="#Armature_UpperLeg_pose_matrix-output"/>
+        <input semantic="INTERPOLATION" source="#Armature_UpperLeg_pose_matrix-interpolation"/>
       </sampler>
-      <channel source="#Skelleton_Bone_pose_matrix-sampler" target="Bone/transform"/>
+      <channel source="#Armature_UpperLeg_pose_matrix-sampler" target="UpperLeg/transform"/>
+    </animation>
+    <animation id="Armature_LowerLeg_pose_matrix">
+      <source id="Armature_LowerLeg_pose_matrix-input">
+        <float_array id="Armature_LowerLeg_pose_matrix-input-array" count="3">0 0.625 1.25</float_array>
+        <technique_common>
+          <accessor source="#Armature_LowerLeg_pose_matrix-input-array" count="3" stride="1">
+            <param name="TIME" type="float"/>
+          </accessor>
+        </technique_common>
+      </source>
+      <source id="Armature_LowerLeg_pose_matrix-output">
+        <float_array id="Armature_LowerLeg_pose_matrix-output-array" count="48">-1 7.14252e-8 6.11397e-7 -1.49012e-8 -1.73345e-7 0.9116237 -0.4110266 0.3664752 -5.90561e-7 -0.4110267 -0.9116234 0 0 0 0 1 -1 2.01021e-7 4.88524e-7 -1.49012e-8 -3.70859e-7 0.3592324 -0.9332484 0.3664752 -3.66936e-7 -0.9332483 -0.3592322 0 0 0 0 1 -1 7.14252e-8 6.11397e-7 -1.49012e-8 -1.73345e-7 0.9116237 -0.4110266 0.3664752 -5.90561e-7 -0.4110267 -0.9116234 0 0 0 0 1</float_array>
+        <technique_common>
+          <accessor source="#Armature_LowerLeg_pose_matrix-output-array" count="3" stride="16">
+            <param name="TRANSFORM" type="float4x4"/>
+          </accessor>
+        </technique_common>
+      </source>
+      <source id="Armature_LowerLeg_pose_matrix-interpolation">
+        <Name_array id="Armature_LowerLeg_pose_matrix-interpolation-array" count="3">LINEAR LINEAR LINEAR</Name_array>
+        <technique_common>
+          <accessor source="#Armature_LowerLeg_pose_matrix-interpolation-array" count="3" stride="1">
+            <param name="INTERPOLATION" type="name"/>
+          </accessor>
+        </technique_common>
+      </source>
+      <sampler id="Armature_LowerLeg_pose_matrix-sampler">
+        <input semantic="INPUT" source="#Armature_LowerLeg_pose_matrix-input"/>
+        <input semantic="OUTPUT" source="#Armature_LowerLeg_pose_matrix-output"/>
+        <input semantic="INTERPOLATION" source="#Armature_LowerLeg_pose_matrix-interpolation"/>
+      </sampler>
+      <channel source="#Armature_LowerLeg_pose_matrix-sampler" target="LowerLeg/transform"/>
     </animation>
   </library_animations>
   <library_controllers>
-    <controller id="Skelleton_Cube_001-skin" name="Skelleton">
+    <controller id="Armature_Cube_001-skin" name="Armature">
       <skin source="#Cube_003-mesh">
-        <bind_shape_matrix>0.6164377 -2.21926e-8 0 0 2.21926e-8 0.6164377 -2.92171e-9 0 0 2.92171e-9 0.6164377 0 0 0 0 1</bind_shape_matrix>
-        <source id="Skelleton_Cube_001-skin-joints">
-          <Name_array id="Skelleton_Cube_001-skin-joints-array" count="1">Bone</Name_array>
+        <bind_shape_matrix>0.6164377 0 0 0 0 0.6164377 0 0 0 0 0.6164377 0 0 0 0 1</bind_shape_matrix>
+        <source id="Armature_Cube_001-skin-joints">
+          <Name_array id="Armature_Cube_001-skin-joints-array" count="2">UpperLeg LowerLeg</Name_array>
           <technique_common>
-            <accessor source="#Skelleton_Cube_001-skin-joints-array" count="1" stride="1">
+            <accessor source="#Armature_Cube_001-skin-joints-array" count="2" stride="1">
               <param name="JOINT" type="name"/>
             </accessor>
           </technique_common>
         </source>
-        <source id="Skelleton_Cube_001-skin-bind_poses">
-          <float_array id="Skelleton_Cube_001-skin-bind_poses-array" count="16">1 0 0 0 0 0 1 0 0 -1 0 0 0 0 0 1</float_array>
+        <source id="Armature_Cube_001-skin-bind_poses">
+          <float_array id="Armature_Cube_001-skin-bind_poses-array" count="32">1 -2.27243e-7 0 -0.2346173 0 0.3062084 -0.9519645 1.366056 2.38419e-7 0.9519645 0.3062085 0.3280023 0 0 0 1 -1 -3.88307e-7 0 0.2346169 0 -0.1121359 -0.9936926 0.7764235 3.92271e-7 -0.9936928 0.1121358 -0.709869 0 0 0 1</float_array>
           <technique_common>
-            <accessor source="#Skelleton_Cube_001-skin-bind_poses-array" count="1" stride="16">
+            <accessor source="#Armature_Cube_001-skin-bind_poses-array" count="2" stride="16">
               <param name="TRANSFORM" type="float4x4"/>
             </accessor>
           </technique_common>
         </source>
-        <source id="Skelleton_Cube_001-skin-weights">
-          <float_array id="Skelleton_Cube_001-skin-weights-array" count="208">1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1</float_array>
+        <source id="Armature_Cube_001-skin-weights">
+          <float_array id="Armature_Cube_001-skin-weights-array" count="213">1 1 1 1 1 1 0.1463698 0.8536302 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0.9495024 0.05049759 1 1 1 1 0.9875478 0.01245212 0.2061902 0.7938098 0.9216664 0.07833361 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1</float_array>
           <technique_common>
-            <accessor source="#Skelleton_Cube_001-skin-weights-array" count="208" stride="1">
+            <accessor source="#Armature_Cube_001-skin-weights-array" count="213" stride="1">
               <param name="WEIGHT" type="float"/>
             </accessor>
           </technique_common>
         </source>
         <joints>
-          <input semantic="JOINT" source="#Skelleton_Cube_001-skin-joints"/>
-          <input semantic="INV_BIND_MATRIX" source="#Skelleton_Cube_001-skin-bind_poses"/>
+          <input semantic="JOINT" source="#Armature_Cube_001-skin-joints"/>
+          <input semantic="INV_BIND_MATRIX" source="#Armature_Cube_001-skin-bind_poses"/>
         </joints>
         <vertex_weights count="208">
-          <input semantic="JOINT" source="#Skelleton_Cube_001-skin-joints" offset="0"/>
-          <input semantic="WEIGHT" source="#Skelleton_Cube_001-skin-weights" offset="1"/>
-          <vcount>1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 </vcount>
-          <v>0 0 0 1 0 2 0 3 0 4 0 5 0 6 0 7 0 8 0 9 0 10 0 11 0 12 0 13 0 14 0 15 0 16 0 17 0 18 0 19 0 20 0 21 0 22 0 23 0 24 0 25 0 26 0 27 0 28 0 29 0 30 0 31 0 32 0 33 0 34 0 35 0 36 0 37 0 38 0 39 0 40 0 41 0 42 0 43 0 44 0 45 0 46 0 47 0 48 0 49 0 50 0 51 0 52 0 53 0 54 0 55 0 56 0 57 0 58 0 59 0 60 0 61 0 62 0 63 0 64 0 65 0 66 0 67 0 68 0 69 0 70 0 71 0 72 0 73 0 74 0 75 0 76 0 77 0 78 0 79 0 80 0 81 0 82 0 83 0 84 0 85 0 86 0 87 0 88 0 89 0 90 0 91 0 92 0 93 0 94 0 95 0 96 0 97 0 98 0 99 0 100 0 101 0 102 0 103 0 104 0 105 0 106 0 107 0 108 0 109 0 110 0 111 0 112 0 113 0 114 0 115 0 116 0 117 0 118 0 119 0 120 0 121 0 122 0 123 0 124 0 125 0 126 0 127 0 128 0 129 0 130 0 131 0 132 0 133 0 134 0 135 0 136 0 137 0 138 0 139 0 140 0 141 0 142 0 143 0 144 0 145 0 146 0 147 0 148 0 149 0 150 0 151 0 152 0 153 0 154 0 155 0 156 0 157 0 158 0 159 0 160 0 161 0 162 0 163 0 164 0 165 0 166 0 167 0 168 0 169 0 170 0 171 0 172 0 173 0 174 0 175 0 176 0 177 0 178 0 179 0 180 0 181 0 182 0 183 0 184 0 185 0 186 0 187 0 188 0 189 0 190 0 191 0 192 0 193 0 194 0 195 0 196 0 197 0 198 0 199 0 200 0 201 0 202 0 203 0 204 0 205 0 206 0 207</v>
+          <input semantic="JOINT" source="#Armature_Cube_001-skin-joints" offset="0"/>
+          <input semantic="WEIGHT" source="#Armature_Cube_001-skin-weights" offset="1"/>
+          <vcount>1 1 1 1 1 1 2 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 2 1 1 1 1 2 2 2 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 </vcount>
+          <v>0 0 0 1 0 2 0 3 0 4 0 5 0 6 1 7 0 8 0 9 0 10 0 11 0 12 0 13 0 14 0 15 0 16 0 17 0 18 0 19 0 20 0 21 0 22 0 23 0 24 0 25 0 26 0 27 0 28 0 29 0 30 0 31 0 32 0 33 0 34 0 35 0 36 0 37 0 38 0 39 0 40 0 41 0 42 0 43 0 44 0 45 0 46 0 47 0 48 0 49 0 50 0 51 0 52 0 53 0 54 0 55 0 56 0 57 0 58 0 59 0 60 0 61 0 62 0 63 1 64 0 65 1 66 0 67 0 68 0 69 1 70 0 71 1 72 0 73 1 74 1 75 0 76 1 77 1 78 1 79 1 80 1 81 1 82 1 83 1 84 1 85 0 86 0 87 0 88 0 89 0 90 0 91 0 92 0 93 0 94 0 95 0 96 0 97 0 98 0 99 0 100 0 101 0 102 0 103 0 104 0 105 0 106 0 107 0 108 0 109 0 110 0 111 0 112 0 113 0 114 0 115 0 116 0 117 0 118 0 119 0 120 0 121 0 122 0 123 0 124 0 125 0 126 0 127 0 128 0 129 0 130 0 131 0 132 0 133 0 134 0 135 0 136 0 137 0 138 0 139 0 140 0 141 0 142 0 143 0 144 0 145 0 146 0 147 0 148 0 149 0 150 0 151 0 152 0 153 0 154 0 155 0 156 0 157 0 158 0 159 0 160 0 161 0 162 0 163 0 164 0 165 0 166 0 167 0 168 0 169 0 170 0 171 0 172 0 173 0 174 0 175 0 176 0 177 0 178 0 179 0 180 0 181 0 182 0 183 0 184 0 185 0 186 0 187 0 188 0 189 0 190 0 191 0 192 0 193 0 194 0 195 0 196 0 197 0 198 0 199 0 200 0 201 0 202 0 203 0 204 0 205 0 206 0 207 0 208 0 209 0 210 0 211 0 212</v>
         </vertex_weights>
       </skin>
     </controller>
   </library_controllers>
   <library_visual_scenes>
     <visual_scene id="Scene" name="Scene">
-      <node id="Skelleton" name="Skelleton" type="NODE">
+      <node id="Armature" name="Armature" type="NODE">
         <translate sid="location">0 0 0</translate>
-        <rotate sid="rotationZ">0 0 1 2.06272e-6</rotate>
+        <rotate sid="rotationZ">0 0 1 0</rotate>
         <rotate sid="rotationY">0 1 0 0</rotate>
-        <rotate sid="rotationX">1 0 0 2.71563e-7</rotate>
+        <rotate sid="rotationX">1 0 0 0</rotate>
         <scale sid="scale">1 1 1</scale>
-        <node id="Bone" name="Bone" sid="Bone" type="JOINT">
-          <matrix sid="transform">1 0 0 0 0 0 -1 0 0 1 0 0 0 0 0 1</matrix>
+        <node id="UpperLeg" name="UpperLeg" sid="UpperLeg" type="JOINT">
+          <matrix sid="transform">1 0 2.38419e-7 0.2346172 -2.26966e-7 0.3062085 0.9519645 -0.7305446 -7.30058e-8 -0.9519645 0.3062084 1.2 0 0 0 1</matrix>
+          <node id="LowerLeg" name="LowerLeg" sid="LowerLeg" type="JOINT">
+            <matrix sid="transform">-1 7.14252e-8 6.11397e-7 -1.49012e-8 -1.73345e-7 0.9116237 -0.4110266 0.3664752 -5.90561e-7 -0.4110267 -0.9116234 0 0 0 0 1</matrix>
+            <extra>
+              <technique profile="blender">
+                <connect>1</connect>
+                <layer>0</layer>
+                <roll>3.141592</roll>
+                <tip_x>0</tip_x>
+                <tip_y>-0.08981853</tip_y>
+                <tip_z>-0.7959274</tip_z>
+              </technique>
+            </extra>
+          </node>
           <extra>
             <technique profile="blender">
               <layer>0</layer>
-              <tip_x>0</tip_x>
-              <tip_y>0</tip_y>
-              <tip_z>1</tip_z>
+              <roll>2.38419e-7</roll>
             </technique>
           </extra>
         </node>
@@ -285,8 +328,8 @@
         <rotate sid="rotationY">0 1 0 0</rotate>
         <rotate sid="rotationX">1 0 0 0</rotate>
         <scale sid="scale">1 1 1</scale>
-        <instance_controller url="#Skelleton_Cube_001-skin">
-          <skeleton>#Bone</skeleton>
+        <instance_controller url="#Armature_Cube_001-skin">
+          <skeleton>#UpperLeg</skeleton>
           <bind_material>
             <technique_common>
               <instance_material symbol="Fox_White_001-material" target="#Fox_White_001-material"/>

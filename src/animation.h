@@ -14,6 +14,13 @@ struct Joint_Scale_Info {
   F32 scale;
 };
 
+struct Animation_Keyframe {
+  F32 time;
+  V3 translation;
+  Quaternion rotation;
+  F32 scale;
+};
+
 //TODO(Torin) Consider packing scale into translations for alignemtn + packing
 //TODO(Torin) Remove the test dynamic arrays
 //TODO(Torin) More clear name for this
@@ -28,12 +35,14 @@ struct Joint_Animation {
 };
 
 struct Animation_Joint {
-  M4 parent_realtive_matrix;
-  M4 inverse_bind_matrix;
-  M4 bind_pose_matrix;
+  //TODO(Torin) Change joint indices to U8!
   S32 parent_index;
   S32 sibling_index;
   S32 child_index;
+
+  M4 localTransform;
+  M4 globalTransform;
+  M4 inverseBindPose;
   char name[64];
 };
 
@@ -50,3 +59,7 @@ struct Animation_State {
   F32 animation_time;
   F32 frames_per_second;
 };
+
+M4 CalculateLocalJointPose(S32 joint_index, Animation_Joint *joint, Animation_State *state);
+M4 CalculateGlobalJointPose(S32 joint_index, Animation_Joint *joint_list, M4 *local_poses);
+M4 CalculateSkinningMatrix(Animation_Joint *joint, M4 globalPose);

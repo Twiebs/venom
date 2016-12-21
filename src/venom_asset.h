@@ -37,8 +37,8 @@ struct Asset_ID {
   char asset_name[64];
 };
 
-//NOTE(Torin) For now these are dynamicly allocated
 struct AssetSlot {
+//NOTE(Torin) For now these are dynamicly allocated
 #ifndef VENOM_RELEASE
   char *name;
   char *filename;

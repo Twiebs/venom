@@ -1,87 +1,29 @@
-struct M2
-{
+struct M2 {
 	float data[2][2];
 
-#if 0
-	inline const float* operator[](int i) const
-	{
-		strict_assert(i >= 0);
-		strict_assert(i < 2);
-		return (const float*)&data[i];
-	}
-#endif
-
-	inline float* operator[](int i)
-	{
+	inline float* operator[](int i) {
 		strict_assert(i >= 0);
 		strict_assert(i < 2);
 		return (float *)&data[i];
 	}
 };
 
-struct M3
-{
+struct M3 {
 	float data[3][3];
-
-#if 0
-	inline const float* operator[](int i) const
-	{
-		strict_assert(i >= 0);
-		strict_assert(i < 3);
-		return (const float*)&data[i];
-	}
-#endif
-
-	inline float* operator[](int i)
-	{
+	inline float* operator[](int i) {
 		strict_assert(i >= 0);
 		strict_assert(i < 3);
 		return (float *)&data[i];
 	}
 };
 
-struct M4
-{
-	float data[4][4];
 
-	inline const float* operator[](int i) const
-	{
-		strict_assert(i >= 0);
-		strict_assert(i < 4);
-		return (const float*)&data[i];
-	}
 
-	inline float* operator[](int i)
-	{
-		strict_assert(i >= 0);
-		strict_assert(i < 4);
-		return (float*)&data[i];
-	}
-
-	inline V4 Row(int i)
-	{
-		V4 result = { data[0][i], data[1][i], data[2][i], data[3][i] };
-		return result;
-	}
-
-	inline void SetRow(int i, const V4& v)
-	{
-		data[0][i] = v.x;
-		data[1][i] = v.y;
-		data[2][i] = v.z;
-		data[3][i] = v.w;	
-	}
-};
-
-inline M4 operator*(const M4& a, const M4& b)
-{
+inline M4 operator*(const M4& a, const M4& b) {
 	M4 result = {};
-	for (int r = 0; r < 4; r++)
-	{
-		for (int c = 0; c < 4; c++)
-		{
-			for (int i = 0; i < 4; i++)
-			{
+	for (int r = 0; r < 4; r++) {
+		for (int c = 0; c < 4; c++) {
+			for (int i = 0; i < 4; i++) {
 				result[c][r] += a[i][r] * b[c][i];
 			}
 		}
@@ -281,105 +223,6 @@ inline M4 Inverse(const M4& a)
 }
 
 
-#if 0
-
-#include <xmmintrin.h>
-//NOTE(Torin) Found here 
-//ftp://download.intel.com/design/PentiumIII/sml/24504301.pdf
-inline M4 Inverse(const M4& a)
-{
-	M4 result = a;
-	float *src = &result[0][0];
-
-	__m128   minor0, minor1, minor2, minor3;
-	__m128   row0, row1, row2, row3;
-	__m128   det, tmp1;
-	tmp1 = _mm_loadh_pi(_mm_loadl_pi(tmp1, (__m64*)(src)), (__m64*)(src +4));
-	row1 = _mm_loadh_pi(_mm_loadl_pi(row1, (__m64*)(src + 8)), (__m64*)(src + 12));
-	row0 = _mm_shuffle_ps(tmp1, row1, 0x88);
-	row1 = _mm_shuffle_ps(row1, tmp1, 0xDD);
-	tmp1 = _mm_loadh_pi(_mm_loadl_pi(tmp1, (__m64*)(src + 2)), (__m64*)(src + 6));
-	row3 = _mm_loadh_pi(_mm_loadl_pi(row3, (__m64*)(src + 10)), (__m64*)(src + 14));
-	row2 = _mm_shuffle_ps(tmp1, row3, 0x88);
-	row3 = _mm_shuffle_ps(row3, tmp1, 0xDD);
-	//                  -----------------------------------------------
-	tmp1 = _mm_mul_ps(row2, row3);
-	tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0xB1);
-	minor0 = _mm_mul_ps(row1, tmp1);
-	minor1 = _mm_mul_ps(row0, tmp1);
-	tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0x4E);
-	minor0 = _mm_sub_ps(_mm_mul_ps(row1, tmp1), minor0);
-	minor1 = _mm_sub_ps(_mm_mul_ps(row0, tmp1), minor1);
-	minor1 = _mm_shuffle_ps(minor1, minor1, 0x4E);
-	//                  -----------------------------------------------
-	tmp1 = _mm_mul_ps(row1, row2);
-	tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0xB1);
-	minor0 = _mm_add_ps(_mm_mul_ps(row3, tmp1), minor0);
-	minor3 = _mm_mul_ps(row0, tmp1);
-	tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0x4E);
-	minor0 = _mm_sub_ps(minor0, _mm_mul_ps(row3, tmp1));
-	minor3 = _mm_sub_ps(_mm_mul_ps(row0, tmp1), minor3);
-	minor3 = _mm_shuffle_ps(minor3, minor3, 0x4E);
-	//                  -----------------------------------------------
-	tmp1 = _mm_mul_ps(_mm_shuffle_ps(row1, row1, 0x4E), row3);
-	tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0xB1);
-	row2 = _mm_shuffle_ps(row2, row2, 0x4E);
-	minor0 = _mm_add_ps(_mm_mul_ps(row2, tmp1), minor0);
-	minor2 = _mm_mul_ps(row0, tmp1);
-	tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0x4E);
-	minor0 = _mm_sub_ps(minor0, _mm_mul_ps(row2, tmp1));
-	minor2 = _mm_sub_ps(_mm_mul_ps(row0, tmp1), minor2);
-	minor2 = _mm_shuffle_ps(minor2, minor2, 0x4E);
-	//                  -----------------------------------------------
-	tmp1 = _mm_mul_ps(row0, row1);
-
-
-	   tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0xB1);
-	minor2 = _mm_add_ps(_mm_mul_ps(row3, tmp1), minor2);
-	minor3 = _mm_sub_ps(_mm_mul_ps(row2, tmp1), minor3);
-	tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0x4E);
-	minor2 = _mm_sub_ps(_mm_mul_ps(row3, tmp1), minor2);
-	minor3 = _mm_sub_ps(minor3, _mm_mul_ps(row2, tmp1));
-	//                  -----------------------------------------------
-	tmp1 = _mm_mul_ps(row0, row3);
-	tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0xB1);
-	minor1 = _mm_sub_ps(minor1, _mm_mul_ps(row2, tmp1));
-	minor2 = _mm_add_ps(_mm_mul_ps(row1, tmp1), minor2);
-	tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0x4E);
-	minor1 = _mm_add_ps(_mm_mul_ps(row2, tmp1), minor1);
-	minor2 = _mm_sub_ps(minor2, _mm_mul_ps(row1, tmp1));
-	//                  -----------------------------------------------
-	tmp1 = _mm_mul_ps(row0, row2);
-	tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0xB1);
-	minor1 = _mm_add_ps(_mm_mul_ps(row3, tmp1), minor1);
-	minor3 = _mm_sub_ps(minor3, _mm_mul_ps(row1, tmp1));
-	tmp1 = _mm_shuffle_ps(tmp1, tmp1, 0x4E);
-	minor1 = _mm_sub_ps(minor1, _mm_mul_ps(row3, tmp1));
-	minor3 = _mm_add_ps(_mm_mul_ps(row1, tmp1), minor3);
-	//                  -----------------------------------------------
-	det = _mm_mul_ps(row0, minor0);
-	det = _mm_add_ps(_mm_shuffle_ps(det, det, 0x4E), det);
-	det = _mm_add_ss(_mm_shuffle_ps(det, det, 0xB1), det);
-	tmp1 = _mm_rcp_ss(det);
-	det = _mm_sub_ss(_mm_add_ss(tmp1, tmp1), _mm_mul_ss(det, _mm_mul_ss(tmp1, tmp1)));
-	det = _mm_shuffle_ps(det, det, 0x00);
-	minor0 = _mm_mul_ps(det, minor0);
-	_mm_storel_pi((__m64*)(src), minor0);
-	_mm_storeh_pi((__m64*)(src +	2), minor0);
-	minor1 = _mm_mul_ps(det, minor1);
-	_mm_storel_pi((__m64*)(src +	4), minor1);
-	_mm_storeh_pi((__m64*)(src +6), minor1);
-	minor2 = _mm_mul_ps(det, minor2);
-	_mm_storel_pi((__m64*)(src +	8), minor2);
-	_mm_storeh_pi((__m64*)(src +	10), minor2);
-	minor3 = _mm_mul_ps(det, minor3);
-	_mm_storel_pi((__m64*)(src +	12), minor3);
-	_mm_storeh_pi((__m64*)(src +	14), minor3);
-
-   return result;
-}
-
-#endif
 inline M4 Transpose(const M4& m)
 {
 	M4 result;
@@ -413,24 +256,23 @@ inline M4 Scale(float x, float y, float z)
 }
 #endif
 
-inline M4 Rotate(float x, float y, float z)
-{
+inline M4 Rotate(float x, float y, float z) {
 	M4 rx, ry, rz;
 
-	rx[0][0] = 1.0f; rx[1][0] = 0.0f;		rx[2][0] = 0.0f; 		rx[3][0] = 0.0f;
-	rx[0][1] = 0.0f; rx[1][1] = cosf(x);    rx[2][1] = sinf(x); 	rx[3][1] = 0.0f;
-	rx[0][2] = 0.0f; rx[1][2] = -sinf(x);	rx[2][2] = cosf(x);    	rx[3][2] = 0.0f;
-	rx[0][3] = 0.0f; rx[1][3] = 0.0f;		rx[2][3] = 0.0f; 		rx[3][3] = 1.0f;
+	rx[0][0] = 1.0f; rx[1][0] =  0.0f;		rx[2][0] = 0.0f; 		  rx[3][0] = 0.0f;
+	rx[0][1] = 0.0f; rx[1][1] =  cosf(x); rx[2][1] = sinf(x); 	rx[3][1] = 0.0f;
+	rx[0][2] = 0.0f; rx[1][2] = -sinf(x);	rx[2][2] = cosf(x);   rx[3][2] = 0.0f;
+	rx[0][3] = 0.0f; rx[1][3] =  0.0f;		rx[2][3] = 0.0f; 		  rx[3][3] = 1.0f;
 
-	ry[0][0] = cosf(y); 	ry[1][0] = 0.0f;	ry[2][0] = sinf(y); 	ry[3][0] = 0.0f;
-	ry[0][1] = 0.0f; 		ry[1][1] = 1.0f;    ry[2][1] = 0.0f; 		ry[3][1] = 0.0f;
-	ry[0][2] = -sinf(y); 	ry[1][2] = 0.0f;	ry[2][2] = cosf(y);    	ry[3][2] = 0.0f;
-	ry[0][3] = 0.0f; 		ry[1][3] = 0.0f;	ry[2][3] = 0.0f; 		ry[3][3] = 1.0f;
+	ry[0][0] =  cosf(y); 	ry[1][0] = 0.0f;	ry[2][0] = sinf(y); 	ry[3][0] = 0.0f;
+	ry[0][1] =  0.0f; 		ry[1][1] = 1.0f;  ry[2][1] = 0.0f; 		  ry[3][1] = 0.0f;
+	ry[0][2] = -sinf(y); 	ry[1][2] = 0.0f;	ry[2][2] = cosf(y);   ry[3][2] = 0.0f;
+	ry[0][3] =  0.0f; 		ry[1][3] = 0.0f;	ry[2][3] = 0.0f; 		  ry[3][3] = 1.0f;
 
-	rz[0][0] = cosf(z); 	rz[1][0] = sinf(z);		rz[2][0] = 0.0f; 	rz[3][0] = 0.0f;
-	rz[0][1] = -sinf(z); 	rz[1][1] = cosf(z);    	rz[2][1] = 0.0f; 	rz[3][1] = 0.0f;
-	rz[0][2] = 0.0f; 		rz[1][2] = 0.0f;		rz[2][2] = 1.0f;    rz[3][2] = 0.0f;
-	rz[0][3] = 0.0f; 		rz[1][3] = 0.0f;		rz[2][3] = 0.0f; 	rz[3][3] = 1.0f;
+	rz[0][0] =  cosf(z); 	rz[1][0] = sinf(z);		rz[2][0] = 0.0f; 	rz[3][0] = 0.0f;
+	rz[0][1] = -sinf(z); 	rz[1][1] = cosf(z);   rz[2][1] = 0.0f; 	rz[3][1] = 0.0f;
+	rz[0][2] =  0.0f; 		rz[1][2] = 0.0f;		  rz[2][2] = 1.0f;  rz[3][2] = 0.0f;
+	rz[0][3] =  0.0f; 		rz[1][3] = 0.0f;		  rz[2][3] = 0.0f; 	rz[3][3] = 1.0f;
 
 	M4 result = rz * ry * rx;
 	return result;
@@ -496,4 +338,23 @@ inline M4 LookAt(const V3& position, const V3& target, const V3& up)
 	return m;
 }
 
+struct Transform {
+  V3 translation;
+  Quaternion rotation;
+  V3 scale;
+};
 
+inline Transform DecomposeTransformationMatrix(M4 m) {
+  Transform result = {};
+  result.translation = V3(m[3][0], m[3][1], m[3][2]);
+  float sx = Magnitude(V3(m[0][0], m[0][1], m[0][2]));
+  float sy = Magnitude(V3(m[1][0], m[1][1], m[1][2]));
+  float sz = Magnitude(V3(m[2][0], m[2][1], m[2][2]));
+  result.scale = V3(sx, sy, sz);
+  m[0][0] /= sx; m[1][0] /= sy; m[2][0] /= sz;
+  m[0][1] /= sx; m[1][1] /= sy; m[2][1] /= sz;
+  m[0][2] /= sx; m[1][2] /= sy; m[2][2] /= sz;
+  m[3][0] = 0.0f; m[3][1] = 0.0f; m[3][2] = 0.0f;
+  result.rotation = MatrixToQuaternion(m);
+  return result;
+}

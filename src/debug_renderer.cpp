@@ -152,7 +152,9 @@ void render_debug_draw_commands(Camera *camera, AssetManifest *assetManifest, fl
       glUniformMatrix4fv(MODEL_MATRIX_LOCATION, 1, GL_FALSE, &modelMatrix[0][0]);
       set_uniform(LINE_SEGMENT_POSITIONS_LOCATION + 0, cmd->lineSegmentPositions[0]);
       set_uniform(LINE_SEGMENT_POSITIONS_LOCATION + 1, cmd->lineSegmentPositions[1]);
+      glDisable(GL_DEPTH_TEST);
       glDrawArrays(GL_LINES, 0, 2);
+      glEnable(GL_DEPTH_TEST);
       glUniform1i(USE_LINE_POSITION_LOCATION, 0);
     } break;
 

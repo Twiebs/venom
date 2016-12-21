@@ -6,13 +6,17 @@
 #include "venom_editor.cpp"
 #include "venom_entity.cpp"
 
+
+#include "terrain.cpp"
+
 struct GameData {
   Camera camera;
   EntityContainer entityContainer;
-  EditorData editorData;
   bool initalized;
   Player player;
   IndexedVertexArray proceduralMesh;
+
+  TerrainGenerationState terrain;
 };
 
 void VenomModuleStart(GameMemory* memory) {
@@ -20,6 +24,8 @@ void VenomModuleStart(GameMemory* memory) {
   GameData* data = PushStruct(GameData, &memory->mainBlock);
   memory->userdata = data;
   RenderState* rs = &memory->renderState;
+
+  InitalizeTerrainGenerator(&data->terrain, &memory->mainBlock, V3(0.0, 0.0, 0.0));
 
 #if 0
   {
@@ -93,7 +99,7 @@ void VenomModuleStart(GameMemory* memory) {
 void VenomModuleUpdate(GameMemory* memory) {
   GameData* data = (GameData*)memory->userdata;
   EntityContainer* entityContainer = &data->entityContainer;
-  EditorData* editorData = &data->editorData;
+  EditorData* editorData = &memory->editor;
   RenderState* rs = &memory->renderState;
   AssetManifest *manifest = &memory->assetManifest;
 
@@ -146,7 +152,7 @@ void VenomModuleUpdate(GameMemory* memory) {
   camera.position.z = Lerp(camera.position.z, player.position.z, 0.2f);
 #endif
 
-  EditorData* editor = &data->editorData;
+  EditorData* editor = &memory->editor;
 
 
   draw_debug_plane(V3(0.0f, 0.0f, 0.0f), V3(16.0, 0.0f, 0.0f), V3(16.0f, 0.0f, 16.0f));
@@ -183,8 +189,8 @@ void VenomModuleLoad(GameMemory* memory) {
 void VenomModuleRender(GameMemory* memory) {
   RenderState* rs = &memory->renderState;
   GameData* data = (GameData*)memory->userdata;
-  EditorData* editorData = &data->editorData;
-  EditorData* editor = &data->editorData;
+  EditorData* editorData = &memory->editor;
+  EditorData* editor = editorData;
 
   AddDirectionalLight(V3(1.0f, 0.5f, 0.0f), V3(1.0, 1.0, 1.0), &rs->drawList);
   

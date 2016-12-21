@@ -3,8 +3,8 @@
 
 M4 CalculateLocalJointPose(S32 joint_index, Animation_Joint *joint, Animation_State *state) {
   ModelAsset *model = GetModelAsset(state->model_id);
-  if (model == nullptr) return joint->bind_pose_matrix;
-  if (model->data.animation_clip_count == 0 || state->current_clip >= model->data.animation_clip_count) return joint->bind_pose_matrix;
+  if (model == nullptr) return joint->localTransform;
+  if (model->data.animation_clip_count == 0 || state->current_clip >= model->data.animation_clip_count) return joint->localTransform;
   Animation_Clip *clip = &model->data.animation_clips[state->current_clip];
 
   F32 inverse_fps = 1.0f;
@@ -22,18 +22,23 @@ M4 CalculateLocalJointPose(S32 joint_index, Animation_Joint *joint, Animation_St
 
   if (joint_animation_index != -1) {
     Joint_Animation *joint_animation = &clip->joint_animations[joint_animation_index];
-    size_t start_index = 0;
-    size_t end_index = 0;
-    for (size_t i = 0; i < joint_animation->translation_count; i++) {
-      if (current_animation_time > (joint_animation->translations[i].time*inverse_fps) &&
-        current_animation_time < (joint_animation->translations[(i + 1) % joint_animation->translation_count].time*inverse_fps)) {
-        start_index = i;
-        end_index = (i + 1) % joint_animation->translation_count;
-        break;
-      }
-    }
 
-    if (start_index != end_index) {
+    { //Translation
+      size_t start_index = 0;
+      size_t end_index = 0;
+      for (size_t i = 0; i < joint_animation->translation_count; i++) {
+        start_index = i;
+        end_index = (start_index + 1) % joint_animation->translation_count;
+        assert(start_index != end_index); //Impossible!
+        F32 start_keyframe_time = joint_animation->translations[start_index].time;
+        F32 end_keyframe_time = joint_animation->translations[end_index].time;  
+        if ((current_animation_time > start_keyframe_time) && (current_animation_time < end_keyframe_time)) {
+          break;
+        }
+      }
+
+      assert(start_index != end_index);
+
       Joint_Translation_Info *start_translation = &joint_animation->translations[start_index];
       Joint_Translation_Info *end_translation = &joint_animation->translations[end_index];
       F32 transition_length = abs((end_translation->time*inverse_fps) - (start_translation->time*inverse_fps));
@@ -41,10 +46,7 @@ M4 CalculateLocalJointPose(S32 joint_index, Animation_Joint *joint, Animation_St
       F32 time_interp = normalized_animation_time / transition_length;
       V3 current_translation = lerp(start_translation->translation, end_translation->translation, time_interp);
       joint_translation = Translate(current_translation);
-    } else {
-      LogWarning("start_index == end_index");
     }
-
 
     { //Rotation
 
@@ -67,31 +69,40 @@ M4 CalculateLocalJointPose(S32 joint_index, Animation_Joint *joint, Animation_St
       Quaternion interpolated_rotation = Lerp(start_rotation->rotation, end_rotation->rotation, interpolation_constant);
       joint_rotation = QuaternionToMatrix(interpolated_rotation);
     }
+  } else {
+    return joint->localTransform;
   }
 
   M4 result = joint_translation * joint_rotation;
   return result;
 }
 
-void CalculateGlobalJointPoses(Animation_Joint *joints, M4 *global_poses, M4 *local_poses, size_t count) {
-  for (size_t i = 0; i < count; i++) {
-    
-
-
-  }
-}
-
 M4 CalculateGlobalJointPose(S32 joint_index, Animation_Joint *joint_list, M4 *local_poses) {
-  M4 result = local_poses[joint_index];
   Animation_Joint *joint = &joint_list[joint_index];
+  M4 transform = local_poses[joint_index];
   S32 parent_index = joint->parent_index;
   while (parent_index != -1) {
-    result = local_poses[parent_index] * result;
+    transform = local_poses[parent_index] * transform;
     Animation_Joint *parent = &joint_list[parent_index];
     parent_index = parent->parent_index;
   }
 
-  //result = joint_list[0].parent_realtive_matrix * result;
-  //return result;
-  return local_poses[joint_index];
+  return transform;
+}
+
+void CalculateGobalJointPoses(Animation_Joint *jointList, size_t count, M4 *localPoses, M4 *globalPoses) {
+  for (size_t i = 0; i < count; i++) {
+    globalPoses[i] = CalculateGlobalJointPose((S32)i, jointList, localPoses);
+  }
+}
+
+void CalculateLocalJointPoses(Animation_Joint *jointList, size_t count, Animation_State *animState, M4 *localPoses) {
+  for (size_t i = 0; i < count; i++) {
+    Animation_Joint *joint = &jointList[i];
+    localPoses[i] = CalculateLocalJointPose((S32)i, joint, animState);
+  }
+}
+
+M4 CalculateSkinningMatrix(Animation_Joint *joint, M4 globalPose) {
+  return globalPose * joint->inverseBindPose;
 }

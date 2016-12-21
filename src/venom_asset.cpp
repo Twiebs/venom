@@ -52,7 +52,6 @@ static inline bool CreateModelAssetFromFile(U32 slot_index, AssetManifest *manif
   
   ModelDrawable *drawable = &modelAsset->drawable;
   drawable->indexCountPerMesh = modelAsset->data.index_count_per_mesh;
-  drawable->jointCountPerMesh = modelAsset->data.joint_count_per_mesh;
   drawable->vertexArrayID = modelAsset->vertexArray.vertexArrayID;
   drawable->meshCount = modelAsset->data.meshCount;
   drawable->joints = modelAsset->data.joints;
@@ -92,6 +91,8 @@ void initalize_asset_manifest(AssetManifest *manifest) {
 //development builds for easy runtime modifcation of asset data without
 //using hardcoded values or requiring seperate metadata to be mantained
 
+//TODO(Torin) This should be renamed or combined with a procedure
+//that actualy modifes the asset slot to indicate the model is now unloaded
 static inline void UnloadModelAsset(ModelAsset *modelAsset) {
   assert(modelAsset->data.meshData.indexCount != 0);
   DestroyModelData(&modelAsset->data);

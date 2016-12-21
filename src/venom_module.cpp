@@ -364,6 +364,7 @@ EngineAPIList
   }
 #endif
 
+  InitalizeEditor(&memory->editor);
   VenomModuleLoad(memory);
 }
 

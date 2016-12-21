@@ -68,7 +68,7 @@ struct ModelDrawable {
   U32 joint_count;
 	MaterialDrawable *materials;
   Animation_Joint *joints;
-}; //40 bytes
+};
 
 
 

@@ -84,7 +84,6 @@ struct ModelData {
 	MaterialData *materialDataPerMesh;
   Animation_Clip *animation_clips;
   U32 *index_count_per_mesh; //This will be the pointer that is returned by allocator
-  U32 *joint_count_per_mesh;
 };
 
 struct Frustum {
