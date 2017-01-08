@@ -5,25 +5,28 @@
 #include <ctype.h>
 #include <string.h>
 #include <time.h>
+
 #include <cmath>
+#include <thread>
+#include <mutex>
 
-typedef uint8_t  U8;
-typedef uint16_t U16;
-typedef uint32_t U32;
-typedef uint64_t U64;
-typedef int8_t   S8;
-typedef int16_t  S16;
-typedef int32_t  S32;
-typedef int64_t  S64;
-typedef int32_t  B32;
-typedef float    F32;
-typedef double   F64;
-typedef bool B8;
+typedef uint8_t   U8;
+typedef uint16_t  U16;
+typedef uint32_t  U32;
+typedef uint64_t  U64;
+typedef int8_t    S8;
+typedef int16_t   S16;
+typedef int32_t   S32;
+typedef int64_t   S64;
+typedef int32_t   B32;
+typedef float     F32;
+typedef double    F64;
+typedef bool      B8;
 
-static const U8 INVALID_U8 = 0xFF;
-static const U16 INVALID_U16 = 0xFFFF;
-static const U32 INAVLID_U32 = 0xFFFFFFFF;
-static const U64 INVALID_U64 = 0xFFFFFFFFFFFFFFFF;
+static const U8 INVALID_U8    = 0xFF;
+static const U16 INVALID_U16  = 0xFFFF;
+static const U32 INVALID_U32  = 0xFFFFFFFF;
+static const U64 INVALID_U64  = 0xFFFFFFFFFFFFFFFF;
 
 #define KILOBYTES(x) ((x) * 1024LL)
 #define MEGABYTES(x) (KILOBYTES(x) * 1024LL)
@@ -35,11 +38,28 @@ static const U64 INVALID_U64 = 0xFFFFFFFFFFFFFFFF;
 #define StrictAssert(expr) assert(expr)
 #define Assert(expr) assert(expr)
 
+#if defined(_WIN32)
+#define VENOM_PLATFORM_WINDOWS
+#elif defined(__linux__)
+#define VENOM_PLATFORM_LINUX
+#elif defined(__APPLE__)
+#define VENOM_PLATFORM_MAC
+#endif //Platform #ifdefs
+
 #include "venom_config.h"
 #ifdef VENOM_RELEASE
 #undef VENOM_HOTLOAD
 #undef VENOM_PROFILER
 #endif//VENOM_RELEASE
+
+struct SystemTime {
+  U16 day;
+  U16 hour;
+  U16 minute;
+  U16 second;
+};
+
+#include "platform/concurrency.h"
 
 #include "venom_memory.h"
 #include "math/venom_math.h"
@@ -51,10 +71,13 @@ static const U64 INVALID_U64 = 0xFFFFFFFFFFFFFFFF;
 #include "asset_data.h"
 #include "terrain.h"
 
+
+
 #include "debug_renderer.h"
 #include "venom_entity.h"
 #ifndef VENOM_RELEASE
-#include "venom_serializer.h"
+#include "utility/profiler.h"
+#include "utility/serializer.h"
 #include "venom_debug.h"
 #include "venom_editor.h"
 #endif//VENOM_RELEASE
@@ -75,7 +98,6 @@ struct GameMemory;
   _(U64, GetPerformanceCounterTime) \
   _(U64, GetPerformanceCounterFrequency) \
   _(U64, GetFileLastWriteTime, const char *)  \
-  _(VenomDebugData*, GetDebugData) \
   _(GameMemory *, GetVenomEngineData)
 
 
@@ -95,16 +117,13 @@ EngineAPIList
 #define fori(count) for(size_t i = 0; i < count; i++)
 
 #ifndef VENOM_RELEASE
-#define LogError(...) { sprintf(GetDebugData()->debugLog.temp_buffer, __VA_ARGS__); PushLogEntry(GetDebugData(), LogLevel_ERROR); }
-#define LogWarning(...) { sprintf(GetDebugData()->debugLog.temp_buffer, __VA_ARGS__); PushLogEntry(GetDebugData(), LogLevel_WARNING); }
-#define LogDebug(...) { sprintf(GetDebugData()->debugLog.temp_buffer, __VA_ARGS__); PushLogEntry(GetDebugData(), LogLevel_DEBUG); }
-
-#define LOG_ERROR(...) { sprintf(GetDebugData()->debugLog.temp_buffer, __VA_ARGS__); PushLogEntry(GetDebugData(), LogLevel_ERROR); }
-
-#define LOG_DEBUG(...) { sprintf(GetDebugData()->debugLog.temp_buffer, __VA_ARGS__); PushLogEntry(GetDebugData(), LogLevel_DEBUG); }
+#define LogError(...) CreateLogEntry(LogLevel_ERROR, __VA_ARGS__)
+#define LogWarning(...) CreateLogEntry(LogLevel_WARNING, __VA_ARGS__)
+#define LogDebug(...) CreateLogEntry(LogLevel_DEBUG, __VA_ARGS__)
 #else//!VENOM_RELEASE
-#define LOG_ERROR(...)
-#define LOG_DEBUG(...)
+#define LogError(...)
+#define LogWarning(...)
+#define LogDebug(...)
 #endif//VENOM_RELEASE
 
 //TODO(Torin) Remove this absurd hack
@@ -126,6 +145,44 @@ struct InputState {
 	S32 cursorDeltaX;
 	S32 cursorDeltaY;
 	B8 isButtonDown[8];
+};
+
+struct Worker {
+  U32 workerID;
+  std::thread thread;
+  StaticSizedStack stackMemory;
+};
+
+enum TaskType {
+  TaskType_LoadModel,
+};
+
+struct Task {
+  TaskType type;
+  union {
+    struct {
+      U32 slotID;
+    };
+  };
+};
+
+struct Engine {
+  B8 isEngineRunning;
+
+  Worker *workers;
+  U32 workerCount;
+  std::mutex workLock;
+  DynamicArray<Task> tasksToExecute;
+  DynamicArray<Task> tasksToFinalize;
+
+#ifndef VENOM_RELEASE
+  U32 unseenErrorCount;
+  U32 unseenWarningCount;
+  U32 unseenInfoCount;
+  DebugLog debugLog;
+  ProfileData profileData;
+  B8 isConsoleVisible;
+#endif//VENOM_RELEASE
 };
 
 //Rename to somthing better?
@@ -155,6 +212,8 @@ struct RenderState {
   //TODO(Torin) Remove this
 	ImDrawData *imgui_draw_data;
 
+  TerrainGenerationState *terrain;
+
 #endif
 };
 
@@ -178,6 +237,7 @@ struct GameMemory {
 	MemoryBlock mainBlock;
   EditorData editor;
 
+
   B8 isRunning;
 	F32 deltaTime;
   void *userdata;
@@ -188,15 +248,21 @@ struct GameMemory {
 #ifdef VENOM_HOTLOAD
 	VenomAPI engineAPI;
 #endif
-#ifndef VENOM_RELEASE
-	VenomDebugData debugData;
-#endif
 };
 
-#if defined(_WIN32)
-#include "platform_windows.h"
-#elif defined(__linux__)
+inline Engine *GetEngine();
+inline U32 GetThreadID();
+
+void ScheduleTask(Task task);
+
+
+SystemTime GetSystemTime();
+
+
+#if defined(VENOM_PLATFORM_WINDOWS)
+#include "platform/windows.h"
+#elif defined(VENOM_PLATFORM_LINUX)
 #include "platform_linux.h"
-#elif defined(__APPLE__)
-static_assert(false, "No Apple support");
+#elif defined(VENOM_PLATFORM_MAC)
+static_assert(false, "No Mac support");
 #endif

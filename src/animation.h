@@ -1,4 +1,18 @@
 
+enum AnimationType {
+  AnimationType_Idle,
+  AnimationType_Walk,
+  AnimationType_Run,
+  AnimationType_Count,
+  AnimationType_Invalid,
+};
+
+enum AnimationBlendMode {
+  AnimationBlendMode_None,
+  AnimationBlendMode_SmoothCrossFade,
+  AnimationBlendMode_FrozenCrossFade,
+};
+
 struct Joint_Translation_Info {
   F32 time;
   V3 translation;
@@ -47,19 +61,34 @@ struct Animation_Joint {
 };
 
 struct Animation_Clip {
+  AnimationType type;
   char name[64];
-  F32 duration;
+  F32 durationInTicks;
+  F32 ticksPerSecond;
   U32 joint_count;
   DynamicArray<Joint_Animation> joint_animations;
 };
 
-struct Animation_State {
-  Asset_ID model_id;
-  U32 current_clip;
-  F32 animation_time;
-  F32 frames_per_second;
+struct AnimationClipState {
+  U32 animationClipID;
+  F32 localTimeSeconds;
+  F32 playbackSpeedScalar;
+  F32 blendWeightValue;
 };
 
-M4 CalculateLocalJointPose(S32 joint_index, Animation_Joint *joint, Animation_State *state);
-M4 CalculateGlobalJointPose(S32 joint_index, Animation_Joint *joint_list, M4 *local_poses);
+struct AnimationState {
+  B8 isInitalized;
+  Asset_ID model_id;
+  F32 blendElapsedTime;
+  F32 blendDurationTime;
+  AnimationBlendMode blendMode;
+  AnimationClipState animationStates[4];
+  U32 animationStateCount;
+  U32 localPoseOffset;
+  U32 globalPoseOffset;
+};
+
 M4 CalculateSkinningMatrix(Animation_Joint *joint, M4 globalPose);
+void CalculateGlobalPosesForSkeleton(Animation_Joint *jointList, size_t count, M4 *localPoses, M4 *globalPoses);
+void CalculateLocalPosesForSkeleton(Animation_Joint *jointList, size_t count, AnimationState *animState, M4 *localPoses);
+

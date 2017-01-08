@@ -31,10 +31,10 @@ struct Player {
 
 struct Entity {
   V3 position;
-  V3 rotation;
   V3 velocity;
+  Quaternion rotation;
   Asset_ID modelID;
-  Animation_State animation_state;
+  AnimationState animation_state;
 
   union {
     PointLightEntity pointLight;

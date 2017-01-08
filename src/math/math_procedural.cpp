@@ -281,7 +281,7 @@ void GenerateSubdiviedCubeMeshData(U32 cellsPerEdge,
 #endif
 
 #define STB_PERLIN_IMPLEMENTATION
-#include "stb_perlin.h"
+#include "thirdparty/stb_perlin.h"
 
 static inline float Fade(float t)
 {

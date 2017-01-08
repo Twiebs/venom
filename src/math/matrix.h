@@ -41,6 +41,26 @@ inline V4 operator*(const M4& a, const V4& b)
 	return result;
 }
 
+inline M4 operator*(const M4& a, const F32 b) {
+  M4 result = {};
+  for (size_t y = 0; y < 4; y++) {
+    for (size_t x = 0; x < 4; x++) {
+      result[y][x] = a[y][x] * b;
+    }
+  }
+  return result;
+}
+
+inline M4 operator+(const M4& a, const M4& b) {
+  M4 result = {};
+  for (size_t y = 0; y < 4; y++) {
+    for (size_t x = 0; x < 4; x++) {
+      result[y][x] = a[y][x] + b[y][x];
+    }
+  }
+  return result;
+}
+
 inline M4 M4Zero()
 {
 	M4 result = {};
@@ -338,11 +358,18 @@ inline M4 LookAt(const V3& position, const V3& target, const V3& up)
 	return m;
 }
 
-struct Transform {
-  V3 translation;
-  Quaternion rotation;
-  V3 scale;
-};
+inline M4 DirectionToRotationMatrix(V3 direction) {
+  const V3 zaxis = Normalize(direction);
+  const V3 xaxis = Normalize(Cross(zaxis, V3(0.0f, 1.0f, 0.0f)));
+  const V3 yaxis = Normalize(Cross(xaxis, zaxis));
+
+  M4 m;
+  m[0][0] = xaxis.x;  m[1][0] = xaxis.y;  m[2][0] = xaxis.z;  m[3][0] = 0.0f;
+  m[0][1] = yaxis.x;  m[1][1] = yaxis.y;  m[2][1] = yaxis.z;  m[3][1] = 0.0f;
+  m[0][2] = -zaxis.x; m[1][2] = -zaxis.y; m[2][2] = -zaxis.z; m[3][2] = 0.0f;
+  m[0][3] = 0.0f;     m[1][3] = 0.0f;     m[2][3] = 0.0f;     m[3][3] = 1.0f;
+  return m;
+}
 
 inline Transform DecomposeTransformationMatrix(M4 m) {
   Transform result = {};

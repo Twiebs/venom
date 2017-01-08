@@ -9,6 +9,9 @@
 
 #include "terrain.cpp"
 
+#include "CameraMovement.cpp"
+#include "CharacterMovement.cpp"
+
 struct GameData {
   Camera camera;
   EntityContainer entityContainer;
@@ -16,8 +19,25 @@ struct GameData {
   Player player;
   IndexedVertexArray proceduralMesh;
 
+  EntityIndex playerEntityIndex;
+
   TerrainGenerationState terrain;
 };
+
+void ScatterInRectangle(RNGSeed *seed, F32 x, F32 y, F32 w, F32 h, U32 rows, U32 cols, std::function<void(V2)> procedure) {
+  F32 xstep = w / cols;
+  F32 ystep = h / rows;
+  for (size_t iy = 0; iy < cols + 1; iy++) {
+    for (size_t ix = 0; ix < rows + 1; ix++) {
+      F32 p = 0.4f;
+      V2 point;
+      point.x = x + (ix * xstep) + (RandomInRange(-p, p, *seed) * xstep);
+      point.y = y + (iy * ystep) + (RandomInRange(-p, p, *seed) * ystep);
+      procedure(point);
+    }
+  }
+}
+
 
 void VenomModuleStart(GameMemory* memory) {
   SystemInfo* sys = &memory->systemInfo;
@@ -26,6 +46,7 @@ void VenomModuleStart(GameMemory* memory) {
   RenderState* rs = &memory->renderState;
 
   InitalizeTerrainGenerator(&data->terrain, &memory->mainBlock, V3(0.0, 0.0, 0.0));
+  rs->terrain = &data->terrain;
 
 #if 0
   {
@@ -46,10 +67,11 @@ void VenomModuleStart(GameMemory* memory) {
 #endif
 
 
-  InitializeCamera(&data->camera, 45*DEG2RAD, 0.1f, 100.0f, sys->screen_width, sys->screen_height);
+  InitializeCamera(&data->camera, 45*DEG2RAD, 0.1f, 10000.0f, sys->screen_width, sys->screen_height);
   data->camera.position = {4, 10, 2};
   data->camera.pitch = -89.99f*DEG2RAD;
   data->camera.yaw = -90.0f*DEG2RAD;
+
 
   EntityContainerInit(&data->entityContainer, 1024, 8);
 
@@ -61,41 +83,27 @@ void VenomModuleStart(GameMemory* memory) {
     assign_model_to_entity(player_index, GetModelID("player", assetManifest), assetManifest, entityContainer);
     ModelAsset *asset = GetModelAsset(player->modelID, assetManifest);
     player->animation_state.model_id = player->modelID;
+    data->playerEntityIndex = player_index;
 
+    Orientation cameraOrientation = CalculateCameraOrientationForTrackTarget(player->position);
+    data->camera.position = cameraOrientation.position;
+    V3 eulerRotation = QuaternionToEuler(cameraOrientation.rotation);
+    data->camera.pitch = eulerRotation.x;
+    data->camera.yaw = eulerRotation.y;
 
+    RNGSeed seed(15);
+    ScatterInRectangle(&seed, -128, -128, 256, 256, 8, 8, [&](V2 point) {
+      Entity *e = CreateEntity(EntityType_StaticObject, entityContainer);
+      e->modelID = GetModelID("Tree", assetManifest);
+      e->position.x = point.x;
+      e->position.z = point.y;
+    });
 
-#if 0
-    Entity *light = CreateEntity(EntityType_StaticObject, entityContainer);
-    light->position = V3(0.0f, 3.0f, 0.0f);
-    light->modelID = GetModelID("lamp", assetManifest);
-    light->pointLight.color = V3(1.0, 1.0, 1.0);
-    light->pointLight.radius = 50.0;
-#endif
   }
-
-#if 0
-  { 
-    V3 boundsMin = { -2, 0, -2 };
-    V3 boundsMax = { 16, 0, 16 }; 
-    Vertex3D vertices[4];
-    U32 indices[6];
-    U32 vertexCount = 0, indexCount = 0;
-    GenerateQuadFromPointsCW(
-      V3{boundsMin.x, boundsMin.y, boundsMin.z},
-      V3{boundsMax.x, boundsMin.y, boundsMin.z},
-      V3{boundsMax.x, boundsMin.y, boundsMax.z},
-      V3{boundsMin.x, boundsMin.y, boundsMax.z}, 1,
-      vertices, indices, &vertexCount, &indexCount,
-      ARRAY_COUNT(vertices), ARRAY_COUNT(indices));
-    CalculateSurfaceNormals(vertices, vertexCount, indices, indexCount);
-    CalculateVertexTangents(vertices, indices, vertexCount, indexCount);
-    CreateIndexedVertexArray3D(&data->proceduralMesh, vertices, indices, 
-      vertexCount, indexCount, GL_STATIC_DRAW);
-  }
-#endif
-
-
 }
+
+
+
 void VenomModuleUpdate(GameMemory* memory) {
   GameData* data = (GameData*)memory->userdata;
   EntityContainer* entityContainer = &data->entityContainer;
@@ -106,21 +114,14 @@ void VenomModuleUpdate(GameMemory* memory) {
   const SystemInfo* sys = &memory->systemInfo;
   InputState* input = &memory->inputState;
 
-  Player& player = data->player;
+  //Player& player = data->player;
 
 #if 0
   const float acceleration = 15.0f;
   const float dragCoefficent = 0.9f;
   const F32 COOLDOWN_TIME = 0.2f;
   float deltaTime = memory->deltaTime;
-  if(input->isKeyDown[KEYCODE_W]) 
-    player.velocity -= V3(0, 0, acceleration) * deltaTime;
-  if(input->isKeyDown[KEYCODE_S]) 
-    player.velocity += V3{0, 0, acceleration} * deltaTime;
-  if(input->isKeyDown[KEYCODE_A]) 
-    player.velocity -= V3{acceleration, 0, 0} * deltaTime;
-  if(input->isKeyDown[KEYCODE_D]) 
-    player.velocity += V3{acceleration, 0, 0} * deltaTime;
+
 
   F32 cursorDisplacementX = input->cursorPosX - (sys->screen_width * 0.5f);
   F32 cursorDisplacementY = input->cursorPosY - (sys->screen_height * 0.5f);
@@ -154,28 +155,38 @@ void VenomModuleUpdate(GameMemory* memory) {
 
   EditorData* editor = &memory->editor;
 
+  Entity *player = GetEntity(data->playerEntityIndex, entityContainer);
+  UpdateTerrainFromViewPosition(&data->terrain, player->position);
+  TrackPositionWithCamera(player->position, &data->camera);
 
-  draw_debug_plane(V3(0.0f, 0.0f, 0.0f), V3(16.0, 0.0f, 0.0f), V3(16.0f, 0.0f, 16.0f));
-
-  if (input->isButtonDown[MOUSE_RIGHT]) {
+  if (input->isButtonDown[MOUSE_RIGHT] && editor->isEditorVisible) {
     MoveCameraWithFPSControls(&memory->renderState.debugCamera,
       &memory->inputState, memory->deltaTime);
   } else {
+    static CharacterMovementParameters params;
+    params.acceleration = 30.0f;
+    params.maxVelocity = 8.0f;
+    params.stopScalar = 0.9f;
+    MovementInput movementInput = KeyboardToMovementInput(input);
+    MoveEntityWithThirdPersonCharacterMovement(player, &movementInput, &params, memory->deltaTime);
+  }
+
 
 #if 0
-    if(input->isKeyDown[KEYCODE_X]) {
-      if(editor->selectedEntities.count > 0) {
-        for(size_t i = 0; i < editor->selectedEntities.count; i++){
-          EntityIndex index = {};
-          index.blockIndex = 0;
-          index.slotIndex = editor->selectedEntities[i]; 
-          DestroyEntity(index, entityContainer);
-        }
-        editor->selectedEntities.count = 0;
+if (input->isKeyDown[KEYCODE_X]) {
+  if (editor->selectedEntities.count > 0) {
+    for (size_t i = 0; i < editor->selectedEntities.count; i++) {
+      EntityIndex index = {};
+      index.blockIndex = 0;
+      index.slotIndex = editor->selectedEntities[i];
+      DestroyEntity(index, entityContainer);
+}
+    editor->selectedEntities.count = 0;
       }
     }
 #endif
-  }
+
+
 
   process_editor_mode(memory, entityContainer, editor, input, &rs->debugCamera);
 }
@@ -197,43 +208,63 @@ void VenomModuleRender(GameMemory* memory) {
   const F32 deltaTime = memory->deltaTime;
   EntityContainer* entityContainer = &data->entityContainer;
   EntityBlock* block = entityContainer->firstAvaibleBlock;
-  for(U64 i = 0; i < entityContainer->capacityPerBlock; i++) {
-    if(block->flags[i] & EntityFlag_PRESENT) {
+  for (U64 i = 0; i < entityContainer->capacityPerBlock; i++) {
+    if (block->flags[i] & EntityFlag_PRESENT) {
       Entity* entity = &block->entities[i];
+      UpdateEntityPhysics(entity, deltaTime);
+
       if(block->types[i] == EntityType_PointLight) {
         AddShadowCastingPointLight(entity->position, entity->pointLight.color, 
           entity->pointLight.radius, &rs->drawList);
       }
 
-      ModelAsset *asset = GetModelAsset(entity->modelID, &memory->assetManifest);
-      bool is_entity_animated = asset->data.jointCount > 0;
+      ModelAsset *model = GetModelAsset(entity->modelID, &memory->assetManifest);
+      if (model == nullptr) continue;
+      bool is_entity_animated = model->data.jointCount > 0;
       if (is_entity_animated) {
-        entity->animation_state.animation_time += memory->deltaTime;
-      }
-
-
-
-      if (block->flags[i] & EntityFlag_VISIBLE) {
-        
-        if(editor->selectedEntities.ContainsValue(i)) {
-          PushOutlinedModelDrawCommand(entity->modelID.slot_index, &rs->drawList, entity->position, entity->rotation); 
-        } else if (is_entity_animated) {
-          draw_animated_model(&rs->drawList, &memory->assetManifest, entity->modelID, &entity->animation_state, entity->position, entity->rotation);
-        } else {
-          PushModelDrawCommand(asset->slot_index, &rs->drawList, entity->position, entity->rotation); 
+        if (entity->animation_state.isInitalized == false) {
+          InitalizeAnimationState(&entity->animation_state, model);
         }
 
-        ModelAsset* modelAsset = GetModelAsset(entity->modelID, &memory->assetManifest);
-        assert(modelAsset != 0);
+        UpdateAnimationState(&entity->animation_state, model, memory->deltaTime);
+      }
 
+      if (block->flags[i] & EntityFlag_VISIBLE) {        
+        if (editor->selectedEntities.ContainsValue(i)) {
+          V3 rotation = QuaternionToEuler(entity->rotation);
+          PushOutlinedModelDrawCommand(entity->modelID.slot_index, &rs->drawList, entity->position, rotation); 
+        } else if (is_entity_animated) {
+          V3 rotation = QuaternionToEuler(entity->rotation);
+          V3 position = entity->position;
+          position.y += model->size.y * 0.5f;
+          AddAnimatedModelToDrawList(&rs->drawList, model, &entity->animation_state, position, rotation);
+        } else {
+          V3 rotation = QuaternionToEuler(entity->rotation);
+          V3 position = entity->position;
+          position.y += model->size.y * 0.5f;
+          PushModelDrawCommand(model->slotIndex, &rs->drawList, position, rotation); 
+        }
+        
         VenomDebugRenderSettings *debugRenderSettings = GetDebugRenderSettings();
         if (debugRenderSettings->drawPhysicsColliders) {
-          V3 boundsSize = Abs(modelAsset->aabb.max - modelAsset->aabb.min);
-          draw_debug_box(entity->position - (boundsSize * 0.5f), entity->position + (boundsSize * 0.5f));
+          V3 boundsMin = entity->position - (model->size * 0.5f);
+          V3 boundsMax = entity->position + (model->size* 0.5f);
+          boundsMin.y += model->size.y * 0.5f;
+          boundsMax.y += model->size.y * 0.5f;
+          draw_debug_box(boundsMin, boundsMax, COLOR_GREEN);
         }
       }
     }
   }
 
-  VenomRenderScene(memory, &rs->debugCamera);
+  Camera *camera = nullptr;
+  if (editor->isEditorVisible) {
+    camera = &rs->debugCamera;
+    draw_debug_camera(&data->camera);
+  } else {
+    camera = &data->camera;
+  }
+
+  
+  VenomRenderScene(memory, camera);
 }

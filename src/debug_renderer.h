@@ -5,6 +5,7 @@ enum DebugDrawCommandType {
   DebugDrawCommand_LINE,
   DebugDrawCommand_AXIS,
   DebugDrawCommand_PLANE,
+  DebugDrawCommand_CAMERA,
   DebugDrawCommand_COUNT
 };
 
@@ -27,6 +28,9 @@ struct DebugDrawCommand {
   };
 };
 
+//TODO(Torin) This is way too fucking insane.
+//Just load the fucking model files! its not that
+//expensive!
 struct DebugRenderer {
   U32 vao, vbo, ebo;
   U32 cubeIndexOffset;

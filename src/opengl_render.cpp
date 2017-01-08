@@ -1,4 +1,3 @@
-
 #include "debug_renderer.cpp"
 
 //===========================================================================================================
@@ -62,7 +61,7 @@ static inline void SetLightSpaceTransformUniforms(CascadedShadowMap* csm, GLuint
 
 //=========================================================================================================
 
-#if 0
+#if 1
 static inline void DrawTerrainGeometry(TerrainGenerationState *terrainGenState) {
   glActiveTexture(GL_TEXTURE5);
   glBindTexture(GL_TEXTURE_2D_ARRAY, terrainGenState->heightmap_texture_array);
@@ -77,53 +76,56 @@ static inline void DrawTerrainGeometry(TerrainGenerationState *terrainGenState) 
   glBindVertexArray(0);
 };
 
-static inline void DrawTerrain(RenderState *rs, TerrainGenerationState *terrain) {
-  glUseProgram(rs->terrain_shader);
-  SetLightingUniforms(rs->lightingState, *camera);
-  SetLightSpaceTransformUniforms(rs->terrain_shader);
-  model = M4Identity();
-  model = Translate(entities->player.pos);
-  glUniformMatrix4fv(0, 1, GL_FALSE, &model[0][0]);
-  glUniformMatrix4fv(1, 1, GL_FALSE, &view[0][0]);
-  glUniformMatrix4fv(2, 1, GL_FALSE, &proj[0][0]);
+static inline void DrawTerrain(RenderState *rs, TerrainGenerationState *terrain, Camera *camera) {
+  static const S32 MODEL_MATRIX_LOCATION = 0;
+  static const S32 VIEW_MATRIX_LOCATION = 1;
+  static const S32 PROJECTION_MATRIX_LOCATION = 2;
+
+  AssetManifest *assets = GetAssetManifest();
+  GLuint shaderProgram = GetShaderProgram(ShaderID_terrain, assets);
+  glUseProgram(shaderProgram);
+  SetLightingUniforms(&rs->drawList, *camera);
+  set_uniform(MODEL_MATRIX_LOCATION, M4Identity());
+  set_uniform(VIEW_MATRIX_LOCATION, camera->view);
+  set_uniform(PROJECTION_MATRIX_LOCATION, camera->projection);
+  DrawTerrainGeometry(terrain);
 
   //TODO(Torin) Give the terrain a better material system
-  auto& material0 = GetMaterial(&memory->assets, MaterialID_dirt00);
-  auto& material1 = GetMaterial(&memory->assets, MaterialID_grass01);
-  glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_2D, material0.diffuse_texture_id);
-  glActiveTexture(GL_TEXTURE1);
-  glBindTexture(GL_TEXTURE_2D, material1.diffuse_texture_id);
-  DrawTerrainGeometry(terrainGenState);
+  //auto& material0 = GetMaterial(&memory->assets, MaterialID_dirt00);
+  //auto& material1 = GetMaterial(&memory->assets, MaterialID_grass01);
+  //glActiveTexture(GL_TEXTURE0);
+  //glBindTexture(GL_TEXTURE_2D, material0.diffuse_texture_id);
+  //glActiveTexture(GL_TEXTURE1);
+  //glBindTexture(GL_TEXTURE_2D, material1.diffuse_texture_id);
+
 }
 #endif
 
-static void DrawBone(S32 jointIndex, Animation_Joint *jointList, M4 *globalTransforms) {
+static void DrawBone(S32 jointIndex, Animation_Joint *jointList, M4 *globalTransforms, M4 modelMatrix) {
   static const V4 LINE_COLOR = COLOR_YELLOW;
   Animation_Joint *joint = &jointList[jointIndex];
   if (joint->child_index != -1) {
     V4 start = globalTransforms[jointIndex] * V4(0.0f, 0.0f, 0.0f, 1.0f);
     V4 end = globalTransforms[joint->child_index] * V4(0.0f, 0.0f, 0.0f, 1.0f);
+    start = modelMatrix * start;
+    end = modelMatrix * end;
     draw_debug_line(V3(start), V3(end), LINE_COLOR);
   } else {
     V4 start = globalTransforms[jointIndex] * V4(0.0f, 0.0f, 0.0f, 1.0f);
     V4 end = globalTransforms[jointIndex] * V4(0.0f, 1.0f, 0.0f, 1.0f);
+    start = modelMatrix * start;
+    end = modelMatrix * end;
     draw_debug_line(V3(start), V3(end), LINE_COLOR);
   }
 }
 
-static inline void DrawSkeleton(Animation_Joint *jointList, size_t jointCount, Animation_State *animState) {
-  M4 localJointTransforms[16];
-  M4 globalJointTransforms[16];
-  CalculateLocalJointPoses(jointList, jointCount, animState, localJointTransforms);
-  CalculateGobalJointPoses(jointList, jointCount, localJointTransforms, globalJointTransforms);
-
+static inline void DrawSkeleton(Animation_Joint *jointList, size_t jointCount, AnimationState *animState, M4 modelMatrix) {
+  M4 *globalJointPoses = (M4 *)Memory::FrameStackPointer(animState->globalPoseOffset);
   for (size_t i = 0; i < jointCount; i++) {
     Animation_Joint *joint = &jointList[i];
-    DrawBone((S32)i, jointList, globalJointTransforms);
+    DrawBone((S32)i, jointList, globalJointPoses, modelMatrix);
   }
 }
-
 
 static inline void draw_atmosphere_oneil(const RenderState *rs, const Camera *camera, AssetManifest *am) {
   static const U32 MVP_MATRIX_LOCATION = 0;
@@ -132,6 +134,23 @@ static inline void draw_atmosphere_oneil(const RenderState *rs, const Camera *ca
   glDisable(GL_CULL_FACE);
   M4 mvp_matrix = camera->projection * camera->view * Translate(camera->position);
   V3 lightPosition = { 0.0f, 0.2f, 1.0f };
+  glUseProgram(GetShaderProgram(ShaderID_Atmosphere, am));
+  glUniformMatrix4fv(MVP_MATRIX_LOCATION, 1, GL_FALSE, &mvp_matrix[0][0]);
+  set_uniform(CAMERA_POSITION_LOCATION, camera->position);
+  set_uniform(SUN_POSITION_LOCATION, lightPosition);
+  glBindVertexArray(rs->skydomeIVA.vertexArrayID);
+  glDrawElements(GL_TRIANGLES, rs->skydomeIVA.indexCount, GL_UNSIGNED_INT, 0);
+  glEnable(GL_CULL_FACE);
+}
+
+static inline void draw_atmosphere_oneil(const RenderState *rs, const Camera *camera) {
+  static const U32 MVP_MATRIX_LOCATION = 0;
+  static const U32 CAMERA_POSITION_LOCATION = 1;
+  static const U32 SUN_POSITION_LOCATION = 2;
+  glDisable(GL_CULL_FACE);
+  M4 mvp_matrix = camera->projection * camera->view * Translate(camera->position);
+  V3 lightPosition = { 0.0f, 0.2f, 1.0f };
+  AssetManifest *am = GetAssetManifest();
   glUseProgram(GetShaderProgram(ShaderID_Atmosphere, am));
   glUniformMatrix4fv(MVP_MATRIX_LOCATION, 1, GL_FALSE, &mvp_matrix[0][0]);
   set_uniform(CAMERA_POSITION_LOCATION, camera->position);
@@ -176,15 +195,14 @@ static inline void draw_model_with_materials_common(ModelDrawable *drawable, M4 
   }
 }
 
-static inline void draw_animated_model_with_materials(ModelDrawable *drawable, Animation_State *animation_state, M4 model_matrix) {
+static inline void draw_animated_model_with_materials(ModelDrawable *drawable, AnimationState *animation_state, M4 model_matrix) {
   static const U32 BONE_OFFSET_LOCATION = 5;
-  static const U32 IS_MESH_STATIC_LOCATION = 21;
+  static const U32 IS_MESH_STATIC_LOCATION = 69;
   set_uniform(IS_MESH_STATIC_LOCATION, false);
 
   Animation_Joint *joints = drawable->joints;
-  U32 current_index_offset = 0;
-  assert(drawable->joint_count < 16);
-  M4 local_joint_poses[16];
+#if 0
+  M4 local_joint_poses[64];
 
   for (size_t i = 0; i < drawable->joint_count; i++) {
     Animation_Joint *joint = &joints[i];
@@ -192,9 +210,18 @@ static inline void draw_animated_model_with_materials(ModelDrawable *drawable, A
   }
 
   for (size_t i = 0; i < drawable->joint_count; i++) {
-    Animation_Joint *joint = &joints[i];
+    Animation_Joint *joint = &join
+      ts[i];
     M4 global_joint_pose = CalculateGlobalJointPose(i, drawable->joints, local_joint_poses);
     M4 final_skinning_matrix = CalculateSkinningMatrix(joint, global_joint_pose);
+    set_uniform(BONE_OFFSET_LOCATION + i, final_skinning_matrix);
+  }
+#endif
+
+  auto globalPoses = (M4 *)Memory::FrameStackPointer(animation_state->globalPoseOffset);
+  for (size_t i = 0; i < drawable->joint_count; i++) {
+    Animation_Joint *joint = &joints[i];
+    M4 final_skinning_matrix = CalculateSkinningMatrix(joint, globalPoses[i]);
     set_uniform(BONE_OFFSET_LOCATION + i, final_skinning_matrix);
   }
 
@@ -203,7 +230,8 @@ static inline void draw_animated_model_with_materials(ModelDrawable *drawable, A
 
 static inline void draw_static_model_with_materials(ModelDrawable* drawable, M4 modelMatrix) {
   static const U32 BONE_OFFSET_LOCATION = 5;
-  static const U32 IS_MESH_STATIC_LOCATION = 21;
+  static const U32 IS_MESH_STATIC_LOCATION = 69
+    ;
   set_uniform(IS_MESH_STATIC_LOCATION, true);
 
   for (size_t i = 0; i < 16; i++) {
@@ -224,7 +252,6 @@ static inline void draw_model_with_only_geometry(ModelDrawable* drawable, M4 mod
     currentIndexOffset += drawable->indexCountPerMesh[j];
   }
 }
-
 
 //============================================================================================================
 
@@ -275,8 +302,9 @@ static inline void RenderDrawListWithMaterials(VenomDrawList* drawList, AssetMan
 
   for (size_t i = 0; i < drawList->animated_model_draw_commands.count; i++) {
     Animated_Model_Draw_Command *draw_cmd = &drawList->animated_model_draw_commands[i];
+    ModelAsset *model = draw_cmd->model;
+    assert(model != nullptr);
     ModelDrawable *drawable = &draw_cmd->model->drawable;
-    if (drawable == nullptr) continue;
     draw_animated_model_with_materials(drawable, draw_cmd->animation_state, draw_cmd->model_matrix);
   }
 
@@ -500,7 +528,8 @@ static inline void DebugRenderPass(RenderState *rs) {
   for (size_t i = 0; i < rs->drawList.animated_model_draw_commands.count; i++) {
     Animated_Model_Draw_Command *cmd = &rs->drawList.animated_model_draw_commands[i];
     ModelAsset *model = cmd->model;
-    DrawSkeleton(model->data.joints, model->data.jointCount, cmd->animation_state);
+    assert(model != nullptr);
+    DrawSkeleton(model->data.joints, model->data.jointCount, cmd->animation_state, cmd->model_matrix);
   }
 }
 
@@ -520,7 +549,6 @@ void VenomRenderScene(GameMemory* memory, Camera* camera) {
   glDisable(GL_BLEND);
   glDisable(GL_SCISSOR_TEST);
   glStencilMask(0xFF);
-
 
 
 #if 0
@@ -712,23 +740,32 @@ void VenomRenderScene(GameMemory* memory, Camera* camera) {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
   }
 
+  VenomDebugRenderSettings *settings = GetDebugRenderSettings();
+
   //Foward render our debug primatives storing the stencil info
   glEnable(GL_STENCIL_TEST);
+  if (rs->terrain != nullptr) {
+    if (settings->isWireframeEnabled) {
+      glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    }
+    DrawTerrain(rs, rs->terrain, camera);
+    if (settings->isWireframeEnabled) {
+      glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    }
+  }
+
   render_debug_draw_commands(camera, assetManifest, memory->deltaTime);
   DebugRenderPass(rs);
   glDisable(GL_STENCIL_TEST);
 
   render_outlined_objects(rs, camera, assetManifest, memory->deltaTime);
 
-  //Render the atmosphere first
-#if 1
   DEBUG_DisableIf(GetDebugRenderSettings()->disableAtmosphere) {
     glEnable(GL_STENCIL_TEST);
     glStencilFunc(GL_EQUAL, 0, 0xFF);
     draw_atmosphere_glsl(rs, camera, assetManifest);
     glDisable(GL_STENCIL_TEST);
   }
-#endif
 
 
 

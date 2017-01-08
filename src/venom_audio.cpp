@@ -1,6 +1,5 @@
 
-void PlaySound(AudioState *audioState, U32 count, U32 totalSamples, S16 *soundData)
-{
+void PlaySound(AudioState *audioState, U32 count, U32 totalSamples, S16 *soundData) {
 	assert(count > 0);
 	assert(totalSamples > 0);
 	assert(soundData != nullptr);
@@ -18,8 +17,7 @@ void PlaySound(AudioState *audioState, U32 count, U32 totalSamples, S16 *soundDa
 	audioState->isPlaying[playingSoundIndex] = true;
 }
 
-void MixAudioOutputBuffer(AudioState *state, size_t requestedByteCount)
-{
+void MixAudioOutputBuffer(AudioState *state, size_t requestedByteCount) {
 	assert(requestedByteCount % 2 == 0);
 	//U32 samplesToMix = requestedByteCount / AUDIO_BYTES_PER_SAMPLE;
 	memset(state->outputBuffer, 0, requestedByteCount);

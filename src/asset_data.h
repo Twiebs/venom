@@ -27,12 +27,55 @@ struct MaterialAsset {
 
 //TODO(Torin) Seriously consider just conolodating all of this into one
 //structure... There really is not much reason to keep all of this stuff seperatly
+//yet until we know exatly how the rest of the engine will process the data.  Then
+//the structure can be seperated for cache locality...  It would not work like this
+//in the first place anyway!
 struct ModelAsset {
-  U32 slot_index;
-  ModelData data;
-  AABB aabb;
+  U32 slotIndex; //TODO(Torin) Can we get rid of this?
   V3 size;
+  AABB aabb; //TODO(Torin) This doesnt need to be stored just keep the size
+  
+
+  //ModelData data;
+
+  U32 meshCount;
+  U32 jointCount;
+  U32 animationClipCount;
+  U32 vertexCount;
+  U32 indexCount;
+  
+  AnimatedVertex *vertices;
+  U32 *indices;
+  Animation_Joint *joints;
+  Animation_Clip *animationClips;
+
+  U32 *indexCountPerMesh;
+  MaterialData *materialDataPerMesh;
   IndexedVertexArray vertexArray;
+
+#if 0
+  struct ModelDrawable {
+    GLuint vertexArrayID;
+    U32 meshCount;
+    
+    U32 joint_count;
+    MaterialDrawable *materials;
+    Animation_Joint *joints;
+  };
+
+  struct ModelData {
+    U32 meshCount;
+    U32 jointCount;
+    U32 animation_clip_count;
+    MeshData meshData;
+
+    Animation_Joint *joints;
+    MaterialData *materialDataPerMesh;
+    Animation_Clip *animation_clips;
+    U32 *index_count_per_mesh; //This will be the pointer that is returned by allocator
+  };
+#endif
+
   ModelDrawable drawable;
 };
 
@@ -67,6 +110,8 @@ enum DEBUGShaderID {
   DEBUGShaderID_COUNT
 };
 
+#include <atomic>
+
 struct AssetManifest {
 #ifndef VENOM_RELEASE
   union {
@@ -79,7 +124,7 @@ struct AssetManifest {
     DynamicArray<AssetSlot> assetSlotArrays[AssetType_COUNT];
   };
 
-  U32 modelReloadCounter;
+  std::atomic<U32> modelReloadCounter;
 
 #else//VENOM_REALEASE
   AssetSlot material_assets[Material_Asset_COUNT];

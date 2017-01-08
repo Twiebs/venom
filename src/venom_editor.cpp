@@ -399,6 +399,87 @@ static inline void DrawEditorSearchWindow(EditorData *editor) {
   ImGui::End();
 }
 
+#if 0
+static void DrawSkeletonTransformInfo(Animation_State *animState, ModelAsset *model) {
+  if (model->data.jointCount > 0) {
+    static S32 selected_joint = -1;
+    static S32 selectedAnimationClip = -1;
+    static F32 currentAnimationTime = 0.0f;
+
+    ImGui::BeginChildFrame(0, ImVec2(400, 200));
+    imgui_draw_joint_tree(0, model->data.joints, &selected_joint);
+    S32 next_root_node_index = model->data.joints->sibling_index;
+    while (next_root_node_index != -1) {
+      Animation_Joint *next = &model->data.joints[next_root_node_index];
+      imgui_draw_joint_tree(next_root_node_index, model->data.joints, &selected_joint);
+      next_root_node_index = next->sibling_index;
+    }
+
+      ImGui::EndChildFrame();
+      ImGui::SameLine();
+      ImGui::BeginChildFrame(1, ImVec2(400, 400));
+
+
+      if (selected_joint != -1) {
+
+        //TODO(Torin) Temporary Memory to hold each joint info
+        Animation_State animationState = {};
+        animationState.model_id = GetModelID(slot->name, manifest);
+        animationState.animationStateCount = 1;
+        AnimationClipState *clipState = &animationState.animationStates[0];
+        clipState->animationClipID = selectedAnimationClip;
+        clipState->animationLocalTime = currentAnimationTime;
+
+        Animation_Joint *joint = &asset->data.joints[selected_joint];
+
+        //TODO(Torin) Dynamic temporary memory!
+        M4 localPoses[64];
+        M4 globalPoses[64];
+        CalculateLocalPosesForSkeleton(asset->data.joints, asset->data.jointCount, &animationState, localPoses);
+        CalculateGlobalPosesForSkeleton(asset->data.joints, asset->data.jointCount, localPoses, globalPoses);
+        M4 skinningMatrix = CalculateSkinningMatrix(joint, globalPoses[selected_joint]);
+
+        ImGui::Text("Joint Name: %s", joint->name);
+
+        M4 inverseLocalTransform = Inverse(joint->localTransform);
+        M4 localOffsetMatrix = inverseLocalTransform * localPoses[selected_joint];
+        Transform localTransform = DecomposeTransformationMatrix(localPoses[selected_joint]);
+        Transform localOffsetTransform = DecomposeTransformationMatrix(localOffsetMatrix);
+        Transform globalTransform = DecomposeTransformationMatrix(globalPoses[selected_joint]);
+        Transform skinningTransform = DecomposeTransformationMatrix(skinningMatrix);
+        ImGuiTransform("LocalPose Transform", localTransform);
+        ImGuiMatrix("LocalPose Matrix", localPoses[selected_joint]);
+        ImGuiTransform("LocalOffset Transform", localOffsetTransform);
+        ImGuiMatrix("LocalOffset Matrix", localOffsetMatrix);
+        ImGuiTransform("GlobalPose Transform", globalTransform);
+        ImGuiTransform("Skinning Transform", skinningTransform);
+      }
+
+      ImGui::EndChildFrame();
+
+
+      ImGui::BeginChildFrame(2, ImVec2(400, 200));
+      for (size_t i = 0; i < asset->data.animation_clip_count; i++) {
+        Animation_Clip *clip = &asset->data.animation_clips[i];
+        if (ImGui::Selectable(clip->name)) {
+          selectedAnimationClip = i;
+        }
+      }
+      ImGui::EndChildFrame();
+
+      if (selectedAnimationClip != -1) {
+        Animation_Clip *clip = &asset->data.animation_clips[selectedAnimationClip];
+        ImGui::SliderFloat("Time", &currentAnimationTime, 0.0f, clip->durationInTicks);
+      }
+
+    }
+  }
+
+
+} break;
+}
+#endif
+
 
 static void draw_asset_manifest_ui(EditorData *editor, AssetManifest* manifest) {
 
@@ -435,14 +516,16 @@ static void draw_asset_manifest_ui(EditorData *editor, AssetManifest* manifest) 
     }
     ImGui::PopID();
 
+    //NOTE(Torin) We don't care about the locks here if we read a bogus value
+    //it doesnt matter the developer will only see it for 16ms
     ImGui::NextColumn();
     static const ImColor loadedColor = ImColor(0.0f, 1.0f, 0.0f, 1.0f);
     static const ImColor unloadedColor = ImColor(1.0f, 0.0f, 0.0f, 1.0f);
-    ImColor color = (slot->flags & AssetFlag_LOADED) ? loadedColor : unloadedColor;
+    ImColor color = (slot->assetState == AssetState_Loaded) ? loadedColor : unloadedColor;
 
     const char *text = "INVALID";
-    if (slot->flags & AssetFlag_INVALID) text = "invalid";
-    else if (slot->flags & AssetFlag_LOADED) text = "loaded";
+    if (slot->assetState & AssetState_Invalid) text = "invalid";
+    else if (slot->assetState & AssetState_Loaded) text = "loaded";
     else text = "unloaded";
 
     ImGui::TextColored(color, text);
@@ -500,21 +583,22 @@ static void draw_asset_manifest_ui(EditorData *editor, AssetManifest* manifest) 
     if (name_modifed || filename_modifed || (editor->selectedIndex != editor->lastSelectedIndex)) {
       if (editor->lastSelectedIndex != -1 && editor->lastSelectedIndex != 0) {
         AssetSlot *lastSlot = &manifest->modelAssets[editor->lastSelectedIndex];
+        SpinLock(&lastSlot->lock);
         free(lastSlot->name);
         free(lastSlot->filename);
         lastSlot->name = strdup(nameBuffer);
         lastSlot->filename = strdup(filenameBuffer);
+        ReleaseLock(&lastSlot->lock);
       }
+
       editor->lastSelectedIndex = editor->selectedIndex;
+      SpinLock(&slot->lock);
       strcpy(nameBuffer, slot->name);
       strcpy(filenameBuffer, slot->filename);
+      ReleaseLock(&slot->lock);
     }
     
-
-
-
-
-    if (slot->asset != 0) {
+    if (slot->assetState == AssetState_Loaded) {
       switch (editor->selectedAssetType) {
       case AssetType_MODEL: {
         ModelAsset *asset = (ModelAsset *)slot->asset;
@@ -545,19 +629,20 @@ static void draw_asset_manifest_ui(EditorData *editor, AssetManifest* manifest) 
             if (selected_joint != -1) {
 
               //TODO(Torin) Temporary Memory to hold each joint info
-              
-              Animation_State animState = {};
-              animState.animation_time = currentAnimationTime;
-              animState.current_clip = selectedAnimationClip;
-              animState.frames_per_second = 30.0f;
-              animState.model_id = GetModelID(slot->name, manifest);
+              AnimationState animationState = {};
+              animationState.model_id = GetModelID(slot->name, manifest);
+              animationState.animationStateCount = 1;
+              AnimationClipState *clipState = &animationState.animationStates[0];
+              clipState->animationClipID = selectedAnimationClip;
+              clipState->localTimeSeconds = currentAnimationTime;
 
               Animation_Joint *joint = &asset->data.joints[selected_joint];
 
-              M4 localPoses[16];
-              M4 globalPoses[16];
-              CalculateLocalJointPoses(asset->data.joints, asset->data.jointCount, &animState, localPoses);
-              CalculateGobalJointPoses(asset->data.joints, asset->data.jointCount, localPoses, globalPoses);
+              //TODO(Torin) Dynamic temporary memory!
+              M4 localPoses[64];
+              M4 globalPoses[64];
+              CalculateLocalPosesForSkeleton(asset->data.joints, asset->data.jointCount, &animationState, localPoses);
+              CalculateGlobalPosesForSkeleton(asset->data.joints, asset->data.jointCount, localPoses, globalPoses);
               M4 skinningMatrix = CalculateSkinningMatrix(joint, globalPoses[selected_joint]);
               
               ImGui::Text("Joint Name: %s", joint->name);
@@ -590,7 +675,7 @@ static void draw_asset_manifest_ui(EditorData *editor, AssetManifest* manifest) 
 
             if (selectedAnimationClip != -1) {
               Animation_Clip *clip = &asset->data.animation_clips[selectedAnimationClip];
-              ImGui::SliderFloat("Time", &currentAnimationTime, 0.0f, clip->duration);
+              ImGui::SliderFloat("Time", &currentAnimationTime, 0.0f, clip->durationInTicks);
             }
 
           }
@@ -811,13 +896,12 @@ void ProcessEditorCommand(EditorData* editor, Camera* camera, GameMemory* memory
 void process_editor_mode(GameMemory *memory, EntityContainer *entityContainer, EditorData *editor, InputState *input, Camera * camera) {
   process_editor_input(editor, input);
 
+  auto engine = GetEngine();
 
-  VenomDebugData* debugData = &memory->debugData;
-
-  if (debugData->isConsoleVisible) {
-    bool scrollToBottom = debugData->unseenErrorCount > 0 || debugData->unseenInfoCount > 0 || debugData->unseenWarningCount > 0;
-    ShowConsole(debugData, &memory->debugData.debugLog, scrollToBottom);
-  } else if (debugData->unseenErrorCount > 0 || debugData->unseenInfoCount > 0 || debugData->unseenWarningCount > 0){
+  if (engine->isConsoleVisible) {
+    bool scrollToBottom = engine->unseenErrorCount > 0 || engine->unseenInfoCount > 0 || engine->unseenWarningCount > 0;
+    ShowConsole(&engine->debugLog, scrollToBottom);
+  } else if (engine->unseenErrorCount > 0 || engine->unseenInfoCount > 0 || engine->unseenWarningCount > 0){
     static const U32 OVERLAY_WIDTH = 250;
     static const U32 OVERLAY_PADDING = 8;
     const ImGuiIO& io = ImGui::GetIO();
@@ -827,12 +911,12 @@ void process_editor_mode(GameMemory *memory, EntityContainer *entityContainer, E
     ImGui::Begin("EventOverlay", 0, ImVec2(0, 0), 0.3f,
       ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
       ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings);
-    if (debugData->unseenErrorCount > 0) {
-      ImGui::TextColored(ImColor(255, 0, 0), "Errors: %u", debugData->unseenErrorCount);
+    if (engine->unseenErrorCount > 0) {
+      ImGui::TextColored(ImColor(255, 0, 0), "Errors: %u", engine->unseenErrorCount);
       ImGui::SameLine();
     }
-    if (debugData->unseenWarningCount > 0) {
-      ImGui::TextColored(ImColor(255, 255, 0), "Warnings: %u", debugData->unseenWarningCount);
+    if (engine->unseenWarningCount > 0) {
+      ImGui::TextColored(ImColor(255, 255, 0), "Warnings: %u", engine->unseenWarningCount);
     }
     ImGui::End();
   }
@@ -854,9 +938,10 @@ void process_editor_mode(GameMemory *memory, EntityContainer *entityContainer, E
     if (ImGui::Button("Player")) editor->viewMode = EditorViewMode_Player;
 
 
+    AssetManifest *assets = GetAssetManifest();
     switch (editor->viewMode) {
     case EditorViewMode_Entities: {
-      //draw_entity_editor_ui(editor, assets, entityContainer);
+      draw_entity_editor_ui(editor, assets, entityContainer);
     } break;
 
     case EditorViewMode_Assets: {
@@ -867,7 +952,7 @@ void process_editor_mode(GameMemory *memory, EntityContainer *entityContainer, E
     case EditorViewMode_Debug: {
       draw_debug_render_info_ui(&memory->renderState.debugRenderFrameInfo, &memory->renderState.debugRenderSettings);
       ImGui::BeginGroup();
-      draw_profiler_ui(&memory->debugData.profileData, &memory->mainBlock);
+      draw_profiler_ui(&engine->profileData, &memory->mainBlock);
       ImGui::EndGroup();
     } break;
 

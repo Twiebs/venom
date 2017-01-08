@@ -1,4 +1,10 @@
 
+inline Quaternion QuaternionIdentity() {
+  Quaternion result = {};
+  result.w = 1.0f;
+  return result;
+}
+
 inline Quaternion operator+(Quaternion& a, Quaternion& b) {
   Quaternion result;
   result.x = a.x + b.x;
@@ -17,12 +23,21 @@ inline Quaternion operator*(Quaternion& a, Quaternion& b) {
   return result;
 }
 
-inline Quaternion operator*(Quaternion a, float b) {
+inline Quaternion operator*(Quaternion a, F32 b) {
   Quaternion result;
   result.x = a.x * b;
   result.y = a.y * b;
   result.z = a.z * b;
   result.w = a.w * b;
+  return result;
+}
+
+inline Quaternion operator/(Quaternion a, F32 b) {
+  Quaternion result;
+  result.w = a.w / b;
+  result.x = a.x / b;
+  result.y = a.y / b;
+  result.z = a.z / b;
   return result;
 }
 
@@ -32,6 +47,10 @@ inline float Dot(Quaternion a, Quaternion b) {
 
 inline float Magnitude(Quaternion q) {
   return sqrtf(q.x*q.x + q.y*q.y + q.z*q.z + q.w*q.w);
+}
+
+inline Quaternion Negate(Quaternion q) {
+  return Quaternion(-q.w, -q.x, -q.y, -q.z);
 }
 
 inline Quaternion Normalize(Quaternion q) {
@@ -45,9 +64,13 @@ inline Quaternion Normalize(Quaternion q) {
 }
 
 inline Quaternion Lerp(Quaternion& a, Quaternion& b, float t) {
-  float dot = Dot(a, b);
-  float bias = t > 0.0f ? 1.0f : -1.0f;
-  Quaternion result = (b * t) + (a * (bias * (1.0f - t)));
+  strict_assert(t >= 0.0f && t <= 1.0f);
+  a = Normalize(a);
+  b = Normalize(b);
+  F32 dot = Dot(a, b);
+  F32 bias = dot > 0.0f ? 1.0f : -1.0f;
+  Quaternion result = (a * (bias * (1.0f - t))) + (b * t);
+  result = Normalize(result);
   return result;
 }
 
@@ -65,6 +88,10 @@ inline Quaternion QuaternionFromEulerAngles(F32 x, F32 y, F32 z) {
   q.y = cx * sy * cz + sx * cy * sz;
   q.z = cx * cy * sz - sx * sy * cz;
   return q;
+}
+
+inline Quaternion QuaternionFromEulerAngles(V3 angles) {
+  return QuaternionFromEulerAngles(angles.x, angles.y, angles.z);
 }
 
 

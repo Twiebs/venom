@@ -13,85 +13,43 @@ VenomDebugRenderFrameInfo* GetDebugRenderFrameInfo() {
   return &GetVenomEngineData()->renderState.debugRenderFrameInfo;
 }
 
-void PushLogEntry(VenomDebugData *data, LogLevel level) {
-  if (level == LogLevel_ERROR) data->unseenErrorCount++;
-  else if (level == LogLevel_WARNING) data->unseenWarningCount++;
-  else if (level == LogLevel_INFO) data->unseenInfoCount++;
+void CreateLogEntry(LogLevel level, const char *fmt, ...) {
+  SystemTime time = GetSystemTime();
+  va_list args;
+  va_start(args, fmt);
+  auto engine = GetEngine();
+  auto threadID = GetThreadID();
+  auto worker = &engine->workers[threadID];
+  
+  U8 *writePtr = worker->stackMemory.memory + worker->stackMemory.used;
+  size_t bufferSize = worker->stackMemory.size - worker->stackMemory.used;
+  int bytesWritten = vsnprintf((char *)writePtr, bufferSize, fmt, args);
+  assert(bytesWritten > 0 && bytesWritten < bufferSize);
+  bytesWritten += 1; //Include null terminator
+  DebugLog *log = &engine->debugLog;
 
-  DebugLog* log = &data->debugLog;
-	size_t temp_buffer_length = strlen(log->temp_buffer);
-	printf(log->temp_buffer);
-	if (log->current_entry_count > DebugLog::ENTRY_COUNT_MAX) {
-		assert(false);
-	}
+  log->mutex.lock();
+  if (level == LogLevel_ERROR) engine->unseenErrorCount++;
+  else if (level == LogLevel_WARNING) engine->unseenWarningCount++;
+  else if (level == LogLevel_INFO) engine->unseenInfoCount++;
+  if (log->current_entry_count > DebugLog::ENTRY_COUNT_MAX) {
+    assert(false);
+  }
 
-	if (log->log_buffer_used + temp_buffer_length > DebugLog::ENTRY_BUFFER_SIZE) {
-		assert(false);
-	}
+  //TODO(Torin) Serialize buffer to disk properly!
+  if (log->log_buffer_used + bytesWritten > DebugLog::ENTRY_BUFFER_SIZE) {
+    assert(false);
+  }
 
-	memcpy(&log->log_buffer[log->log_buffer_used], log->temp_buffer, temp_buffer_length + 1);
-	log->entries[log->current_entry_count] = { level, &log->log_buffer[log->log_buffer_used] };
-	log->log_buffer_used += temp_buffer_length + 1;
-	log->current_entry_count += 1;
+  printf((const char *)writePtr);
+  memcpy(&log->log_buffer[log->log_buffer_used], writePtr, bytesWritten);
+
+  LogEntry *entry = &log->entries[log->current_entry_count];
+  entry->level = level;
+  entry->time = time;
+  entry->text = &log->log_buffer[log->log_buffer_used];
+  log->log_buffer_used += bytesWritten;
+  log->current_entry_count += 1;
+  log->mutex.unlock();
+  va_end(args);
 }
-
-void __BeginProfileEntry(ProfileData *profileData, const char *name){
-	for(size_t i = 0; i < profileData->persistantEntryCount; i++){
-		PersistantProfilerEntry *entry = &profileData->persistantEntries[i];
-		if(!strcmp(name, entry->name)){
-			entry->startTime = GetPerformanceCounterTime();
-			return;
-		}
-	}
-
-	assert(profileData->persistantEntryCount < PROFILE_PERSISTANT_ENTRY_COUNT_MAX);
-	PersistantProfilerEntry *entry = 
-    &profileData->persistantEntries[profileData->persistantEntryCount++];
-
-	//NOTE(Torin) This memory is never acounted for or cleaned up
-  //This is nessecary because the provided char* will point to garbage 
-  //if the game module is hotloaded 
-	size_t name_length = strlen(name);
-	entry->name = (char *)malloc(name_length + 1);
-	entry->name[name_length] = 0;
-	memcpy(entry->name, name, name_length);
-	entry->startTime = GetPerformanceCounterTime();
-}
-
-void __EndProfileEntry(ProfileData *profileData, const char *name){
-	U64 currentTime = GetPerformanceCounterTime();
-	for(size_t i = 0; i < profileData->persistantEntryCount; i++) {
-		PersistantProfilerEntry *entry = &profileData->persistantEntries[i];
-		if(strcmp(name, entry->name) == 0){
-			U64 elapsedTime = currentTime - entry->startTime;
-			float elapsedTimeInNanoseconds = (elapsedTime / (GetPerformanceCounterFrequency()));
-      float elapsedTimeInMilliseconds = elapsedTimeInNanoseconds / 1000000.0f;
-			entry->elapsedTimes[entry->historyWriteIndex++] = elapsedTimeInMilliseconds;
-      if(entry->historyWriteIndex > ARRAY_COUNT(entry->elapsedTimes)) 
-        entry->historyWriteIndex = 0;
-			return;
-		}
-	}
-
-	assert(false && "No matching label for profile block");
-}
-
-static inline
-void BeginProfileEntryHook(const char* name) {
-  VenomDebugData* debugData = GetDebugData();
-  __BeginProfileEntry(&debugData->profileData, name);
-}
-
-static inline
-void EndProfileEntryHook(const char* name) {
-  VenomDebugData* debugData = GetDebugData();
-  __EndProfileEntry(&debugData->profileData, name);
-}
-
-#ifndef VENOM_DISABLE_PROFILER
-#define DEBUG_BeginProfileEntry(name) BeginProfileEntryHook(name) 
-#define DEBUG_EndProfileEntry(name) EndProfileEntryHook(name) 
-#else//VENOM_DISABLE_PROFILER
-#define DEBUG_BeginProfileEntry(name)
-#define DEBUG_EndProfileEntry(name)
-#endif//VENOM_DISABLE_PROFILER

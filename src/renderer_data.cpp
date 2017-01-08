@@ -1,5 +1,5 @@
 #define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+#include "thirdparty/stb_image.h"
 
 bool CreateMaterialData(const char **filenames, U32 flags, MaterialData *data, RGB8 diffuseTint = {}) {
   

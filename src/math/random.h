@@ -1,6 +1,6 @@
 struct RNGSeed {
 	U64 seed;
-	RNGSeed(U64 seed) : seed(seed) {}
+  RNGSeed(U64 seed) : seed(seed) { assert(seed != 0); }
 };
 
 U64 RandomU64(RNGSeed& seed) {

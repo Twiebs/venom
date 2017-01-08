@@ -42,22 +42,18 @@ EntityIndex* outIndex, EntityContainer* container)
       break;
     }
   }
+
+  entity->rotation = QuaternionIdentity();
   return entity;
 }
 
 void assign_model_to_entity(EntityIndex index, Asset_ID id, AssetManifest *manifest, EntityContainer *container) {
   EntityBlock *block = container->blocks[index.blockIndex];
   Entity *entity = &block->entities[index.slotIndex];
-  ModelAsset *asset = GetModelAsset(id, manifest);
-  if (asset->data.jointCount > 0) {
-    entity->animation_state.frames_per_second = 30.0f;
-  } 
-
   entity->modelID = id;
 }
 
-void EntityContainerInit(EntityContainer* container, 
-    U32 entityCountPerBlock, U32 initalBlockCount) {
+void EntityContainerInit(EntityContainer* container, U32 entityCountPerBlock, U32 initalBlockCount) {
   container->capacityPerBlock = entityCountPerBlock;
   container->blocks = (EntityBlock**)malloc(initalBlockCount * sizeof(EntityBlock*));
   container->blocks[0] = AllocateEntityBlock(entityCountPerBlock);
@@ -65,7 +61,6 @@ void EntityContainerInit(EntityContainer* container,
   container->currentBlockCount = 1;
   container->currentBlockCapacity = initalBlockCount;
 }
-
 
 Entity* GetEntity(EntityIndex index, EntityContainer* container) {
   EntityBlock *block = container->blocks[index.blockIndex];
@@ -77,4 +72,3 @@ Entity *GetEntity(U32 index, EntityContainer *container) {
   entity_index.slotIndex = index;
   return GetEntity(entity_index, container);
 }
-

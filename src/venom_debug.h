@@ -1,4 +1,4 @@
-#include "imgui.h"
+#include "thirdparty/imgui.h"
 
 VenomDebugRenderSettings* GetDebugRenderSettings(); 
 VenomDebugRenderFrameInfo* GetDebugRenderFrameInfo(); 
@@ -10,23 +10,24 @@ enum LogLevel {
 	LogLevel_DEBUG,
 };
 
-static const char *LOGLEVEL_TAG[] = {
-	"[ERROR]",
-  "[WARNING]",
-	"[INFO]",
-	"[DEBUG]"
+static const char *LogLevelNames[] = {
+	"ERROR",
+  "WARNING",
+	"INFO",
+	"DEBUG"
+};
+
+static const V4 LOGLEVEL_COLOR[] = {
+  V4(1.0f, 0.0f, 0.0f, 1.0f),
+  V4(1.0f, 1.0f, 0.0f, 1.0f),
+  V4(1.0f, 1.0f, 1.0f, 1.0f),
+  V4(0.6f, 0.6f, 0.6f, 1.0f),
 };
 
 struct LogEntry {
 	LogLevel level;
+  SystemTime time;
 	char *text;
-};
-
-static const V4 LOGLEVEL_COLOR[] = {
-	V4(1.0f, 0.0f, 0.0f, 1.0f),
-  V4(1.0f, 1.0f, 0.0f, 1.0f),
-	V4(1.0f, 1.0f, 1.0f, 1.0f),
-	V4(0.6f, 0.6f, 0.6f, 1.0f),
 };
 
 struct DebugLog {
@@ -35,8 +36,8 @@ struct DebugLog {
 	static const U32 ENTRY_BUFFER_SIZE = MEGABYTES(2);
 	static const U32 TEMP_BUFFER_SIZE = KILOBYTES(256);
 
+  std::mutex mutex;
 	LogEntry entries[ENTRY_COUNT_MAX];
-	char temp_buffer[TEMP_BUFFER_SIZE];
 	char log_buffer[ENTRY_BUFFER_SIZE];
 	U32 logged_opengl_ids[OPENGL_ID_COUNT_MAX];
 
@@ -44,52 +45,3 @@ struct DebugLog {
 	size_t log_buffer_used;
 	U32 logged_opengl_id_count;
 };
-
-
-struct ExplicitProfilerEntry {
-	const char *name;
-	U64 elapsedCPUCycles;
-	float elapsedFrameTime;
-};
-
-#define PROFILER_ELAPSED_TIME_HISTORY_COUNT 128
-#define PROFILE_PERSISTANT_ENTRY_COUNT_MAX 16
-
-struct PersistantProfilerEntry {
-	char* name;
-  U64 startTime;
-	float elapsedTimes[PROFILER_ELAPSED_TIME_HISTORY_COUNT];
-  U64 historyWriteIndex;
-};
-
-struct ProfileData {
-	PersistantProfilerEntry persistantEntries[PROFILE_PERSISTANT_ENTRY_COUNT_MAX];
-	ExplicitProfilerEntry explictEntries[256];
-	U32 persistantEntryCount;
-	U32 explicitEntryCount;
-};
-
-struct VenomDebugData {
-  U32 unseenErrorCount;
-  U32 unseenWarningCount;
-  U32 unseenInfoCount;
-
-  B8 isConsoleVisible;
-
-  //B8 triggerToggleConsole;
-
-	DebugLog debugLog;
-	ProfileData profileData;
-};
-
-void PushLogEntry(VenomDebugData* data, LogLevel level);//, const char *message, ...);
-void BeginPersistantProfileEntry(ProfileData *data, const char *name);
-void EndPersistantProfileEntry(ProfileData *data, const char *name);
-
-#if 0
-void BeginSingleEntry(const char *name);
-void BeginPersistantEntry(const char *name);
-void EndPersistantEntry(const char *name);
-#endif
-
-

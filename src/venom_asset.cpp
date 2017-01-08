@@ -1,31 +1,13 @@
 
-#if 0
-static inline bool check_model_asset_for_errors(ModelAsset *model){
-  MeshData *mesh_data = &model->data.meshData;
-  if (mesh_data->joints > 0) {
-    for (size_t i = 0; i < mesh_data->vertexCount; i++) {
-      AnimatedVertex *vertex = &mesh_data->vertices[i];
-      float total_weight = 0.0f;
-      for (size_t j = 0; j < 4; j++) {
-        total_weight += vertex->weight[j];
-      }
-
-      if (abs(1.0 - total_weight) > 0.1) {
-        LogWarning("Vertex weights do not sum to 1.0!");
-        return false;
-      }
-    }
-  }
-
-
-  return true;
-}
-
-#endif
-
-
-static inline bool CreateModelAssetFromFile(U32 slot_index, AssetManifest *manifest) {
+//NOTE(Torin 2017-01-07) At this point the model assset's state is AssetState_Loading
+//and no other threads have access to the data in the slot.  Upon exiting this procedure
+//the asset will still be in the loading state and requires a secondary clean up phase to
+//generate the data for opengl.  This is probably a temporary measure!
+static inline bool CreateModelAssetFromFile(U32 slot_index) {
+  auto manifest = GetAssetManifest();
   AssetSlot *slot = &manifest->modelAssets[slot_index];
+  SpinLock(&slot->lock);
+
   assert(slot->asset == 0);
   assert(slot->filename != 0);
   assert(slot->name != 0);
@@ -35,37 +17,57 @@ static inline bool CreateModelAssetFromFile(U32 slot_index, AssetManifest *manif
   strcpy(filename + sizeof(VENOM_ASSET_DIRECTORY) - 2, slot->filename);
   slot->lastWriteTime = GetFileLastWriteTime(filename);
 
+  //TODO(Torin) Way to many memory allocations are happening here
+  //and in the subsequent procedures!  ImportModelAssetFromExternalFormat should probably
+  //be made and do the allocation of the model asset and everything else required as well
+  //all at the exact same time to mimic how it would work in a release build to reduce the
+  //overall compexity of the system
   slot->asset = malloc(sizeof(ModelAsset));
   memset(slot->asset, 0x00, sizeof(ModelAsset));
   ModelAsset* modelAsset = (ModelAsset *)slot->asset;
   if (ImportExternalModelData(filename, &modelAsset->data) == false) {
     slot->asset = 0;
-    slot->flags |= AssetFlag_INVALID;
+    //TODO(Torin) How should this be set!
+    assert(slot->assetState == AssetState_Loading);
+    slot->assetState = AssetState_Invalid;
     return false;
   }
 
-  modelAsset->slot_index = slot_index;
+  modelAsset->slotIndex = slot_index;
   modelAsset->aabb = ComputeAABB(&modelAsset->data.meshData);
   modelAsset->size = Abs(modelAsset->aabb.max - modelAsset->aabb.min);
   modelAsset->drawable.materials = (MaterialDrawable *)calloc(modelAsset->data.meshCount, sizeof(MaterialDrawable));
-  create_indexed_animated_vertex_array(&modelAsset->vertexArray, &modelAsset->data.meshData);
-  
+
   ModelDrawable *drawable = &modelAsset->drawable;
   drawable->indexCountPerMesh = modelAsset->data.index_count_per_mesh;
   drawable->vertexArrayID = modelAsset->vertexArray.vertexArrayID;
   drawable->meshCount = modelAsset->data.meshCount;
   drawable->joints = modelAsset->data.joints;
   drawable->joint_count = modelAsset->data.jointCount;
-
   slot->lastWriteTime = GetFileLastWriteTime(filename);
+
+  //NOTE(Torin) The asset is still in the loading state and requires
+  //additional processing after this procedure completes
+  ReleaseLock(&slot->lock);
+  return true;
+}
+
+static inline void CreateOpenGLResourcesForModelAsset(U32 slotIndex) {
+  auto manifest = GetAssetManifest();
+  auto slot = &manifest->modelAssets[slotIndex];
+  SpinLock(&slot->lock);
+  ModelAsset *modelAsset = (ModelAsset *)slot->asset;
+
+  create_indexed_animated_vertex_array(&modelAsset->vertexArray, &modelAsset->data.meshData);
   for (size_t i = 0; i < modelAsset->data.meshCount; i++) {
     modelAsset->drawable.materials[i] = CreateMaterialDrawable(&modelAsset->data.materialDataPerMesh[i]);
   }
 
-  //check_model_asset_for_errors(modelAsset);
-
-  slot->flags |= AssetFlag_LOADED;
+  assert(slot->assetState == AssetState_Loading);
+  slot->assetState = AssetState_Loaded;
+  ReleaseLock(&slot->lock);
 }
+
 
 void initalize_asset_manifest(AssetManifest *manifest) {
 #ifndef VENOM_RELEASE
@@ -78,7 +80,7 @@ void initalize_asset_manifest(AssetManifest *manifest) {
   slot->name = "null_model_asset";
   slot->filename = "/internal/null_model.fbx";
   slot->lastWriteTime = 0;
-  CreateModelAssetFromFile(0, manifest);
+  CreateModelAssetFromFile(0);
 
   ReadAssetManifestFile("../project/assets.vsf", manifest);
 }
@@ -90,6 +92,7 @@ void initalize_asset_manifest(AssetManifest *manifest) {
 //NOTE(Torin) The asset manifest is used to store asset information in
 //development builds for easy runtime modifcation of asset data without
 //using hardcoded values or requiring seperate metadata to be mantained
+
 
 //TODO(Torin) This should be renamed or combined with a procedure
 //that actualy modifes the asset slot to indicate the model is now unloaded
@@ -124,7 +127,7 @@ void hotload_modified_assets(AssetManifest *manifest) {
             loadedShader->programHandle =
               DEBUGCreateShaderProgramFromFiles(loadedShader->filenames);
             glDeleteProgram(newShader);
-            LOG_DEBUG("Reloaded shader program");
+            LogDebug("Reloaded shader program");
           }
           break;
         }
@@ -136,23 +139,27 @@ void hotload_modified_assets(AssetManifest *manifest) {
   char modelFilename[1024] = {};
   memcpy(modelFilename, VENOM_ASSET_DIRECTORY, sizeof(VENOM_ASSET_DIRECTORY) - 1);
   char *modelFilenameWrite = modelFilename + sizeof(VENOM_ASSET_DIRECTORY) - 1;
+  
   for (size_t i = 0; i < manifest->modelAssets.count; i++) {
-    if (manifest->modelAssets[i].flags & AssetFlag_LOADED || manifest->modelAssets[i].flags & AssetFlag_INVALID) {
-      AssetSlot* modelSlot = &manifest->modelAssets[i];
+    AssetSlot* modelSlot = &manifest->modelAssets[i];
+    if (TryLock(&modelSlot->lock) == false) continue;
+    AssetState assetState = (AssetState)manifest->modelAssets[i].assetState;
+    if (assetState == AssetState_Loaded || assetState == AssetState_Invalid) {
       ModelAsset* modelAsset = (ModelAsset *)manifest->modelAssets[i].asset;
       strcpy(modelFilenameWrite, modelSlot->filename);
       U64 lastWriteTime = GetFileLastWriteTime(modelFilename);
       if (lastWriteTime != modelSlot->lastWriteTime) {
         modelSlot->lastWriteTime = lastWriteTime;
-        if ((manifest->modelAssets[i].flags & AssetFlag_INVALID) == 0) {
+        if (manifest->modelAssets[i].assetState == AssetState_Invalid) {
           UnloadModelAsset(modelAsset);
         }
 
-        manifest->modelAssets[i].flags = 0;
+        manifest->modelAssets[i].assetState = AssetState_Unloaded;
         manifest->modelAssets[i].asset = 0;
         LogDebug("Unloaded model asset %s", modelSlot->name);
       }
     }
+    ReleaseLock(&modelSlot->lock);
   }
 }
 
@@ -162,13 +169,16 @@ void hotload_modified_assets(AssetManifest *manifest) {
 
 void RemoveModelFromManifest(U32 index, AssetManifest *manifest) {
   AssetSlot *slot = &manifest->modelAssets[index];
-  if (slot->flags & AssetFlag_LOADED) {
+  SpinLock(&slot->lock);
+  if (slot->assetState == AssetState_Loaded) {
     UnloadModelAsset((ModelAsset *)slot->asset);
   }
 
   free(slot->name);
   free(slot->filename);
+  //TODO(Torin) This is bad we need to lock model assets!
   manifest->modelAssets.RemoveUnordered(index);
+  ReleaseLock(&slot->lock);
 }
 
 void WriteAssetManifestFile(const char *filename, AssetManifest *manifest){
@@ -243,20 +253,24 @@ ModelAsset* GetModelAsset(Asset_ID& id, AssetManifest* manifest) {
     id = GetModelID(id.asset_name, manifest);
 
   AssetSlot* modelAssetSlot = &manifest->modelAssets[id.slot_index];
-  if((modelAssetSlot->flags & AssetFlag_LOADED) == 0){
-    if (modelAssetSlot->flags & AssetFlag_INVALID) {
+  if (TryLock(&modelAssetSlot->lock)) {
+    if (modelAssetSlot->assetState == AssetState_Unloaded) {
+      Task task;
+      task.type = TaskType_LoadModel;
+      task.slotID = id.slot_index;
+      ScheduleTask(task);
+      modelAssetSlot->assetState = AssetState_Loading;
+      ReleaseLock(&modelAssetSlot->lock);
+    } else if (modelAssetSlot->assetState == AssetState_Invalid) {
       Asset_ID null_id = {};
       return GetModelAsset(null_id, manifest);
-    }
-
-    if (CreateModelAssetFromFile(id.slot_index, manifest) == false) {
-      Asset_ID null_id = {};
-      return GetModelAsset(null_id, manifest);
+    } else if (modelAssetSlot->assetState == AssetState_Loaded) {
+      ModelAsset *modelAsset = (ModelAsset *)manifest->modelAssets[id.slot_index].asset;
+      return modelAsset;
     }
   }
 
-  ModelAsset *modelAsset = (ModelAsset *)manifest->modelAssets[id.slot_index].asset;
-  return modelAsset;
+  return nullptr;
 }
 
 //TODO(Torin) Check load state here

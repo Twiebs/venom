@@ -1,23 +1,4 @@
-struct Sphere {
-  V3 center;
-  float radius;
-};
 
-struct Capsule
-{
-  V3 line_segment_a;
-  V3 line_segment_b;
-  float radius;
-};
-
-struct ConvexHull
-{
-};
-
-struct Plane {
-  V3 normal;
-  float distance;
-};
 
 static Plane 
 ComputePlane(V3 a, V3 b, V3 c) {
@@ -41,20 +22,20 @@ int IntersectsPlane(V3 line_begin, V3 line_end, Plane plane, V3* intersection_po
     return 0;
 }
 
-V3 ClosestPointOnPlane(V3 a, Plane p)
-{
+inline V3 ClosestPointOnPlane(V3 a, Plane p) {
     float t = Dot(p.normal, a) - p.distance;
     V3 result = a - (t * p.normal);
     return result;
 };
 
-static B32 
-Intersects(AABB a, AABB b) {
+inline B32 Intersects(AABB a, AABB b) {
   if (a.max.x < b.min.x || a.min.x > b.max.x) return 0;
   if (a.max.y < b.min.y || a.min.y > b.max.y) return 0;
   if (a.max.z < b.min.z || a.min.z > b.max.z) return 0;
   return 1;
 }
+
+
 
 #if 0
 static int
@@ -163,10 +144,7 @@ IntersectRayAABB(V3 rayOrigin, V3 rayDirection, AABB aabb)
 }
 #endif
 
-
-static B32 
-Intersects(Sphere a, Sphere b)
-{
+static B32 Intersects(Sphere a, Sphere b) {
   V3 displacement = a.center - b.center;
   float distance_squared = Dot(displacement, displacement);
 
@@ -176,13 +154,6 @@ Intersects(Sphere a, Sphere b)
   int result = distance_squared < radius_sum_squared;
   return result; 
 }
-
-static B32 
-Intersects(Capsule a, Sphere b) 
-{
-  return 1;
-}
-
 //================================================
 
 static Sphere 
@@ -201,8 +172,7 @@ ComputeBoundingSphere(MeshData data)
 }
 
 
-AABB 
-ComputeAABB(const MeshData* data) {
+AABB ComputeAABB(const MeshData* data) {
   AABB result = {};
   for (size_t i = 0; i < data->vertexCount; i++) {
     AnimatedVertex *vertex = (AnimatedVertex *)&data->vertices[i];
@@ -215,9 +185,8 @@ ComputeAABB(const MeshData* data) {
   }
   return result;
 }
-  
-static ConvexHull 
-ComputeConvexHull(const MeshData& data) {
-  ConvexHull result = {};
-  return result;
-} 
+
+void UpdateEntityPhysics(Entity *entity, F32 deltaTime) {
+  entity->position += entity->velocity * deltaTime;
+  //entity->velocity *= 0.01f; //TODO(Torin) Drag for material
+}

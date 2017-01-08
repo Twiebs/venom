@@ -1,42 +1,203 @@
-﻿  platform.cpp
-..\..\..\src\platform.cpp(2): warning C4068: unknown pragma
-..\..\..\src\platform.cpp(3): warning C4068: unknown pragma
-..\..\..\src\platform.cpp(4): warning C4068: unknown pragma
-..\..\..\src\platform.cpp(7): warning C4068: unknown pragma
-..\..\..\src\platform.cpp(8): warning C4068: unknown pragma
-..\..\..\src\platform.cpp(9): warning C4068: unknown pragma
-..\..\..\src\platform.cpp(10): warning C4068: unknown pragma
-..\..\..\src\platform.cpp(11): warning C4068: unknown pragma
-d:\workspace\venom\src\platform.h(4): warning C4068: unknown pragma
-d:\workspace\venom\src\platform.h(5): warning C4068: unknown pragma
-d:\workspace\venom\src\platform.h(6): warning C4068: unknown pragma
-d:\workspace\venom\src\platform.h(9): warning C4068: unknown pragma
-d:\workspace\venom\src\platform.h(10): warning C4068: unknown pragma
-d:\workspace\venom\src\platform.h(11): warning C4068: unknown pragma
-d:\workspace\venom\src\platform.h(12): warning C4068: unknown pragma
-d:\workspace\venom\src\platform.h(13): warning C4068: unknown pragma
-d:\workspace\venom\src\math_procedural.h(15): warning C4244: 'initializing': conversion from 'U64' to 'float', possible loss of data
-d:\workspace\venom\src\offline_asset_tools.cpp(1): warning C4068: unknown pragma
-d:\workspace\venom\src\offline_asset_tools.cpp(2): warning C4068: unknown pragma
-d:\workspace\venom\src\offline_asset_tools.cpp(7): warning C4068: unknown pragma
-d:\workspace\venom\src\offline_asset_tools.cpp(9): warning C4068: unknown pragma
-d:\workspace\venom\src\offline_asset_tools.cpp(10): warning C4068: unknown pragma
+﻿  venom_platform.cpp
+d:\workspace\venom\src\venom_memory.h(53): warning C4267: 'initializing': conversion from 'size_t' to 'U32', possible loss of data
+d:\workspace\venom\src\math/matrix.h(48): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
+d:\workspace\venom\src\math/matrix.h(58): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
+d:\workspace\venom\src\math/matrix.h(73): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
+d:\workspace\venom\src\math/random.h(33): warning C4244: '=': conversion from 'F64' to 'float', possible loss of data
+d:\workspace\venom\src\math/random.h(34): warning C4244: '=': conversion from 'F64' to 'float', possible loss of data
+d:\workspace\venom\src\math/random.h(35): warning C4244: '=': conversion from 'F64' to 'float', possible loss of data
+d:\workspace\venom\src\math/random.h(42): warning C4244: '=': conversion from 'F64' to 'float', possible loss of data
+d:\workspace\venom\src\math/random.h(43): warning C4244: '=': conversion from 'F64' to 'float', possible loss of data
+d:\workspace\venom\src\math/random.h(44): warning C4244: '=': conversion from 'F64' to 'float', possible loss of data
+d:\workspace\venom\src\asset_data.h(104): warning C4624: 'AssetManifest': destructor was implicitly defined as deleted
+d:\workspace\venom\src\venom_platform.h(216): warning C4624: 'GameMemory': destructor was implicitly defined as deleted
+d:\workspace\venom\src\venom_debug.cpp(81): warning C4244: 'initializing': conversion from 'U64' to 'float', possible loss of data
+d:\workspace\venom\src\animation.cpp(18): warning C4267: '=': conversion from 'size_t' to 'S32', possible loss of data
+d:\workspace\venom\src\animation.cpp(187): warning C4267: 'return': conversion from 'size_t' to 'U32', possible loss of data
+d:\workspace\venom\src\opengl_glsl.cpp(30): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\stdio.h(205): note: see declaration of 'fopen'
+d:\workspace\venom\src\opengl_glsl.cpp(154): warning C4244: '=': conversion from 'U64' to 'U32', possible loss of data
+d:\workspace\venom\src\opengl_glsl.cpp(190): warning C4267: '=': conversion from 'size_t' to 'U32', possible loss of data
+d:\workspace\venom\src\opengl_glsl.cpp(224): warning C4267: '=': conversion from 'size_t' to 'U32', possible loss of data
+d:\workspace\venom\src\opengl_glsl.cpp(238): warning C4244: '=': conversion from 'U64' to 'U32', possible loss of data
+d:\workspace\venom\src\opengl_glsl.cpp(244): warning C4244: '=': conversion from 'U64' to 'U32', possible loss of data
+d:\workspace\venom\src\opengl_glsl.cpp(72): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\stdio.h(205): note: see declaration of 'fopen'
+d:\workspace\venom\src\opengl_glsl.cpp(167): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\stdio.h(205): note: see declaration of 'fopen'
+d:\workspace\venom\src\opengl_glsl.cpp(205): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\stdio.h(205): note: see declaration of 'fopen'
+d:\workspace\venom\src\opengl_glsl.cpp(287): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\stdio.h(1769): note: see declaration of 'sprintf'
+d:\workspace\venom\src\opengl_glsl.cpp(292): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\stdio.h(205): note: see declaration of 'fopen'
+d:\workspace\venom\src\opengl_resources.cpp(71): warning C4267: 'argument': conversion from 'size_t' to 'GLenum', possible loss of data
+d:\workspace\venom\src\opengl_resources.cpp(99): warning C4244: '=': conversion from 'F64' to 'float', possible loss of data
+d:\workspace\venom\src\opengl_resources.cpp(100): warning C4244: '=': conversion from 'F64' to 'float', possible loss of data
+d:\workspace\venom\src\opengl_resources.cpp(114): warning C4244: '=': conversion from 'F64' to 'float', possible loss of data
+d:\workspace\venom\src\opengl_resources.cpp(115): warning C4244: '=': conversion from 'F64' to 'float', possible loss of data
+d:\workspace\venom\src\opengl_resources.cpp(116): warning C4244: '=': conversion from 'F64' to 'float', possible loss of data
+d:\workspace\venom\src\debug_renderer.cpp(51): warning C4267: 'argument': conversion from 'size_t' to 'U32', possible loss of data
+d:\workspace\venom\src\debug_renderer.cpp(64): warning C4267: '=': conversion from 'size_t' to 'U32', possible loss of data
+d:\workspace\venom\src\opengl_render.cpp(34): warning C4267: 'argument': conversion from 'size_t' to 'S32', possible loss of data
+d:\workspace\venom\src\opengl_render.cpp(35): warning C4267: 'argument': conversion from 'size_t' to 'S32', possible loss of data
+d:\workspace\venom\src\opengl_render.cpp(40): warning C4267: 'argument': conversion from 'size_t' to 'S32', possible loss of data
+d:\workspace\venom\src\opengl_render.cpp(41): warning C4267: 'argument': conversion from 'size_t' to 'S32', possible loss of data
+d:\workspace\venom\src\opengl_render.cpp(42): warning C4267: 'argument': conversion from 'size_t' to 'GLint', possible loss of data
+d:\workspace\venom\src\opengl_render.cpp(47): warning C4267: 'argument': conversion from 'size_t' to 'S32', possible loss of data
+d:\workspace\venom\src\opengl_render.cpp(48): warning C4267: 'argument': conversion from 'size_t' to 'S32', possible loss of data
+d:\workspace\venom\src\opengl_render.cpp(49): warning C4267: 'argument': conversion from 'size_t' to 'S32', possible loss of data
+d:\workspace\venom\src\opengl_render.cpp(225): warning C4267: 'argument': conversion from 'size_t' to 'S32', possible loss of data
+d:\workspace\venom\src\opengl_render.cpp(238): warning C4267: 'argument': conversion from 'size_t' to 'S32', possible loss of data
+d:\workspace\venom\src\opengl_render.cpp(341): warning C4244: 'argument': conversion from 'F32' to 'const U32', possible loss of data
+d:\workspace\venom\src\opengl_render.cpp(342): warning C4244: 'argument': conversion from 'F32' to 'U32', possible loss of data
+d:\workspace\venom\src\opengl_render.cpp(517): warning C4305: 'argument': truncation from 'double' to 'float'
+d:\workspace\venom\src\opengl_render.cpp(542): warning C4244: 'argument': conversion from 'F32' to 'GLsizei', possible loss of data
+d:\workspace\venom\src\opengl_render.cpp(661): warning C4244: 'argument': conversion from 'F32' to 'GLsizei', possible loss of data
+d:\workspace\venom\src\opengl_render.cpp(737): warning C4244: 'argument': conversion from 'F32' to 'GLint', possible loss of data
+d:\workspace\venom\src\utility/StringUtils.cpp(7): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+d:\workspace\venom\src\utility/StringUtils.cpp(14): warning C4554: '&': check operator precedence for possible error; use parentheses to clarify precedence
 d:\workspace\venom\src\stb_vorbis.c(4432): warning C4244: 'return': conversion from '__int64' to 'int', possible loss of data
 d:\workspace\venom\src\stb_vorbis.c(4442): warning C4244: 'return': conversion from '__int64' to 'int', possible loss of data
 d:\workspace\venom\src\stb_vorbis.c(4462): warning C4244: 'return': conversion from '__int64' to 'int', possible loss of data
 d:\workspace\venom\src\stb_vorbis.c(4485): warning C4244: '=': conversion from '__int64' to 'int', possible loss of data
 d:\workspace\venom\src\stb_vorbis.c(4500): warning C4244: 'return': conversion from '__int64' to 'unsigned int', possible loss of data
-d:\workspace\venom\src\offline_asset_tools.cpp(12): warning C4068: unknown pragma
-..\..\..\src\platform.cpp(107): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
-d:\workspace\venom\src\platform_windows.cpp(415): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
-d:\workspace\venom\src\platform_windows.cpp(416): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
-d:\workspace\venom\src\platform_windows.cpp(417): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
-d:\workspace\venom\src\platform_windows.cpp(418): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
-d:\workspace\venom\src\platform_windows.cpp(440): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
-d:\workspace\venom\src\platform_windows.cpp(493): warning C4244: 'argument': conversion from 'WPARAM' to 'int', possible loss of data
-  Generating code
-  27 of 397 functions ( 6.8%) were compiled, the rest were copied from previous compilation.
-    0 functions were new in current compilation
-    8 functions had inline decision re-evaluated but remain unchanged
-  Finished generating code
-  build64.vcxproj -> D:\workspace\venom\msbuild\build64\x64\Release\build64.exe
+d:\workspace\venom\src\stb_vorbis.c(5026): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\stdio.h(205): note: see declaration of 'fopen'
+d:\workspace\venom\src\assimp_importer.cpp(1): warning C4068: unknown pragma
+d:\workspace\venom\src\assimp_importer.cpp(2): warning C4068: unknown pragma
+d:\workspace\venom\src\assimp_importer.cpp(7): warning C4068: unknown pragma
+d:\workspace\venom\src\assimp_importer.cpp(31): warning C4267: 'initializing': conversion from 'size_t' to 'S32', possible loss of data
+d:\workspace\venom\src\assimp_importer.cpp(101): warning C4267: '=': conversion from 'size_t' to 'U32', possible loss of data
+d:\workspace\venom\src\assimp_importer.cpp(207): warning C4267: '=': conversion from 'size_t' to 'S32', possible loss of data
+d:\workspace\venom\src\assimp_importer.cpp(221): warning C4267: 'argument': conversion from 'size_t' to 'S32', possible loss of data
+d:\workspace\venom\src\assimp_importer.cpp(235): warning C4267: '=': conversion from 'size_t' to 'S32', possible loss of data
+d:\workspace\venom\src\assimp_importer.cpp(316): warning C4267: '=': conversion from 'size_t' to 'U32', possible loss of data
+d:\workspace\venom\src\assimp_importer.cpp(317): warning C4267: '=': conversion from 'size_t' to 'U32', possible loss of data
+d:\workspace\venom\src\assimp_importer.cpp(318): warning C4267: '=': conversion from 'size_t' to 'U32', possible loss of data
+d:\workspace\venom\src\assimp_importer.cpp(338): warning C4267: '=': conversion from 'size_t' to 'U8', possible loss of data
+d:\workspace\venom\src\assimp_importer.cpp(343): warning C4267: '=': conversion from 'size_t' to 'U8', possible loss of data
+d:\workspace\venom\src\assimp_importer.cpp(375): warning C4244: '=': conversion from 'double' to 'F32', possible loss of data
+d:\workspace\venom\src\assimp_importer.cpp(376): warning C4244: '=': conversion from 'double' to 'F32', possible loss of data
+d:\workspace\venom\src\assimp_importer.cpp(406): warning C4244: '=': conversion from 'double' to 'F32', possible loss of data
+d:\workspace\venom\src\assimp_importer.cpp(417): warning C4244: '=': conversion from 'double' to 'F32', possible loss of data
+d:\workspace\venom\src\assimp_importer.cpp(430): warning C4244: '=': conversion from 'double' to 'F32', possible loss of data
+d:\workspace\venom\src\assimp_importer.cpp(432): warning C4305: 'argument': truncation from 'double' to 'F32'
+d:\workspace\venom\src\assimp_importer.cpp(433): warning C4305: 'argument': truncation from 'double' to 'F32'
+d:\workspace\venom\src\assimp_importer.cpp(464): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\string.h(119): note: see declaration of 'strcpy'
+d:\workspace\venom\src\venom_asset.cpp(10): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\string.h(119): note: see declaration of 'strcpy'
+d:\workspace\venom\src\venom_asset.cpp(116): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\string.h(119): note: see declaration of 'strcpy'
+d:\workspace\venom\src\venom_asset.cpp(167): warning C4996: 'strdup': The POSIX name for this item is deprecated. Instead, use the ISO C and C++ conformant name: _strdup. See online help for details.
+  C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\string.h(552): note: see declaration of 'strdup'
+d:\workspace\venom\src\venom_asset.cpp(168): warning C4996: 'strdup': The POSIX name for this item is deprecated. Instead, use the ISO C and C++ conformant name: _strdup. See online help for details.
+  C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\string.h(552): note: see declaration of 'strdup'
+d:\workspace\venom\src\venom_asset.cpp(177): warning C4267: '=': conversion from 'size_t' to 'U32', possible loss of data
+d:\workspace\venom\src\venom_asset.cpp(191): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\string.h(119): note: see declaration of 'strcpy'
+d:\workspace\venom\src\venom_asset.cpp(192): warning C4267: '=': conversion from 'size_t' to 'U32', possible loss of data
+d:\workspace\venom\src\venom_asset.cpp(199): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\string.h(119): note: see declaration of 'strcpy'
+d:\workspace\venom\src\venom_asset.cpp(257): warning C4244: 'argument': conversion from 'U64' to 'U32', possible loss of data
+d:\workspace\venom\src\venom_serializer.cpp(50): warning C4244: 'initializing': conversion from 'uint64_t' to 'uint32_t', possible loss of data
+d:\workspace\venom\src\venom_serializer.cpp(60): warning C4267: '=': conversion from 'size_t' to 'uint32_t', possible loss of data
+d:\workspace\venom\src\venom_serializer.cpp(76): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\stdio.h(205): note: see declaration of 'fopen'
+d:\workspace\venom\src\venom_serializer.cpp(173): warning C4244: '=': conversion from 'uint64_t' to 'uint32_t', possible loss of data
+d:\workspace\venom\src\venom_serializer.cpp(174): warning C4244: '=': conversion from 'uint64_t' to 'uint32_t', possible loss of data
+d:\workspace\venom\src\venom_serializer.cpp(186): warning C4267: '=': conversion from 'size_t' to 'uint32_t', possible loss of data
+d:\workspace\venom\src\engine.cpp(40): warning C4267: '=': conversion from 'size_t' to 'U32', possible loss of data
+d:\workspace\venom\src\engine.cpp(46): warning C4267: '=': conversion from 'size_t' to 'U32', possible loss of data
+d:\workspace\venom\src\venom_module.cpp(1): warning C4068: unknown pragma
+d:\workspace\venom\src\venom_module.cpp(2): warning C4068: unknown pragma
+d:\workspace\venom\src\venom_module.cpp(3): warning C4068: unknown pragma
+d:\workspace\venom\src\venom_module.cpp(4): warning C4068: unknown pragma
+d:\workspace\venom\src\venom_module.cpp(5): warning C4068: unknown pragma
+d:\workspace\venom\src\venom_module.cpp(6): warning C4068: unknown pragma
+d:\workspace\venom\src\venom_module.cpp(7): warning C4068: unknown pragma
+d:\workspace\venom\src\venom_module.cpp(8): warning C4068: unknown pragma
+d:\workspace\venom\src\venom_module.cpp(9): warning C4068: unknown pragma
+d:\workspace\venom\src\venom_module.cpp(10): warning C4068: unknown pragma
+d:\workspace\venom\src\venom_module.cpp(13): warning C4068: unknown pragma
+d:\workspace\venom\src\venom_module.cpp(14): warning C4068: unknown pragma
+d:\workspace\venom\src\venom_module.cpp(15): warning C4068: unknown pragma
+d:\workspace\venom\src\venom_module.cpp(16): warning C4068: unknown pragma
+d:\workspace\venom\src\venom_module.cpp(17): warning C4068: unknown pragma
+d:\workspace\venom\src\venom_module.cpp(18): warning C4068: unknown pragma
+d:\workspace\venom\src\venom_module.cpp(44): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\stdio.h(205): note: see declaration of 'fopen'
+d:\workspace\venom\src\venom_module.cpp(45): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\stdio.h(205): note: see declaration of 'fopen'
+d:\workspace\venom\src\debug_imgui.cpp(8): warning C4244: 'initializing': conversion from 'int' to 'float', possible loss of data
+d:\workspace\venom\src\debug_imgui.cpp(14): warning C4244: 'argument': conversion from 'U64' to 'U32', possible loss of data
+d:\workspace\venom\src\debug_imgui.cpp(57): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
+d:\workspace\venom\src\debug_imgui.cpp(59): warning C4244: 'argument': conversion from 'const U64' to 'int', possible loss of data
+d:\workspace\venom\src\debug_imgui.cpp(82): warning C4996: 'strdup': The POSIX name for this item is deprecated. Instead, use the ISO C and C++ conformant name: _strdup. See online help for details.
+  C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\string.h(552): note: see declaration of 'strdup'
+d:\workspace\venom\src\debug_imgui.cpp(83): warning C4996: 'strdup': The POSIX name for this item is deprecated. Instead, use the ISO C and C++ conformant name: _strdup. See online help for details.
+  C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\string.h(552): note: see declaration of 'strdup'
+d:\workspace\venom\src\debug_imgui.cpp(108): warning C4996: 'strdup': The POSIX name for this item is deprecated. Instead, use the ISO C and C++ conformant name: _strdup. See online help for details.
+  C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\string.h(552): note: see declaration of 'strdup'
+d:\workspace\venom\src\debug_imgui.cpp(113): warning C4996: 'strdup': The POSIX name for this item is deprecated. Instead, use the ISO C and C++ conformant name: _strdup. See online help for details.
+  C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\string.h(552): note: see declaration of 'strdup'
+d:\workspace\venom\src\venom_module.cpp(149): warning C4244: 'argument': conversion from 'F32' to 'GLsizei', possible loss of data
+d:\workspace\venom\src\venom_editor.cpp(126): warning C4244: '=': conversion from 'U64' to 'U32', possible loss of data
+d:\workspace\venom\src\venom_editor.cpp(255): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
+d:\workspace\venom\src\venom_editor.cpp(258): warning C4267: 'argument': conversion from 'size_t' to 'U32', possible loss of data
+d:\workspace\venom\src\venom_editor.cpp(258): warning C4800: 'int': forcing value to bool 'true' or 'false' (performance warning)
+d:\workspace\venom\src\venom_editor.cpp(260): warning C4267: 'argument': conversion from 'size_t' to 'U32', possible loss of data
+d:\workspace\venom\src\venom_editor.cpp(222): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\stdio.h(1769): note: see declaration of 'sprintf'
+d:\workspace\venom\src\venom_editor.cpp(386): warning C4267: '=': conversion from 'size_t' to 'U32', possible loss of data
+d:\workspace\venom\src\venom_editor.cpp(513): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
+d:\workspace\venom\src\venom_editor.cpp(515): warning C4267: '=': conversion from 'size_t' to 'int', possible loss of data
+d:\workspace\venom\src\venom_editor.cpp(590): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\string.h(119): note: see declaration of 'strcpy'
+d:\workspace\venom\src\venom_editor.cpp(591): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\string.h(119): note: see declaration of 'strcpy'
+d:\workspace\venom\src\venom_editor.cpp(668): warning C4267: '=': conversion from 'size_t' to 'S32', possible loss of data
+d:\workspace\venom\src\venom_editor.cpp(687): warning C4244: 'argument': conversion from 'const U32' to 'float', possible loss of data
+d:\workspace\venom\src\venom_editor.cpp(688): warning C4244: 'argument': conversion from 'const U32' to 'float', possible loss of data
+d:\workspace\venom\src\venom_editor.cpp(695): warning C4244: 'argument': conversion from 'const U32' to 'float', possible loss of data
+d:\workspace\venom\src\venom_editor.cpp(703): warning C4244: 'argument': conversion from 'const U32' to 'float', possible loss of data
+d:\workspace\venom\src\venom_editor.cpp(493): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\stdio.h(1769): note: see declaration of 'sprintf'
+d:\workspace\venom\src\venom_editor.cpp(586): warning C4996: 'strdup': The POSIX name for this item is deprecated. Instead, use the ISO C and C++ conformant name: _strdup. See online help for details.
+  C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\string.h(552): note: see declaration of 'strdup'
+d:\workspace\venom\src\venom_editor.cpp(587): warning C4996: 'strdup': The POSIX name for this item is deprecated. Instead, use the ISO C and C++ conformant name: _strdup. See online help for details.
+  C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\string.h(552): note: see declaration of 'strdup'
+d:\workspace\venom\src\venom_editor.cpp(774): warning C4244: 'argument': conversion from 'F32' to 'int', possible loss of data
+d:\workspace\venom\src\venom_editor.cpp(779): warning C4267: 'argument': conversion from 'size_t' to 'U32', possible loss of data
+d:\workspace\venom\src\venom_editor.cpp(817): warning C4244: 'argument': conversion from 'F32' to 'int', possible loss of data
+d:\workspace\venom\src\venom_editor.cpp(842): warning C4244: '=': conversion from 'U64' to 'U32', possible loss of data
+d:\workspace\venom\src\venom_editor.cpp(905): warning C4244: 'initializing': conversion from 'float' to 'U32', possible loss of data
+d:\workspace\venom\src\venom_editor.cpp(905): warning C4244: 'initializing': conversion from 'float' to 'const U32', possible loss of data
+d:\workspace\venom\src\venom_editor.cpp(906): warning C4244: 'argument': conversion from 'const U32' to 'float', possible loss of data
+d:\workspace\venom\src\venom_entity.cpp(40): warning C4267: '=': conversion from 'size_t' to 'U32', possible loss of data
+d:\workspace\venom\src\terrain.cpp(116): warning C4244: 'initializing': conversion from 'float' to 'U32', possible loss of data
+d:\workspace\venom\src\terrain.cpp(117): warning C4244: 'initializing': conversion from 'float' to 'U32', possible loss of data
+d:\workspace\venom\src\terrain.cpp(174): warning C4244: '=': conversion from 'float' to 'U8', possible loss of data
+d:\workspace\venom\src\terrain.cpp(178): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+d:\workspace\venom\src\terrain.cpp(286): warning C4244: 'argument': conversion from 'U64' to 'U32', possible loss of data
+d:\workspace\venom\src\terrain.cpp(301): warning C4244: 'argument': conversion from 'U64' to 'U32', possible loss of data
+d:\workspace\venom\src\test_scene.cpp(34): warning C4244: '=': conversion from 'F64' to 'float', possible loss of data
+d:\workspace\venom\src\test_scene.cpp(35): warning C4244: '=': conversion from 'F64' to 'float', possible loss of data
+d:\workspace\venom\src\test_scene.cpp(231): warning C4244: 'argument': conversion from 'U64' to 'U32', possible loss of data
+..\..\..\src\venom_platform.cpp(82): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\stdio.h(205): note: see declaration of 'fopen'
+..\..\..\src\venom_platform.cpp(94): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\stdio.h(205): note: see declaration of 'fopen'
+..\..\..\src\venom_platform.cpp(177): warning C4800: 'int': forcing value to bool 'true' or 'false' (performance warning)
+C:\Program Files (x86)\Windows Kits\8.1\Include\shared\minwindef.h(130): warning C4005: 'APIENTRY': macro redefinition
+  d:\workspace\venom\src\glcorearb.h(40): note: see previous definition of 'APIENTRY'
+d:\workspace\venom\src\platform_windows.cpp(400): warning C4244: '=': conversion from 'float' to 'S32', possible loss of data
+d:\workspace\venom\src\platform_windows.cpp(401): warning C4244: '=': conversion from 'float' to 'S32', possible loss of data
+d:\workspace\venom\src\platform_windows.cpp(402): warning C4244: '=': conversion from 'float' to 'S32', possible loss of data
+d:\workspace\venom\src\platform_windows.cpp(403): warning C4244: '=': conversion from 'float' to 'S32', possible loss of data
+d:\workspace\venom\src\platform_windows.cpp(423): warning C4800: 'int': forcing value to bool 'true' or 'false' (performance warning)
+d:\workspace\venom\src\platform_windows.cpp(426): warning C4244: 'argument': conversion from 'Win32::WPARAM' to 'Win32::UINT', possible loss of data
+d:\workspace\venom\src\platform_windows.cpp(430): warning C4244: 'argument': conversion from 'Win32::WPARAM' to 'Win32::UINT', possible loss of data
+d:\workspace\venom\src\platform_windows.cpp(431): warning C4244: 'argument': conversion from 'Win32::WPARAM' to 'int', possible loss of data
+LINK : fatal error LNK1181: cannot open input file 'assimp-vc130-mtd.lib'

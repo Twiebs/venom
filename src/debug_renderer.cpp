@@ -105,6 +105,12 @@ void draw_debug_axes(V3 position) {
 
 void draw_debug_plane(V3 a, V3 b, V3 c, V4 color, bool isSolid, F32 duration) {
 
+
+}
+
+void draw_debug_camera(Camera *camera) {
+  DebugDrawCommand *cmd = add_debug_draw_command(DebugDrawCommand_CAMERA, V4(1.0f, 1.0f, 0.0f, 1.0f), true, 0.0f);
+  cmd->position = camera->position;
 }
 
 void render_debug_draw_commands(Camera *camera, AssetManifest *assetManifest, float deltaTime) {
@@ -174,6 +180,14 @@ void render_debug_draw_commands(Camera *camera, AssetManifest *assetManifest, fl
       glUniformMatrix4fv(MODEL_MATRIX_LOCATION, 1, GL_FALSE, &model[0][0]);
       glDrawElements(GL_TRIANGLES, debugRenderer->axisIndexCount,
         GL_UNSIGNED_INT, (void*)(uintptr_t)debugRenderer->axisIndexOffset);
+    } break;
+
+    case DebugDrawCommand_CAMERA: {
+      M4 translation = Translate(cmd->position);
+      set_uniform(MODEL_MATRIX_LOCATION, translation);
+      set_uniform(COLOR_LOCATION, cmd->color);
+      glDrawElements(GL_TRIANGLES, debugRenderer->sphereIndexCount,
+        GL_UNSIGNED_INT, (void*)(uintptr_t)debugRenderer->sphereIndexOffset);
     } break;
 
     case DebugDrawCommand_PLANE: {

@@ -48,7 +48,7 @@ void APIENTRY OpenGLDebugProc(GLenum source, GLenum type, GLuint id,
 	if (severity_string_index < 0) severity_string_index = 3;
 	const char *severity_string = OPENGL_SEVERITY_STRINGS[severity_string_index];
 
-	LOG_ERROR("[OpenGL Debug Message]\n"
+	LogError("[OpenGL Debug Message]\n"
 		"Source: %s\n"
 		"Type: %s\n"
 		"Severity: %s\n"

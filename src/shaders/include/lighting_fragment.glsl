@@ -22,16 +22,12 @@ layout (location = 5) uniform int directionalLightCount;
 layout (location = 6) uniform int uPointLightCount;
 layout (location = 7) uniform int uShadowCastingPointLightCount;
 
-layout (location = DIRECTIONAL_LIGHT_UNIFORM_LOCATION)
-uniform DirectionalLight directionalLights[DIRECTIONAL_LIGHTS_MAX];
-layout (location = POINT_LIGHT_UNIFORM_LOCATION)
-uniform PointLight pointLights[POINT_LIGHTS_MAX];
-layout (location = SHADOW_CASTING_POINT_LIGHT_UNIFORM_LOCATION)
-uniform PointLight shadowCastingPointLights[SHADOW_CASTING_POINT_LIGHT_MAX];
+layout (location = DIRECTIONAL_LIGHT_UNIFORM_LOCATION) uniform DirectionalLight directionalLights[DIRECTIONAL_LIGHTS_MAX];
+layout (location = POINT_LIGHT_UNIFORM_LOCATION) uniform PointLight pointLights[POINT_LIGHTS_MAX];
+layout (location = SHADOW_CASTING_POINT_LIGHT_UNIFORM_LOCATION) uniform PointLight shadowCastingPointLights[SHADOW_CASTING_POINT_LIGHT_MAX];
 
 layout (binding = 3) uniform sampler2DArray depth_sampler;
-layout (binding = 4) 
-uniform samplerCube uOmniShadowMapSampler[SHADOW_CASTING_POINT_LIGHT_MAX];
+layout (binding = 4) uniform samplerCube uOmniShadowMapSampler[SHADOW_CASTING_POINT_LIGHT_MAX];
 
 uniform mat4 u_light_space_matrix[4];
 uniform float u_shadow_cascade_distance[4];
@@ -41,13 +37,11 @@ vec3 ApplyDirectionalLight(DirectionalLight light, FragmentInfo fragment, vec3 v
 	vec3 halfwayDirection = normalize(light.direction + viewDirection);
 	float specularFactor = pow(max(dot(fragment.normal, halfwayDirection), 0.0), fragment.specularExponent);
 	vec3 diffuseColor = light.color * fragment.color * diffuseFactor;
-	vec3 specularColor = light.color * fragment.color * specularFactor;
-	return diffuseColor + specularColor;
+	//vec3 specularColor = light.color * fragment.color * specularFactor;
+	return diffuseColor;
 }
 
-vec3 ApplyPointLight(PointLight light, 
-  FragmentInfo fragment, vec3 viewDirection) 
-{
+vec3 ApplyPointLight(PointLight light, FragmentInfo fragment, vec3 viewDirection) {
   vec3 lightDisplacement = light.position - fragment.position;
   float lightDistance = length(lightDisplacement);
   vec3 lightDirection = lightDisplacement / lightDistance;
@@ -117,20 +111,16 @@ float CalculateShadowScalar(vec3 position) {
 
 
 vec4 ApplyLighting(FragmentInfo fragment) {
+  vec3 resultColor = vec3(0.0);
 	vec3 viewDirection = normalize(u_camera_view_position - fragment.position);
 
-  //vec3 viewDirection = normalize(-fragment.position);
-	vec3 resultColor = vec3(0.0);
-
-
-#if 1
 	for (int i = 0; i < directionalLightCount; i++) {
 		vec3 fragmentColor = ApplyDirectionalLight(directionalLights[i], fragment, viewDirection);
     //float resultLighting = CalculateShadowScalar(fragment.position);
     //fragmentColor *= 1.0 - resultLighting;
     resultColor += fragmentColor;
+    //resultColor = vec3(1.0, 0.0, 0.0);
 	}
-#endif
 
 
 #if 0

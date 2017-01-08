@@ -333,3 +333,13 @@ inline V3 lerp(V3 a, V3 b, F32 t) {
 }
 
 
+inline V3 Lerp(V3 a, V3 b, F32 t) {
+  V3 result;
+  result.x = a.x + t * (b.x - a.x);
+  result.y = a.y + t * (b.y - a.y);
+  result.z = a.z + t * (b.z - a.z);
+  return result;
+}
+
+
+

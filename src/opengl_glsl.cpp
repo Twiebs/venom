@@ -211,7 +211,7 @@ static char* ReadAndParseShaderSource(const char* rootFilename, ShaderParseInfo*
       size_t fileTotalLineCount = 0;
       while ((current - write_location) - included_files[i].file_size) {
         if (match_string(current, "#include")) {
-          LOG_ERROR("No Support for nested #includes!");
+          LogError("No Support for nested #includes!");
         }
         if (*current == '\n')
           fileTotalLineCount++;
@@ -260,7 +260,7 @@ inline GLuint DEBUGCreateShaderProgramFromFiles(const char *filenames[4]) {
 		  ShaderParseInfo parseInfo = {};	
       char *source = ReadAndParseShaderSource(filenames[i], &parseInfo);
 			if (source == NULL) {
-				LOG_ERROR("Failed to load shader source for file %s", filenames[i]);
+        LogError("Failed to load shader source for file %s", filenames[i]);
 				for (int n = i - 1; n > 0; n--)
 					glDeleteShader(shaders[n]);
 				return 0;
@@ -343,7 +343,7 @@ inline GLuint DEBUGCreateShaderProgramFromFiles(const char *filenames[4]) {
           }
         }
 
-				LOG_ERROR("%s:%lu :: %s\n", filenameOfError, lineNumberOfError, buffer);
+        LogError("%s:%lu :: %s\n", filenameOfError, lineNumberOfError, buffer);
 				glDeleteShader(shaders[i]);
 			}
 			else {
@@ -371,7 +371,7 @@ inline GLuint DEBUGCreateShaderProgramFromFiles(const char *filenames[4]) {
 	if (sucuess == GL_FALSE) {
 		char buffer[1024];
 		glGetProgramInfoLog(result, 1024, NULL, buffer);
-		LOG_ERROR("Shader Program Link Error: %s\n", buffer);
+    LogError("Shader Program Link Error: %s\n", buffer);
 		glDeleteProgram(result);
 		return 0;
 	}

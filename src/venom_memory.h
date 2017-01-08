@@ -24,6 +24,58 @@ void memory_free(void *memory, const char *file) {
   free(memory);
 }
 
+struct DynamicSizedStack {
+  U8 *memory;
+  size_t used;
+  size_t size;
+};
+
+struct StaticSizedStack {
+  U8 *memory;
+  size_t used;
+  size_t size;
+};
+
+U8 *StackPush(StaticSizedStack *stack, size_t size) {
+  assert(stack->used + size < stack->size);
+  U8 *result = stack->memory + stack->used; 
+  stack->used += size;
+  return result;
+}
+
+//Returns offset from the front of the stack
+U32 StackPush(DynamicSizedStack *stack, size_t size) {
+  if (stack->used + size > stack->size) {
+    stack->memory = (U8 *)realloc(stack->memory, stack->size + 4096);
+    stack->size = stack->size + 4096;
+  }
+
+  U32 result = stack->used;
+  stack->used += size;
+  return result;
+}
+
+struct EngineGlobals {
+  DynamicSizedStack frameStack; //TODO(Torin) This needs to be thread safe
+  //Or create one for each thread and the id of the frame stack needs to be stored with
+  //the pointer... There is no way it will ever use more than 4GBs so use two U32s 
+  //one the index of the frame stack and the other the offset into the memory
+} static globals;
+
+namespace Memory {
+  U32 FrameStackPush(size_t size) {
+    return StackPush(&globals.frameStack, size);
+  }
+
+  U8 *FrameStackPointer(U32 offset) {
+    return globals.frameStack.memory + offset;
+  }
+
+  void FrameStackClear() {
+    globals.frameStack.used = 0;
+  }
+};
+
 template<typename TElement>
 struct DynamicArray {
   TElement *data;

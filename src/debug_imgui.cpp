@@ -138,23 +138,25 @@ static void ShowMaterialDataInfo(const MaterialData *data, bool firstOpen = fals
 //===================================================================================
 
 static void
-ShowConsole(VenomDebugData *data, const DebugLog *log, bool scrollToBottom = false){
+ShowConsole(const DebugLog *log, bool scrollToBottom = false){
 	ImGui::Begin("Console");
 	ImGui::BeginChild("LogEntries");
   for (size_t i = 0; i < log->current_entry_count; i++) {
 		const LogEntry& entry = log->entries[i];
 		const V4& color = LOGLEVEL_COLOR[entry.level];
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(color.x, color.y, color.z, color.w));
-		ImGui::TextWrapped("%s %s", LOGLEVEL_TAG[entry.level], log->entries[i].text);
+    ImGui::TextWrapped("[%s %u:%u:%u] %s", LogLevelNames[entry.level],
+      entry.time.hour, entry.time.minute, entry.time.second, entry.text);
     ImGui::PopStyleColor();
 	}
   if (scrollToBottom) ImGui::SetScrollHere();
 	ImGui::EndChild();
 	ImGui::End();
 
-  data->unseenErrorCount = 0;
-  data->unseenWarningCount = 0;
-  data->unseenInfoCount = 0;
+  auto engine = GetEngine();
+  engine->unseenErrorCount = 0;
+  engine->unseenWarningCount = 0;
+  engine->unseenInfoCount = 0;
 }
 
 static void 

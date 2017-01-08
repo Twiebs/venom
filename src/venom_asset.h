@@ -1,4 +1,5 @@
 
+#if 0
 #ifdef VENOM_RELEASE
 #define ModelID(name) ModelID_##name
 #define MaterialID(name) MaterialID_##name
@@ -10,6 +11,7 @@
 #define SoundID(name) #name
 #define ShaderID(name) #name
 #endif//VENOM_RELEASE
+#endif
 
 enum AssetType {
   AssetType_MATERIAL,
@@ -19,16 +21,22 @@ enum AssetType {
   AssetType_COUNT,
 };
 
-enum AssetFlag {
-  AssetFlag_LOADED = 1 << 0,
-  AssetFlag_INVALID = 1 << 1,
+enum AssetState {
+  AssetState_Unloaded,
+  AssetState_Unloading,
+  AssetState_Loading,
+  AssetState_Loaded,
+  AssetState_Invalid,
 };
 
 static const char* AssetTypeNames[] = {
-  "Material",
-  "Model",
-  "Shader",
-  "Sound",
+  "Material", "Model",
+  "Shader", "Sound",
+};
+
+static const char *AssetStateNames[] = {
+  "Unloaded", "Loading",
+  "Loaded", "Invalid"
 };
 
 struct Asset_ID {
@@ -38,12 +46,16 @@ struct Asset_ID {
 };
 
 struct AssetSlot {
+  AssetState assetState;
+  AtomicU32 lock;
+
+  void* asset;
+
 //NOTE(Torin) For now these are dynamicly allocated
 #ifndef VENOM_RELEASE
+  
   char *name;
   char *filename;
   U64 lastWriteTime;
 #endif//VENOM_RELEASE
-  U64 flags;
-  void* asset;
 };

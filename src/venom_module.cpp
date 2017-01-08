@@ -369,23 +369,25 @@ EngineAPIList
 }
 
 extern "C" void _VenomModuleUpdate(GameMemory* memory) {
-  DEBUG_BeginProfileEntry("HotloadAssets");
+  BeginTimedBlock("HotloadAssets");
   hotload_modified_assets(&memory->assetManifest);
-  DEBUG_EndProfileEntry("HotloadAssets");
+  EndTimedBlock("HotloadAssets");
 
   imgui_update_state(memory);
   ImGui::NewFrame();
 
-  DEBUG_BeginProfileEntry("Update");
+  BeginTimedBlock("Update");
   VenomModuleUpdate(memory);
-  DEBUG_EndProfileEntry("Update");
+  EndTimedBlock("Update");
+  FinalizeAllTasks(GetEngine());
 }
 
 extern "C"
 void _VenomModuleRender(GameMemory* memory) {
-  DEBUG_BeginProfileEntry("GPU Submit");
+  BeginTimedBlock("GPU Submit");
   memset(&memory->renderState.debugRenderFrameInfo, 0, sizeof(VenomDebugRenderFrameInfo));
   VenomModuleRender(memory);
   ImGui::Render();
-  DEBUG_EndProfileEntry("GPU Submit");
+  EndTimedBlock("GPU Submit");
+  Memory::FrameStackClear();
 }

@@ -22,7 +22,7 @@ struct VenomModelDrawCommand {
 
 struct Animated_Model_Draw_Command {
   ModelAsset *model;
-  Animation_State *animation_state;
+  AnimationState *animation_state;
   M4 model_matrix;
 };
 
@@ -139,7 +139,7 @@ UpdateCamera(Camera *camera) {
 }
 
 #ifdef VENOM_OPENGL
-#include "glcorearb.h"
+#include "thirdparty/glcorearb.h"
 #include "opengl_resources.h"
 #include "offline_asset_tools.h"
 #endif//VENOM_OPENGL

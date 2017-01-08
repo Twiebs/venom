@@ -25,8 +25,6 @@ EngineAPIList
 //introspection and allowing the signal handler to serialize unsaved engine data
 //in the event of a engine crash
 static GameMemory* _venomEngineData;
-static VenomDebugData* _debugData;
-VenomDebugData *GetDebugData() { return _debugData; }
 GameMemory* GetVenomEngineData() { return _venomEngineData; };
 AssetManifest *get_asset_manifest() { return &_venomEngineData->assetManifest;  }
 AssetManifest *GetAssetManifest() { return &_venomEngineData->assetManifest; };
@@ -36,14 +34,20 @@ AssetManifest *GetAssetManifest() { return &_venomEngineData->assetManifest; };
 static int VenomCopyFile(const char *a, const char *b);
 
 #ifdef VENOM_SINGLE_TRANSLATION_UNIT
+#include "utility/StringUtils.cpp"
 #include "math/math_procedural.cpp"
 #include "venom_debug.cpp"
 #include "venom_render.cpp"
 #include "venom_physics.cpp"
 #include "venom_asset.cpp"
 #include "venom_audio.cpp"
-#include "venom_serializer.cpp"
-#include "serialization.cpp"
+
+#include "utility/serializer.cpp"
+#include "utility/profiler.cpp"
+
+
+
+#include "engine.cpp"
 #endif//VENOM_SINGLE_TRANSLATION_UNIT
 
 #ifndef VENOM_DEFAULT_SCREEN_WIDTH
@@ -94,7 +98,7 @@ UserConfig GetUserConfig() {
 
 		file = fopen(VENOM_USER_CONFIG_PATH, "wb");
 		if (file == NULL) 
-      LOG_ERROR("Could not write out user config file!");
+      LogError("Could not write out user config file!");
 		fwrite(&result, sizeof(UserConfig), 1, file);
 		fclose(file);
 	}
@@ -176,6 +180,7 @@ static inline
 void PlatformKeyEventHandler(GameMemory *memory, int keycode, int keysym, int isDown) {
   InputState* input = &memory->inputState;
   input->isKeyDown[keycode] = isDown;
+  auto engine = GetEngine();
 
   if (isDown) {
 	  switch(keycode) {
@@ -183,7 +188,7 @@ void PlatformKeyEventHandler(GameMemory *memory, int keycode, int keysym, int is
 		} break;  
 
     case KEYCODE_TILDA: {
-      memory->debugData.isConsoleVisible = !memory->debugData.isConsoleVisible;
+      engine->isConsoleVisible = !engine->isConsoleVisible;
     } break;
 
     case KEYCODE_F2: {
@@ -236,9 +241,10 @@ GameMemory* AllocateGameMemory(UserConfig* config) {
 #undef _ 
 #endif //VENOM_HOTLOAD
 
+    InitalizeEngine();
+
   //TODO(Torin)An Error log is also needed in release mode this should be rethought
 #ifndef VENOM_RELEASE
-	_debugData = &memory->debugData;
   _venomEngineData = memory;
 #endif
 
@@ -249,10 +255,11 @@ GameMemory* AllocateGameMemory(UserConfig* config) {
 //defines rather than the compiler builtins
 #if defined(_WIN32)
 #define WindowsPlatformMain main
-#include "platform_windows.cpp"
+#include "platform/windows.cpp"
+#include "platform/concurrency_windows.cpp"
 #elif defined(__linux__)
 #define LinuxMain main
-#include "platform_linux.cpp"
+#include "platform/linux.cpp"
 #elif defined(__APPLE__)
 static_assert(false, "No apple support yet!");
 #elif defined (__EMSCRIPTEN__)
@@ -261,7 +268,7 @@ static_assert(false, "No emscripten support yet!")
 
 #ifndef VENOM_RELEASE
 using namespace Win32;
-#include "imgui.cpp"
-#include "imgui_draw.cpp"
-#include "imgui_demo.cpp"
+#include "thirdparty/imgui.cpp"
+#include "thirdparty/imgui_draw.cpp"
+#include "thirdparty/imgui_demo.cpp"
 #endif//VENOM_RELEASE
