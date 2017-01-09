@@ -1,6 +1,6 @@
 #define VENOM_ENTITY_METALIST_MACRO EntityTypeList
 #define VENOM_ENTITY_STRUCT Entity
-#define VENOM_MATERIAL_LIST_FILE "asset_list.h"
+#define VENOM_MATERIAL_LIST_FILE "assets/asset_list.h"
 
 #include "venom_module.cpp"
 #include "venom_editor.cpp"
@@ -9,8 +9,8 @@
 
 #include "terrain.cpp"
 
-#include "CameraMovement.cpp"
-#include "CharacterMovement.cpp"
+#include "Game/CameraMovement.cpp"
+#include "Game/CharacterMovement.cpp"
 
 struct GameData {
   Camera camera;
@@ -220,7 +220,7 @@ void VenomModuleRender(GameMemory* memory) {
 
       ModelAsset *model = GetModelAsset(entity->modelID, &memory->assetManifest);
       if (model == nullptr) continue;
-      bool is_entity_animated = model->data.jointCount > 0;
+      bool is_entity_animated = model->jointCount > 0;
       if (is_entity_animated) {
         if (entity->animation_state.isInitalized == false) {
           InitalizeAnimationState(&entity->animation_state, model);
@@ -232,7 +232,7 @@ void VenomModuleRender(GameMemory* memory) {
       if (block->flags[i] & EntityFlag_VISIBLE) {        
         if (editor->selectedEntities.ContainsValue(i)) {
           V3 rotation = QuaternionToEuler(entity->rotation);
-          PushOutlinedModelDrawCommand(entity->modelID.slot_index, &rs->drawList, entity->position, rotation); 
+          AddOutlinedModelToDrawList(&rs->drawList, model, entity->position, rotation); 
         } else if (is_entity_animated) {
           V3 rotation = QuaternionToEuler(entity->rotation);
           V3 position = entity->position;
@@ -242,7 +242,7 @@ void VenomModuleRender(GameMemory* memory) {
           V3 rotation = QuaternionToEuler(entity->rotation);
           V3 position = entity->position;
           position.y += model->size.y * 0.5f;
-          PushModelDrawCommand(model->slotIndex, &rs->drawList, position, rotation); 
+          AddStaticModelToDrawList(&rs->drawList, model, position, rotation); 
         }
         
         VenomDebugRenderSettings *debugRenderSettings = GetDebugRenderSettings();

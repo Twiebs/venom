@@ -21,24 +21,6 @@ static const char *SHADER_TYPE_STRINGS[] = {
 	"Compute Shader"
 };
 
-//TODO(Torin) Move this out into a utilty
-//function and have the memory come from a 
-//temporary memoryblock that the engine delegates
-//specificaly for dynamic string operations
-char* ReadFileIntoMemory(const char *filename) {
-	//TODO(Torin) Make this function use temporary memory
-	FILE* file = fopen(filename, "rb");
-	if (file == NULL) return NULL;
-	fseek(file, 0, SEEK_END);
-	size_t file_size = ftell(file);
-	fseek(file, 0, SEEK_SET);
-	char* buffer = (char*)malloc(file_size + 1);
-	buffer[file_size] = 0;
-	fread(buffer, 1, file_size, file);
-	fclose(file);
-	return buffer;
-}
-
 uint64_t string_to_uint64(const char *str, size_t length) {
 	uint64_t result = 0;
 	size_t scalar = 1;
@@ -74,7 +56,7 @@ static char* ReadAndParseShaderSource(const char* rootFilename, ShaderParseInfo*
 	fseek(rootFileHandle , 0, SEEK_END);
 	size_t rootFileSize = ftell(rootFileHandle);
 	fseek(rootFileHandle, 0, SEEK_SET);
-	char* rootFileBuffer = (char*)malloc(rootFileSize + 1);
+	char* rootFileBuffer = (char*)MemoryAllocate(rootFileSize + 1);
 	rootFileBuffer[rootFileSize] = 0;
 	fread(rootFileBuffer, 1, rootFileSize, rootFileHandle);
 	fclose(rootFileHandle);
@@ -173,7 +155,7 @@ static char* ReadAndParseShaderSource(const char* rootFilename, ShaderParseInfo*
       fclose(file);
     }
   
-    char *result_source = (char*)malloc(required_memory + 1);
+    char *result_source = (char*)MemoryAllocate(required_memory + 1);
     result_source[required_memory] = 0;
     char *write_location = result_source;
     const char *mainFileLocation = rootFileBuffer;
@@ -236,7 +218,7 @@ static char* ReadAndParseShaderSource(const char* rootFilename, ShaderParseInfo*
     ShaderParseEntry& entry = parseInfo->entries[parseInfo->entryCount++];
     entry.fileIndex = 1;
     entry.lineCount = GetBufferLineCount(mainFileLocation);
-    free(rootFileBuffer);
+    MemoryFree(rootFileBuffer);
     return result_source;
   } else {
     ShaderParseEntry& entry = parseInfo->entries[parseInfo->entryCount++];
@@ -277,7 +259,7 @@ inline GLuint DEBUGCreateShaderProgramFromFiles(const char *filenames[4]) {
         VenomShaderCalculatedValueList
 #undef _
 
-      generatedShaderConstants = (char*)malloc(requiredMemory);
+      generatedShaderConstants = (char*)MemoryAllocate(requiredMemory);
       char* write = generatedShaderConstants;
 #define _(type,name,value) { \
   int computedValue = (int)(value); \
@@ -350,7 +332,7 @@ inline GLuint DEBUGCreateShaderProgramFromFiles(const char *filenames[4]) {
 				glAttachShader(result, shaders[i]);
 			}
 
-			free(source);
+			MemoryFree(source);
 		}
 	}
 

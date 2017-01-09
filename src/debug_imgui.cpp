@@ -104,12 +104,12 @@ static void ShowAssetSlotInfo(AssetSlot *slot, bool just_opened = false) {
   //a file name that is in the process of beining modified
 
   if (ImGui::InputText("Name", nameBuffer, sizeof(nameBuffer))) {
-    free(slot->name);
+    MemoryFree(slot->name);
     slot->name = strdup(nameBuffer);
   }
   
   if (ImGui::InputText("Filename", filenameBuffer, sizeof(filenameBuffer))) {
-    free(slot->filename);
+    MemoryFree(slot->filename);
     slot->filename = strdup(filenameBuffer);
   }
 }

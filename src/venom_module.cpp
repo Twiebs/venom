@@ -47,16 +47,14 @@ int VenomCopyFile(const char *a, const char *b) {
   fseek(fa, 0, SEEK_END);
   size_t fileSize = ftell(fa);
   fseek(fa, 0, SEEK_SET);
-  void *buffer = malloc(fileSize);
+  void *buffer = MemoryAllocate(fileSize);
   fread(buffer, 1, fileSize, fa);
   fwrite(buffer, 1, fileSize, fb);
-  free(buffer);
+  MemoryFree(buffer);
   fclose(fa);
   fclose(fb);
   return 1;
 }
-
-#include "game.h"
 
 void VenomModuleStart(GameMemory* memory);
 void VenomModuleLoad(GameMemory* memory);
@@ -84,6 +82,7 @@ const char *MATERIAL_NAMES[] = {
 #endif
 #include "debug_imgui.cpp"
 
+#if 0
 static inline
 void LoadMaterialList(MaterialAssetList* list) {
   if(list->materialCount != MaterialID_COUNT){
@@ -120,6 +119,7 @@ void LoadMaterialList(MaterialAssetList* list) {
 #undef _
   }
 }
+#endif
 
 static inline
 void InitalizeVenomDebugData(GameMemory* memory) {
@@ -246,7 +246,7 @@ EngineAPIList
 
   
   
-  LoadMaterialList(&memory->assetManifest.materialAssetList);
+  //LoadMaterialList(&memory->assetManifest.materialAssetList);
 
 #if 0
   //NOTE(Torin) Hack to import assets into the new system from the old system

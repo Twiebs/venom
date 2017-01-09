@@ -5,9 +5,10 @@ EntityBlock* AllocateEntityBlock(const size_t entityCount){
   size_t requiredFlagMemory = Align8(sizeof(*EntityBlock::flags) * entityCount);
   size_t requiredTypeMemory = Align8(sizeof(*EntityBlock::types) * entityCount);
   size_t requiedEntityMemory = Align8(sizeof(*EntityBlock::entities) * entityCount);
+  size_t requiredMemory = requiredStructMemory + requiredFlagMemory + requiredTypeMemory + requiedEntityMemory;
 
-  uint8_t* memory = (uint8_t *)calloc(requiredStructMemory + requiredFlagMemory + 
-    requiredTypeMemory + requiedEntityMemory, 1);
+  uint8_t* memory = (uint8_t *)MemoryAllocate(requiredMemory);
+  memset(memory, 0x00, requiredMemory);
 
   EntityBlock* result = (EntityBlock*)memory;
   memory += requiredStructMemory;
@@ -55,7 +56,7 @@ void assign_model_to_entity(EntityIndex index, Asset_ID id, AssetManifest *manif
 
 void EntityContainerInit(EntityContainer* container, U32 entityCountPerBlock, U32 initalBlockCount) {
   container->capacityPerBlock = entityCountPerBlock;
-  container->blocks = (EntityBlock**)malloc(initalBlockCount * sizeof(EntityBlock*));
+  container->blocks = (EntityBlock**)MemoryAllocate(initalBlockCount * sizeof(EntityBlock*));
   container->blocks[0] = AllocateEntityBlock(entityCountPerBlock);
   container->firstAvaibleBlock = container->blocks[0];
   container->currentBlockCount = 1;

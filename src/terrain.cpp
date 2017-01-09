@@ -28,7 +28,8 @@ static inline void CreateTerrainBaseMesh(V2 *vertices, U32 *indices) {
 
 //TODO(Torin) Consider making this procedure take a struct to some parameter data
 //and actualy return a pointer to the created terrain rather than take it as a paramater
-void InitalizeTerrainGenerator(TerrainGenerationState* terrainGenState, MemoryBlock* memory, V3 centerAt) { 
+void InitalizeTerrainGenerator(TerrainGenerationState* terrainGenState, MemoryBlock* memory, V3 centerAt) {
+  //TODO(Torin) The required terrain memory should be known at compile time!
   size_t requiredTerrainMemory = 0;
   requiredTerrainMemory += TERRAIN_TOTAL_VERTEX_COUNT; //Heightmap
   requiredTerrainMemory += TERRAIN_TOTAL_VERTEX_COUNT; //Detailmap
@@ -38,7 +39,7 @@ void InitalizeTerrainGenerator(TerrainGenerationState* terrainGenState, MemoryBl
   InitSubBlock("TerrainMemory", &terrainGenState->memory, requiredTerrainMemory, memory);
   terrainGenState->heightmap_base = ReserveArray(U8, TERRAIN_TOTAL_VERTEX_COUNT, &terrainGenState->memory);
   terrainGenState->detailmap_base = ReserveArray(U8, TERRAIN_TOTAL_VERTEX_COUNT, &terrainGenState->memory);
-  terrainGenState->normals_base = ReserveArray(V3, TERRAIN_TOTAL_VERTEX_COUNT, &terrainGenState->memory); 
+  terrainGenState->normals_base =   ReserveArray(V3, TERRAIN_TOTAL_VERTEX_COUNT, &terrainGenState->memory); 
   assert(terrainGenState->memory.used == terrainGenState->memory.size);
 
   terrainGenState->heightmap_texture_array = CreateTextureArray(

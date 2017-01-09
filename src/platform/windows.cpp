@@ -1,16 +1,24 @@
 namespace Win32 {
 #define WIN32_LEAN_AND_MEAN
+#undef malloc
+#undef free
+#undef realloc
+#define malloc(size) MemoryAllocate(size)
+#define free(ptr) MemoryFree(ptr)
+#define realloc(ptr, size) MemoryReAllocate(ptr, size)
 #include <Windows.h>
 #include <windowsx.h>
 #include <mmeapi.h>
 #include <dsound.h>
+#undef malloc
+#undef free
+#undef realloc
+#define malloc(size) static_assert(false, "USE CUSTOM ALLOCATORS");
+#define free(ptr) static_assert(false, "USE CUSTOM ALLOCATORS");
+#define realloc(ptr, size) static_assert(false, "USE CUSTOM ALLOCATORS");
 };
 
-//NOTE(Torin) Fuck you windows!
-#undef InterlockedCompareExchange
-
-U64 GetFileLastWriteTime(const char *filename)
-{ 
+U64 GetFileLastWriteTime(const char *filename) { 
   using namespace Win32;
 	U64 result = 0;
 	WIN32_FIND_DATA findData;

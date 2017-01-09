@@ -21,7 +21,7 @@ void BeginTimedBlock(const char *name) {
   //This is nessecary because the provided char* will point to garbage 
   //if the game module is hotloaded 
   size_t name_length = strlen(name);
-  entry->name = (char *)malloc(name_length + 1);
+  entry->name = (char *)MemoryAllocate(name_length + 1);
   entry->name[name_length] = 0;
   memcpy(entry->name, name, name_length);
   entry->startTime = GetPerformanceCounterTime();

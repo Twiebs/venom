@@ -1,7 +1,7 @@
 struct M2 {
 	float data[2][2];
 
-	inline float* operator[](int i) {
+	inline float* operator[](size_t i) {
 		strict_assert(i >= 0);
 		strict_assert(i < 2);
 		return (float *)&data[i];
@@ -10,7 +10,7 @@ struct M2 {
 
 struct M3 {
 	float data[3][3];
-	inline float* operator[](int i) {
+	inline float* operator[](size_t i) {
 		strict_assert(i >= 0);
 		strict_assert(i < 3);
 		return (float *)&data[i];

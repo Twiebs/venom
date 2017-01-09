@@ -1,4 +1,7 @@
 #define STB_IMAGE_IMPLEMENTATION
+#define STBI_MALLOC(size) MemoryAllocate(size)
+#define STBI_FREE(ptr) MemoryFree(ptr)
+#define STBI_REALLOC(ptr, size) MemoryReAllocate(ptr, size)
 #include "thirdparty/stb_image.h"
 
 bool CreateMaterialData(const char **filenames, U32 flags, MaterialData *data, RGB8 diffuseTint = {}) {
@@ -7,7 +10,7 @@ bool CreateMaterialData(const char **filenames, U32 flags, MaterialData *data, R
     data->materialFlags = MaterialFlag_DIFFUSE;
     data->textureWidth = 1;
     data->textureHeight = 1;
-    data->textureData = (uint8_t *)malloc(3);
+    data->textureData = (uint8_t *)MemoryAllocate(3);
     data->textureData[0] = diffuseTint.r;
     data->textureData[1] = diffuseTint.g;
     data->textureData[2] = diffuseTint.b;
@@ -44,7 +47,7 @@ bool CreateMaterialData(const char **filenames, U32 flags, MaterialData *data, R
   data->textureWidth = materialTextureWidth;
   data->textureHeight = materialTextureHeight;
   size_t sizePerTexture = data->textureWidth * data->textureHeight * 3;
-  data->textureData = (uint8_t *)malloc(sizePerTexture * materialTextureCount);
+  data->textureData = (uint8_t *)MemoryAllocate(sizePerTexture * materialTextureCount);
   uint8_t *textureWrite = data->textureData;
   for (size_t i = 0; i < MaterialTextureType_COUNT; i++) {
     if ((flags & (1 << i)) == 0) continue;
@@ -54,7 +57,7 @@ bool CreateMaterialData(const char **filenames, U32 flags, MaterialData *data, R
 
   for (size_t i = 0; i < MaterialTextureType_COUNT; i++) {
     if ((flags & (1 << i)) == 0) continue;
-    free(materialTextureData[i]);
+    MemoryFree(materialTextureData[i]);
   }
 
   return true;
@@ -169,7 +172,7 @@ void CreateMaterialData(MaterialData* data,
 void DestroyMaterialData(MaterialData* data) {
   assert(data->textureData != 0);
   assert(data->textureWidth > 0 && data->textureHeight > 0);
-  free(data->textureData);
+  MemoryFree(data->textureData);
   data->textureWidth = 0;
   data->textureHeight = 0;
   data->materialFlags = 0;
@@ -181,5 +184,5 @@ void DestroyModelData(ModelData* data){
   }
 
   //This is the pointer returned by allocator
-  free(data->index_count_per_mesh);
+  MemoryFree(data->index_count_per_mesh);
 }

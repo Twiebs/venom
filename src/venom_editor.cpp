@@ -584,8 +584,8 @@ static void draw_asset_manifest_ui(EditorData *editor, AssetManifest* manifest) 
       if (editor->lastSelectedIndex != -1 && editor->lastSelectedIndex != 0) {
         AssetSlot *lastSlot = &manifest->modelAssets[editor->lastSelectedIndex];
         SpinLock(&lastSlot->lock);
-        free(lastSlot->name);
-        free(lastSlot->filename);
+        MemoryFree(lastSlot->name);
+        MemoryFree(lastSlot->filename);
         lastSlot->name = strdup(nameBuffer);
         lastSlot->filename = strdup(filenameBuffer);
         ReleaseLock(&lastSlot->lock);
@@ -602,22 +602,22 @@ static void draw_asset_manifest_ui(EditorData *editor, AssetManifest* manifest) 
       switch (editor->selectedAssetType) {
       case AssetType_MODEL: {
         ModelAsset *asset = (ModelAsset *)slot->asset;
-        for (size_t i = 0; i < asset->data.meshCount; i++) {
-          ShowMaterialDataInfo(&asset->data.materialDataPerMesh[i], editor->lastSelectedIndex != editor->selectedIndex);
+        for (size_t i = 0; i < asset->meshCount; i++) {
+          ShowMaterialDataInfo(&asset->materialDataPerMesh[i], editor->lastSelectedIndex != editor->selectedIndex);
         }
 
-        if (asset->data.jointCount > 0) {
+        if (asset->jointCount > 0) {
           if (ImGui::CollapsingHeader("Animation")) {
             static S32 selected_joint = -1;
             static S32 selectedAnimationClip = -1;
             static F32 currentAnimationTime = 0.0f;
 
             ImGui::BeginChildFrame(0, ImVec2(400, 200));
-            imgui_draw_joint_tree(0, asset->data.joints, &selected_joint);
-            S32 next_root_node_index = asset->data.joints->sibling_index;
+            imgui_draw_joint_tree(0, asset->joints, &selected_joint);
+            S32 next_root_node_index = asset->joints->sibling_index;
             while (next_root_node_index != -1) {
-              Animation_Joint *next = &asset->data.joints[next_root_node_index];
-              imgui_draw_joint_tree(next_root_node_index, asset->data.joints, &selected_joint);
+              Animation_Joint *next = &asset->joints[next_root_node_index];
+              imgui_draw_joint_tree(next_root_node_index, asset->joints, &selected_joint);
               next_root_node_index = next->sibling_index;
             }
             
@@ -636,13 +636,13 @@ static void draw_asset_manifest_ui(EditorData *editor, AssetManifest* manifest) 
               clipState->animationClipID = selectedAnimationClip;
               clipState->localTimeSeconds = currentAnimationTime;
 
-              Animation_Joint *joint = &asset->data.joints[selected_joint];
+              Animation_Joint *joint = &asset->joints[selected_joint];
 
               //TODO(Torin) Dynamic temporary memory!
               M4 localPoses[64];
               M4 globalPoses[64];
-              CalculateLocalPosesForSkeleton(asset->data.joints, asset->data.jointCount, &animationState, localPoses);
-              CalculateGlobalPosesForSkeleton(asset->data.joints, asset->data.jointCount, localPoses, globalPoses);
+              CalculateLocalPosesForSkeleton(asset->joints, asset->jointCount, &animationState, localPoses);
+              CalculateGlobalPosesForSkeleton(asset->joints, asset->jointCount, localPoses, globalPoses);
               M4 skinningMatrix = CalculateSkinningMatrix(joint, globalPoses[selected_joint]);
               
               ImGui::Text("Joint Name: %s", joint->name);
@@ -665,8 +665,8 @@ static void draw_asset_manifest_ui(EditorData *editor, AssetManifest* manifest) 
 
 
             ImGui::BeginChildFrame(2, ImVec2(400, 200));
-            for (size_t i = 0; i < asset->data.animation_clip_count; i++) {
-              Animation_Clip *clip = &asset->data.animation_clips[i];
+            for (size_t i = 0; i < asset->animationClipCount; i++) {
+              Animation_Clip *clip = &asset->animationClips[i];
               if (ImGui::Selectable(clip->name)) {
                 selectedAnimationClip = i;
               }
@@ -674,7 +674,7 @@ static void draw_asset_manifest_ui(EditorData *editor, AssetManifest* manifest) 
             ImGui::EndChildFrame();
 
             if (selectedAnimationClip != -1) {
-              Animation_Clip *clip = &asset->data.animation_clips[selectedAnimationClip];
+              Animation_Clip *clip = &asset->animationClips[selectedAnimationClip];
               ImGui::SliderFloat("Time", &currentAnimationTime, 0.0f, clip->durationInTicks);
             }
 
@@ -690,14 +690,14 @@ static void draw_asset_manifest_ui(EditorData *editor, AssetManifest* manifest) 
         ImVec2 textureBounds = ImVec2(textureDisplaySize, textureDisplaySize);
         ImGui::BeginChild("diffuse", ImVec2(textureDisplaySize, textureDisplaySize + 18));
         ImGui::Text("Diffuse Texture");
-        ImGui::Image((ImTextureID)(uintptr_t)material->drawable.diffuse_texture_id, textureBounds);
+        ImGui::Image((ImTextureID)(uintptr_t)material->data.diffuseTextureID, textureBounds);
         ImGui::EndChild();
 
         if (material->data.materialFlags & MaterialFlag_NORMAL) {
           ImGui::SameLine();
           ImGui::BeginChild("normal", ImVec2(textureDisplaySize, textureDisplaySize + 18));
           ImGui::Text("Normal Texture");
-          ImGui::Image((ImTextureID)(uintptr_t)material->drawable.normal_texture_id, textureBounds);
+          ImGui::Image((ImTextureID)(uintptr_t)material->data.normalTextureID, textureBounds);
           ImGui::EndChild();
         }
 
@@ -705,7 +705,7 @@ static void draw_asset_manifest_ui(EditorData *editor, AssetManifest* manifest) 
           ImGui::SameLine();
           ImGui::BeginChild("specular", ImVec2(textureDisplaySize, textureDisplaySize + 18));
           ImGui::Text("Specular Texture");
-          ImGui::Image((ImTextureID)(uintptr_t)material->drawable.specular_texture_id, textureBounds);
+          ImGui::Image((ImTextureID)(uintptr_t)material->data.specularTextureID, textureBounds);
           ImGui::EndChild();
         }
       } break;
@@ -833,8 +833,8 @@ void ProcessEditorCommand(EditorData* editor, Camera* camera, GameMemory* memory
         if(block->flags[i] & EntityFlag_PRESENT) {
           if(block->types[i] == EntityType_StaticObject){
             Entity* entity = &block->entities[i];
-            ModelAsset* modelAsset = 
-              (ModelAsset *)assetManifest->modelAssets[entity->modelID.slot_index].asset;
+            ModelAsset* modelAsset = (ModelAsset *)assetManifest->modelAssets[entity->modelID.slot_index].asset;
+            if (modelAsset == nullptr) continue;
            
             V3 boundsSize = Abs(modelAsset->aabb.max - modelAsset->aabb.min); 
             AABB collider = { entity->position - (boundsSize * 0.5),
@@ -875,9 +875,8 @@ void ProcessEditorCommand(EditorData* editor, Camera* camera, GameMemory* memory
 
       Entity *e = GetEntity(editor->selectedEntities[0], ec);
       ModelAsset *asset = GetModelAsset(e->modelID, am);
-      MeshData *data = &asset->data.meshData;
-      for(size_t i = 0; i < data->vertexCount; i++){
-        draw_debug_sphere(data->vertices[i].position + e->position, 0.01f, COLOR_YELLOW, true);
+      for(size_t i = 0; i < asset->vertexCount; i++){
+        draw_debug_sphere(asset->vertices[i].position + e->position, 0.01f, COLOR_YELLOW, true);
       }
 
     } break;
@@ -952,7 +951,7 @@ void process_editor_mode(GameMemory *memory, EntityContainer *entityContainer, E
     case EditorViewMode_Debug: {
       draw_debug_render_info_ui(&memory->renderState.debugRenderFrameInfo, &memory->renderState.debugRenderSettings);
       ImGui::BeginGroup();
-      draw_profiler_ui(&engine->profileData, &memory->mainBlock);
+      //draw_profiler_ui(&engine->profileData, &memory->mainBlock);
       ImGui::EndGroup();
     } break;
 

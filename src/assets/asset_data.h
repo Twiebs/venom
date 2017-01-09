@@ -22,22 +22,16 @@ struct MaterialAsset {
   U64 flags;
   const char* filenames[MaterialTextureType_COUNT];
   MaterialData data;
-  MaterialDrawable drawable;
 };
 
-//TODO(Torin) Seriously consider just conolodating all of this into one
-//structure... There really is not much reason to keep all of this stuff seperatly
-//yet until we know exatly how the rest of the engine will process the data.  Then
-//the structure can be seperated for cache locality...  It would not work like this
-//in the first place anyway!
+//NOTE(Torin) This is not even close to the final version of this data structure.
+//A cache friendly version will be created for the renderer in the future but for now
+//it is convieniant to only maintain one while major features are still being implemented.
 struct ModelAsset {
-  U32 slotIndex; //TODO(Torin) Can we get rid of this?
+  size_t totalAssetMemorySize;
   V3 size;
   AABB aabb; //TODO(Torin) This doesnt need to be stored just keep the size
   
-
-  //ModelData data;
-
   U32 meshCount;
   U32 jointCount;
   U32 animationClipCount;
@@ -46,37 +40,13 @@ struct ModelAsset {
   
   AnimatedVertex *vertices;
   U32 *indices;
+  U32 *indexCountPerMesh;
+  MaterialData *materialDataPerMesh;
+
   Animation_Joint *joints;
   Animation_Clip *animationClips;
 
-  U32 *indexCountPerMesh;
-  MaterialData *materialDataPerMesh;
   IndexedVertexArray vertexArray;
-
-#if 0
-  struct ModelDrawable {
-    GLuint vertexArrayID;
-    U32 meshCount;
-    
-    U32 joint_count;
-    MaterialDrawable *materials;
-    Animation_Joint *joints;
-  };
-
-  struct ModelData {
-    U32 meshCount;
-    U32 jointCount;
-    U32 animation_clip_count;
-    MeshData meshData;
-
-    Animation_Joint *joints;
-    MaterialData *materialDataPerMesh;
-    Animation_Clip *animation_clips;
-    U32 *index_count_per_mesh; //This will be the pointer that is returned by allocator
-  };
-#endif
-
-  ModelDrawable drawable;
 };
 
 struct DEBUGLoadedShader {
@@ -158,24 +128,16 @@ static DEBUGShaderInfo DEBUG_SHADER_INFOS[] =
 
 ModelAsset *GetModelAsset(Asset_ID& id);
 ModelAsset *GetModelAsset(Asset_ID& id, AssetManifest* assets);
-ModelDrawable* GetModelDrawable(Asset_ID& id, AssetManifest* manifest);
-ModelDrawable* GetModelDrawableFromIndex(U32 modelIndex, AssetManifest *manifest);
 
 MaterialAsset *GetMaterialAsset(U32 index, AssetManifest *assets);
 
 GLuint GetShaderProgram(DEBUGShaderID shaderID, AssetManifest *assets);
 
 
-
-const MaterialDrawable& GetMaterial(U32 id, AssetManifest* assets);
-
 #ifndef VENOM_RELEASE
 void WriteAssetManifestFile(const char *filename, AssetManifest *manifest);
 void ReadAssetManifestFile(const char *filename, AssetManifest *manifest);
 static void HotloadShaders(AssetManifest *assets);
-
-
-//static void HotloadModels(AssetManifest* manifest);
 
 Asset_ID GetModelID(const char *name, AssetManifest* assets);
 

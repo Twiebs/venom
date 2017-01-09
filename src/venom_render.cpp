@@ -10,7 +10,7 @@
 #include "opengl_glsl.cpp"
 #include "opengl_resources.cpp"
 #include "opengl_render.cpp"
-#include "offline_asset_tools.cpp"
+#include "assets/offline_asset_tools.cpp"
 #endif//VENOM_OPENGL
 
 #define StaticArrayAdd(element, countptr, array) \
@@ -35,26 +35,22 @@ U32 indexCount, U32 indexOffset, VenomDrawList* drawList){
   cmd.indexOffset = indexOffset;
 }
 
-void PushModelDrawCommand(U32 slotIndex, VenomDrawList* drawList, 
-V3 position, V3 rotation = V3{0,0,0})
-{
+void AddStaticModelToDrawList(VenomDrawList *drawList, ModelAsset *model, V3 position, V3 rotation = V3(0.0f)) {
   assert(drawList->modelDrawComandCount + 1 < ARRAY_COUNT(drawList->modelDrawCommands));
-  VenomModelDrawCommand& cmd = 
-    drawList->modelDrawCommands[drawList->modelDrawComandCount++];
-  cmd.modelID = slotIndex;
-  cmd.modelMatrix =  Translate(position) * Rotate(rotation);
+  VenomModelDrawCommand& cmd = drawList->modelDrawCommands[drawList->modelDrawComandCount++];
+  cmd.model = model;
+  cmd.modelMatrix = Translate(position) * Rotate(rotation);
 }
 
-void PushOutlinedModelDrawCommand(U32 modelSlotIndex, VenomDrawList* drawList, V3 position, V3 rotation = V3{0,0,0})
-{
+void AddOutlinedModelToDrawList(VenomDrawList *drawList, ModelAsset *model, V3 position, V3 rotation = V3(0.0f)) {
   VenomModelDrawCommand cmd;
-  cmd.modelID = modelSlotIndex;
+  cmd.model = model;
   cmd.modelMatrix = Translate(position) * Rotate(rotation);
   //TODO(Torin: May 31, 2016)Remove these when done testing
   cmd.position = position;
-  cmd.rotation = rotation; 
-  StaticArrayAdd(cmd, &drawList->outlinedModelDrawCommandCount, 
-   drawList->outlinedModelDrawCommands);
+  cmd.rotation = rotation;
+  StaticArrayAdd(cmd, &drawList->outlinedModelDrawCommandCount,
+    drawList->outlinedModelDrawCommands);
 }
 
 void AddAnimatedModelToDrawList(VenomDrawList *draw_list, ModelAsset *model, AnimationState *animation_state, V3 position, V3 rotation = V3(0.0, 0.0, 0.0), V3 scale = V3(1.0, 1.0, 1.0)) {  

@@ -10,15 +10,13 @@ struct VenomDrawCommand {
 };
 
 struct VenomModelDrawCommand {
-  U32 modelID;
+  ModelAsset *model;
   M4 modelMatrix;
   //TODO(Torin: May 31, 2016) Remove these when done testing
   V3 position;
   V3 rotation;
   V3 scale;
 };
-
-
 
 struct Animated_Model_Draw_Command {
   ModelAsset *model;
@@ -141,6 +139,6 @@ UpdateCamera(Camera *camera) {
 #ifdef VENOM_OPENGL
 #include "thirdparty/glcorearb.h"
 #include "opengl_resources.h"
-#include "offline_asset_tools.h"
+#include "assets/offline_asset_tools.h"
 #endif//VENOM_OPENGL
 

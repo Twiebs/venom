@@ -72,7 +72,7 @@ void InitalizeEngine() {
   size_t requiredMemory = Align8(workerCount * sizeof(Worker));
   requiredMemory += Align8(WORKER_STACK_MEMORY_SIZE * workerCount);
 
-  U8 *memory = (U8 *)malloc(requiredMemory);
+  U8 *memory = (U8 *)MemoryAllocate(requiredMemory);
   memset(memory, 0x00, requiredMemory);
   engine->workers = (Worker *)memory;
   engine->workerCount = workerCount;

@@ -3,7 +3,7 @@
 
 
 M4 CalculateLocalJointPoseForClip(S32 joint_index, Animation_Joint *joint, ModelAsset *model, AnimationClipState *state) {
-  Animation_Clip *clip = &model->data.animation_clips[state->animationClipID];
+  Animation_Clip *clip = &model->animationClips[state->animationClipID];
   F32 inverseTicksPerSecond = 1.0f / clip->ticksPerSecond;
   F32 durationInSeconds = inverseTicksPerSecond * clip->durationInTicks;
   F32 current_animation_time = fmod(state->localTimeSeconds, durationInSeconds);
@@ -81,7 +81,7 @@ M4 CalculateLocalJointPoseForClip(S32 joint_index, Animation_Joint *joint, Model
 M4 CalculateLocalJointPose(S32 joint_index, Animation_Joint *joint, AnimationState *state) {
   ModelAsset *model = GetModelAsset(state->model_id);
   if (model == nullptr) return joint->localTransform;
-  if (model->data.animation_clip_count == 0) return joint->localTransform;
+  if (model->animationClipCount == 0) return joint->localTransform;
   if (state->animationStateCount == 0) return joint->localTransform;
 
   DebugCodeBlock {
@@ -160,12 +160,12 @@ void UpdateAnimationState(AnimationState *animState, ModelAsset *model, F32 delt
   }
 
   assert(model != nullptr);
-  animState->localPoseOffset = Memory::FrameStackPush(model->data.jointCount * sizeof(M4));
-  animState->globalPoseOffset = Memory::FrameStackPush(model->data.jointCount * sizeof(M4));
+  animState->localPoseOffset = Memory::FrameStackPush(model->jointCount * sizeof(M4));
+  animState->globalPoseOffset = Memory::FrameStackPush(model->jointCount * sizeof(M4));
   M4 *localPoses = (M4 *)Memory::FrameStackPointer(animState->localPoseOffset);
   M4 *globalPoses = (M4 *)Memory::FrameStackPointer(animState->globalPoseOffset);
-  CalculateLocalPosesForSkeleton(model->data.joints, model->data.jointCount, animState, localPoses);
-  CalculateGlobalPosesForSkeleton(model->data.joints, model->data.jointCount, localPoses, globalPoses);
+  CalculateLocalPosesForSkeleton(model->joints, model->jointCount, animState, localPoses);
+  CalculateGlobalPosesForSkeleton(model->joints, model->jointCount, localPoses, globalPoses);
 }
 
 //TODO(Torin) Fix bogus crossfading thing
@@ -201,6 +201,6 @@ void InitalizeAnimationState(AnimationState *animState, ModelAsset *model) {
   animState->animationStateCount = 1;
   AnimationClipState *clipState = &animState->animationStates[0];
   clipState->blendWeightValue = 1.0f;
-  clipState->animationClipID = FindAnimationClipIndex(model->data.animation_clips, model->data.animation_clip_count, AnimationType_Idle);
+  clipState->animationClipID = FindAnimationClipIndex(model->animationClips, model->animationClipCount, AnimationType_Idle);
   clipState->playbackSpeedScalar = 1.0f;
 }

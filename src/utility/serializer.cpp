@@ -80,10 +80,10 @@ int OpenFile(const char *filename, const char *mode){
   }
   ctx.headerBufferCapacity = 1024;
   ctx.headerBuffer = (PropertyHeader *)
-    malloc(ctx.headerBufferCapacity * sizeof(PropertyHeader));
+    MemoryAllocate(ctx.headerBufferCapacity * sizeof(PropertyHeader));
   ctx.headerBufferCount = 0;
   ctx.dataBufferSize = 1024*1024*8;
-  ctx.dataBuffer = (uint8_t *)malloc(ctx.dataBufferSize);
+  ctx.dataBuffer = (uint8_t *)MemoryAllocate(ctx.dataBufferSize);
   ctx.dataBufferUsed = 0;
   return 1;
 }
@@ -92,8 +92,8 @@ static inline
 void CloseFile() {
   assert(ctx.file != 0);
   assert(ctx.activeHeader == 0);
-  free(ctx.headerBuffer);
-  free(ctx.dataBuffer);
+  MemoryFree(ctx.headerBuffer);
+  MemoryFree(ctx.dataBuffer);
   ctx.headerBuffer = 0;
   ctx.dataBuffer = 0;
   fclose(ctx.file);

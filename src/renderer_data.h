@@ -65,6 +65,9 @@ struct MaterialData {
 	U16 textureWidth;
 	U16 textureHeight;
 	U8 *textureData;
+  U32 diffuseTextureID;
+  U32 normalTextureID;
+  U32 specularTextureID;
 };
 
 struct MeshData {

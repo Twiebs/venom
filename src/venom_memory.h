@@ -1,7 +1,7 @@
 
-#define Align4(x) ((x + 0x3) & (~0x3))
-#define Align8(x) ((x + 0x7) & (~0x7))
-#define Align16(x) ((x + 0xF) & (~0xF))
+#define Align4(x) (((size_t)(x) + 0x3) & (~0x3))
+#define Align8(x) (((size_t)(x) + 0x7) & (~0x7))
+#define Align16(x) (((size_t)(x) + 0xF) & (~0xF))
 
 
 #define MEMORY_BLOCK_MAX_CHILDREN 8
@@ -15,15 +15,6 @@
 #define StaticArray(TElement, TSize) \
 struct { TElement data[TSize]; size_t count; } 
 
-void *memory_allocate(size_t size, const char *file) {
-  void *result = malloc(size);
-  return result;
-}
-
-void memory_free(void *memory, const char *file) {
-  free(memory);
-}
-
 struct DynamicSizedStack {
   U8 *memory;
   size_t used;
@@ -36,33 +27,23 @@ struct StaticSizedStack {
   size_t size;
 };
 
-U8 *StackPush(StaticSizedStack *stack, size_t size) {
-  assert(stack->used + size < stack->size);
-  U8 *result = stack->memory + stack->used; 
-  stack->used += size;
-  return result;
-}
-
-//Returns offset from the front of the stack
-U32 StackPush(DynamicSizedStack *stack, size_t size) {
-  if (stack->used + size > stack->size) {
-    stack->memory = (U8 *)realloc(stack->memory, stack->size + 4096);
-    stack->size = stack->size + 4096;
-  }
-
-  U32 result = stack->used;
-  stack->used += size;
-  return result;
-}
-
 struct EngineGlobals {
   DynamicSizedStack frameStack; //TODO(Torin) This needs to be thread safe
-  //Or create one for each thread and the id of the frame stack needs to be stored with
-  //the pointer... There is no way it will ever use more than 4GBs so use two U32s 
-  //one the index of the frame stack and the other the offset into the memory
+                                //Or create one for each thread and the id of the frame stack needs to be stored with
+                                //the pointer... There is no way it will ever use more than 4GBs so use two U32s 
+                                //one the index of the frame stack and the other the offset into the memory
 } static globals;
 
+
+inline U8 *StackPush(StaticSizedStack *stack, size_t size);
+//Returns offset from the front of the stack
+inline size_t StackPush(DynamicSizedStack *stack, size_t size);
+
 namespace Memory {
+
+
+
+
   U32 FrameStackPush(size_t size) {
     return StackPush(&globals.frameStack, size);
   }
@@ -75,6 +56,27 @@ namespace Memory {
     globals.frameStack.used = 0;
   }
 };
+
+U8 *StackPush(StaticSizedStack *stack, size_t size) {
+  assert(stack->used + size < stack->size);
+  U8 *result = stack->memory + stack->used; 
+  stack->used += size;
+  return result;
+}
+
+//Returns offset from the front of the stack
+size_t StackPush(DynamicSizedStack *stack, size_t size) {
+  if (stack->used + size > stack->size) {
+    stack->memory = (U8 *)MemoryReAllocate(stack->memory, stack->size + 4096);
+    stack->size = stack->size + 4096;
+  }
+
+  size_t result = stack->used;
+  stack->used += size;
+  return result;
+}
+
+
 
 template<typename TElement>
 struct DynamicArray {
@@ -89,7 +91,7 @@ struct DynamicArray {
   }
 
   ~DynamicArray() {
-    if (data != 0) free(data);
+    if (data != 0) MemoryFree(data);
   }
 
   TElement& operator[](size_t index){
@@ -148,11 +150,11 @@ struct DynamicArray {
 
   void Resize(size_t newCapacity) {
     assert(newCapacity > count);
-    TElement *newData = (TElement *)malloc(newCapacity * sizeof(TElement));
+    TElement *newData = (TElement *)MemoryAllocate(newCapacity * sizeof(TElement));
     memset(newData, 0x00, sizeof(TElement) * newCapacity);
     if (data != 0) {
       memcpy(newData, data, capacity * sizeof(TElement));
-      free(data);
+      MemoryFree(data);
     }
     data = newData;
     capacity = newCapacity;

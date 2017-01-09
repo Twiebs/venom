@@ -172,10 +172,10 @@ ComputeBoundingSphere(MeshData data)
 }
 
 
-AABB ComputeAABB(const MeshData* data) {
+AABB ComputeAABB(AnimatedVertex *vertices, size_t count) {
   AABB result = {};
-  for (size_t i = 0; i < data->vertexCount; i++) {
-    AnimatedVertex *vertex = (AnimatedVertex *)&data->vertices[i];
+  for (size_t i = 0; i < count; i++) {
+    AnimatedVertex *vertex = (AnimatedVertex *)&vertices[i];
     result.min.x = Min(result.min.x, vertex->position.x);
     result.min.y = Min(result.min.y, vertex->position.y);
     result.min.z = Min(result.min.z, vertex->position.z);

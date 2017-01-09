@@ -52,6 +52,26 @@ static const U64 INVALID_U64  = 0xFFFFFFFFFFFFFFFF;
 #undef VENOM_PROFILER
 #endif//VENOM_RELEASE
 
+#define malloc(size) static_assert(false, "DONT USE MALLOC");
+#define calloc(size, count) static_assert(false, "DONT USE CALLOC");
+#define realloc(ptr, size) static_assert(false, "DOUNT USE REALLOC");
+#define free(size, count) static_assert(false, "DONT USE FREE");
+#ifndef VENOM_TRACK_MEMORY
+#define MemoryAllocate(size) MemoryAllocateDefault(size)
+#define MemoryReAllocate(ptr, size) MemoryReAllocateDefault(ptr, size)
+#define MemoryFree(ptr) MemoryFreeDefault(ptr)
+inline U8 *MemoryAllocateDefault(size_t size);
+inline U8 *MemoryReAllocateDefault(void *ptr, size_t size);
+inline void MemoryFreeDefault(void *ptr);
+#else//VENOM_TRACK_MEMORY
+#define MemoryAllocate(size) MemoryAllocateTracked(size, __LINE__, __FILE__, __FUNCTION__)
+#define MemoryReAllocate(ptr, size) MemoryReAllocateTracked(ptr, size, __LINE__, __FILE__, __FUNCTION__)
+#define MemoryFree(ptr) MemoryFreeTracked(ptr, __LINE__, __FILE__, __FUNCTION__)
+inline U8 *MemoryAllocateTracked(size_t size, size_t lineNumber, const char *file, const char *function);
+inline U8 *MemoryReAllocateTracked(void *ptr, size_t size, size_t lineNumber, const char *file, const char *function);
+inline void MemoryFreeTracked(void *ptr, size_t lineNumber, const char *file, const char *function);
+#endif//VENOM_TRACK_MEMORY
+
 struct SystemTime {
   U16 day;
   U16 hour;
@@ -59,19 +79,20 @@ struct SystemTime {
   U16 second;
 };
 
+struct Engine;
+Engine *GetEngine();
+
 #include "platform/concurrency.h"
 
 #include "venom_memory.h"
 #include "math/venom_math.h"
-#include "venom_asset.h"
+#include "assets/venom_asset.h"
 #include "venom_audio.h"
 #include "animation.h"
 #include "venom_render.h"
 #include "venom_physics.h"
-#include "asset_data.h"
+#include "assets/asset_data.h"
 #include "terrain.h"
-
-
 
 #include "debug_renderer.h"
 #include "venom_entity.h"
@@ -166,6 +187,14 @@ struct Task {
   };
 };
 
+struct MemoryAllocationEntry {
+  const char *filename;
+  const char *procedureName;
+  size_t lineNumber;
+  uintptr_t memoryAddress;
+  size_t allocationSize;
+};
+
 struct Engine {
   B8 isEngineRunning;
 
@@ -182,8 +211,104 @@ struct Engine {
   DebugLog debugLog;
   ProfileData profileData;
   B8 isConsoleVisible;
+
+  //Memory usage stastitics
+  size_t currentMemoryAllocated;
+  AtomicU32 memoryAllocationLock;
+  MemoryAllocationEntry memoryAllocations[1024];
+  size_t memoryAllocationCount;
 #endif//VENOM_RELEASE
 };
+
+#ifndef VENOM_TRACK_MEMORY
+inline U8 *MemoryAllocateDefault(size_t size) {
+  auto engine = GetEngine();
+  engine->currentMemoryAllocated += size;
+#undef malloc
+  return (U8 *)malloc(size);
+#define malloc(size) static_assert("DONT USE MALLOC");
+}
+
+inline U8 *MemoryReAllocateDefault(void * ptr, size_t size) {
+#undef realloc
+  return (U8 *)realloc(ptr, size);
+#define realloc(ptr, size) static_assert(false, "DONT USE REALLOC");
+}
+
+inline void MemoryFreeDefault(void *ptr) {
+#undef free
+  free(ptr);
+#define free(ptr) static_assert("DONT USE FREE");
+}
+
+#else //VENOM_TRACK_MEMORY
+
+inline U8 *MemoryAllocateTracked(size_t size, size_t lineNumber, const char *file, const char *function) {
+#undef malloc
+  U8 *result = (U8 *)malloc(size);
+#define malloc(size) static_assert("DONT USE MALLOC");
+  auto engine = GetEngine();
+  SpinLock(&engine->memoryAllocationLock);
+  MemoryAllocationEntry *entry = &engine->memoryAllocations[engine->memoryAllocationCount++];
+  ReleaseLock(&engine->memoryAllocationLock);
+  entry->lineNumber = lineNumber;
+  entry->filename = file;
+  entry->procedureName = function;
+  entry->allocationSize = size;
+  entry->memoryAddress = (uintptr_t)result;
+  return result;
+}
+
+inline U8 *MemoryReAllocateTracked(void *ptr, size_t size, size_t lineNumber, const char *file, const char *function) {
+  if (ptr == nullptr) {
+    return MemoryAllocateTracked(size, lineNumber, file, function);
+  }
+
+#undef realloc
+  U8 *result = (U8 *)realloc(ptr, size);
+#define realloc(ptr, size) static_assert(false, "DONT USE REALLOC");
+  auto engine = GetEngine();
+  SpinLock(&engine->memoryAllocationLock);
+  for (size_t i = 0; i < engine->memoryAllocationCount; i++) {
+    MemoryAllocationEntry *entry = &engine->memoryAllocations[i];
+    if (entry->memoryAddress == (uintptr_t)ptr) {
+      ReleaseLock(&engine->memoryAllocationLock);
+      entry->lineNumber = lineNumber;
+      entry->filename = file;
+      entry->procedureName = function;
+      entry->allocationSize = size;
+      entry->memoryAddress = (uintptr_t)result;
+      return result;
+    }
+  }
+
+  ReleaseLock(&engine->memoryAllocationLock);
+  assert(false);
+  return nullptr;
+}
+
+inline void MemoryFreeTracked(void *ptr, size_t lineNumber, const char *file, const char *function) {
+#undef free
+  if (ptr == nullptr) return;
+  auto engine = GetEngine();
+  SpinLock(&engine->memoryAllocationLock);
+  for (size_t i = 0; i < engine->memoryAllocationCount; i++) {
+    MemoryAllocationEntry *entry = &engine->memoryAllocations[i];
+    if (entry->memoryAddress == (uintptr_t)ptr) {
+      engine->memoryAllocations[i] = engine->memoryAllocations[engine->memoryAllocationCount - 1];
+      engine->memoryAllocationCount -= 1;
+      ReleaseLock(&engine->memoryAllocationLock);
+      free(ptr);
+      return;
+    }
+  }
+  ReleaseLock(&engine->memoryAllocationLock);
+  assert(false);
+
+#define free(ptr) static_assert("DONT USE FREE");
+}
+
+#endif
 
 //Rename to somthing better?
 struct RenderState {

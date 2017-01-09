@@ -9,13 +9,13 @@ static inline void set_uniform(GLint location, V3 value) { glUniform3f(location,
 static inline void set_uniform(GLint location, V4 value) { glUniform4f(location, value.x, value.y, value.z, value.w); }
 static inline void set_uniform(GLint location, M4 value) { glUniformMatrix4fv(location, 1, GL_FALSE, &value[0][0]); }
 
-static inline void BindMaterial(const MaterialDrawable& material) {
+static inline void BindMaterial(MaterialData *material) {
   glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_2D, material.diffuse_texture_id);
+  glBindTexture(GL_TEXTURE_2D, material->diffuseTextureID);
   glActiveTexture(GL_TEXTURE1);
-  glBindTexture(GL_TEXTURE_2D, material.normal_texture_id);
+  glBindTexture(GL_TEXTURE_2D, material->normalTextureID);
   glActiveTexture(GL_TEXTURE2);
-  glBindTexture(GL_TEXTURE_2D, material.specular_texture_id);
+  glBindTexture(GL_TEXTURE_2D, material->specularTextureID);
 };
 
 static inline void SetLightingUniforms(const VenomDrawList* drawList, const Camera& camera) {
@@ -177,30 +177,30 @@ static inline void draw_atmosphere_glsl(RenderState *rs, Camera *camera, AssetMa
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
 
-static inline void draw_model_with_materials_common(ModelDrawable *drawable, M4 model_matrix) {
+static inline void DrawModelWithMaterialsCommon(ModelAsset *model, M4 modelMatrix) {
   static const U32 MODEL_MATRIX_LOCATION = 0;
   static const U32 NORMALMAP_PRESENT_LOCATION = 3;
   static const U32 SPECULARMAP_PRESENT_LOCATION = 4;
 
-  set_uniform(MODEL_MATRIX_LOCATION, model_matrix);
-  glBindVertexArray(drawable->vertexArrayID);
+  set_uniform(MODEL_MATRIX_LOCATION, modelMatrix);
+  glBindVertexArray(model->vertexArray.vertexArrayID);
   U64 currentIndexOffset = 0;
-  for (size_t j = 0; j < drawable->meshCount; j++) {
-    const MaterialDrawable &material = drawable->materials[j];
-    glUniform1i(NORMALMAP_PRESENT_LOCATION, material.flags & MaterialFlag_NORMAL);
-    glUniform1i(SPECULARMAP_PRESENT_LOCATION, material.flags & MaterialFlag_SPECULAR);
+  for (size_t j = 0; j < model->meshCount; j++) {
+    MaterialData *material = &model->materialDataPerMesh[j];
+    glUniform1i(NORMALMAP_PRESENT_LOCATION, material->materialFlags & MaterialFlag_NORMAL);
+    glUniform1i(SPECULARMAP_PRESENT_LOCATION, material->materialFlags & MaterialFlag_SPECULAR);
     BindMaterial(material);
-    glDrawElements(GL_TRIANGLES, drawable->indexCountPerMesh[j], GL_UNSIGNED_INT, (GLvoid*)(sizeof(U32)*currentIndexOffset));
-    currentIndexOffset += drawable->indexCountPerMesh[j];
+    glDrawElements(GL_TRIANGLES, model->indexCountPerMesh[j], GL_UNSIGNED_INT, (GLvoid*)(sizeof(U32)*currentIndexOffset));
+    currentIndexOffset += model->indexCountPerMesh[j];
   }
 }
 
-static inline void draw_animated_model_with_materials(ModelDrawable *drawable, AnimationState *animation_state, M4 model_matrix) {
+static inline void DrawAnimatedModelWithMaterials(ModelAsset *model, AnimationState *animation_state, M4 model_matrix) {
   static const U32 BONE_OFFSET_LOCATION = 5;
   static const U32 IS_MESH_STATIC_LOCATION = 69;
   set_uniform(IS_MESH_STATIC_LOCATION, false);
 
-  Animation_Joint *joints = drawable->joints;
+  Animation_Joint *joints = model->joints;
 #if 0
   M4 local_joint_poses[64];
 
@@ -219,37 +219,35 @@ static inline void draw_animated_model_with_materials(ModelDrawable *drawable, A
 #endif
 
   auto globalPoses = (M4 *)Memory::FrameStackPointer(animation_state->globalPoseOffset);
-  for (size_t i = 0; i < drawable->joint_count; i++) {
+  for (size_t i = 0; i < model->jointCount; i++) {
     Animation_Joint *joint = &joints[i];
     M4 final_skinning_matrix = CalculateSkinningMatrix(joint, globalPoses[i]);
     set_uniform(BONE_OFFSET_LOCATION + i, final_skinning_matrix);
   }
 
-  draw_model_with_materials_common(drawable, model_matrix);
+  DrawModelWithMaterialsCommon(model, model_matrix);
 }
 
-static inline void draw_static_model_with_materials(ModelDrawable* drawable, M4 modelMatrix) {
+static inline void DrawStaticModelWithMaterials(ModelAsset* model, M4 modelMatrix) {
   static const U32 BONE_OFFSET_LOCATION = 5;
-  static const U32 IS_MESH_STATIC_LOCATION = 69
-    ;
+  static const U32 IS_MESH_STATIC_LOCATION = 69;
   set_uniform(IS_MESH_STATIC_LOCATION, true);
-
   for (size_t i = 0; i < 16; i++) {
     set_uniform(BONE_OFFSET_LOCATION + i, M4Identity());
   }
 
-  draw_model_with_materials_common(drawable, modelMatrix);
+  DrawModelWithMaterialsCommon(model, modelMatrix);
 }
 
-static inline void draw_model_with_only_geometry(ModelDrawable* drawable, M4 modelMatrix) {
+static inline void DrawModelWithOnlyGeometry(ModelAsset* model, M4 modelMatrix) {
   static const U32 MODEL_MATRIX_LOCATION = 0;
   static const U32 BONE_OFFSET_LOCATION = 5;
   U64 currentIndexOffset = 0;
-  glBindVertexArray(drawable->vertexArrayID);
+  glBindVertexArray(model->vertexArray.vertexArrayID);
   set_uniform(MODEL_MATRIX_LOCATION, modelMatrix);
-  for (size_t j = 0; j < drawable->meshCount; j++) {
-    glDrawElements(GL_TRIANGLES, drawable->indexCountPerMesh[j], GL_UNSIGNED_INT, (GLvoid*)(sizeof(U32)*currentIndexOffset));
-    currentIndexOffset += drawable->indexCountPerMesh[j];
+  for (size_t j = 0; j < model->meshCount; j++) {
+    glDrawElements(GL_TRIANGLES, model->indexCountPerMesh[j], GL_UNSIGNED_INT, (GLvoid*)(sizeof(U32)*currentIndexOffset));
+    currentIndexOffset += model->indexCountPerMesh[j];
   }
 }
 
@@ -264,17 +262,16 @@ static inline void RenderDrawListWithGeometry(VenomDrawList* drawList, AssetMani
 
   for (size_t i = 0; i < drawList->modelDrawComandCount; i++) {
     VenomModelDrawCommand* drawCmd = &drawList->modelDrawCommands[i];
-    ModelDrawable* drawable = GetModelDrawableFromIndex(drawCmd->modelID, manifest);
-    //TODO(Torin) This should be an asset condition after default assets are added
-    if (drawable == nullptr) continue;
+    ModelAsset *model = drawCmd->model;
+    assert(model != nullptr);
 
     glUniformMatrix4fv(0, 1, GL_FALSE, &drawCmd->modelMatrix[0][0]);
     U64 currentIndexOffset = 0;
-    glBindVertexArray(drawable->vertexArrayID);
-    for (U64 j = 0; j < drawable->meshCount; j++) {
-      glDrawElements(GL_TRIANGLES, drawable->indexCountPerMesh[j],
+    glBindVertexArray(model->vertexArray.vertexArrayID);
+    for (U64 j = 0; j < model->meshCount; j++) {
+      glDrawElements(GL_TRIANGLES, model->indexCountPerMesh[j],
         GL_UNSIGNED_INT, (GLvoid*)(sizeof(U32)*currentIndexOffset));
-      currentIndexOffset += drawable->indexCountPerMesh[j];
+      currentIndexOffset += model->indexCountPerMesh[j];
     }
   }
 
@@ -304,19 +301,18 @@ static inline void RenderDrawListWithMaterials(VenomDrawList* drawList, AssetMan
     Animated_Model_Draw_Command *draw_cmd = &drawList->animated_model_draw_commands[i];
     ModelAsset *model = draw_cmd->model;
     assert(model != nullptr);
-    ModelDrawable *drawable = &draw_cmd->model->drawable;
-    draw_animated_model_with_materials(drawable, draw_cmd->animation_state, draw_cmd->model_matrix);
+    DrawAnimatedModelWithMaterials(model, draw_cmd->animation_state, draw_cmd->model_matrix);
   }
 
 
   for (size_t i = 0; i < drawList->modelDrawComandCount; i++) {
     VenomModelDrawCommand* drawCmd = &drawList->modelDrawCommands[i];
-    ModelDrawable* drawable = GetModelDrawableFromIndex(drawCmd->modelID, manifest);
-    //TODO(Torin) This should be an asset condition after default assets are added
-    if (drawable == nullptr) continue;
-    draw_static_model_with_materials(drawable, drawCmd->modelMatrix);
+    ModelAsset *model = drawCmd->model;
+    assert(model != nullptr);
+    DrawStaticModelWithMaterials(model, drawCmd->modelMatrix);
   }
 
+#if 0
   for (size_t i = 0; i < drawList->meshDrawCommandCount; i++) {
     VenomMeshDrawCommand* cmd = &drawList->meshDrawCommands[i];
     const MaterialDrawable& material = GetMaterial(cmd->materialID, manifest);
@@ -326,6 +322,7 @@ static inline void RenderDrawListWithMaterials(VenomDrawList* drawList, AssetMan
     glBindVertexArray(cmd->vertexArrayID);
     glDrawElements(GL_TRIANGLES, cmd->indexCount, GL_UNSIGNED_INT, (GLvoid*)(cmd->indexOffset * sizeof(U32)));
   }
+#endif
 
 #ifndef VENOM_RELEASE
   auto frameInfo = GetDebugRenderFrameInfo();
@@ -495,8 +492,8 @@ static inline void render_outlined_objects(RenderState *rs, Camera *camera, Asse
     VenomDrawList *drawList = &rs->drawList;
     for (size_t i = 0; i < drawList->outlinedModelDrawCommandCount; i++) {
       VenomModelDrawCommand* drawCmd = &drawList->outlinedModelDrawCommands[i];
-      ModelDrawable* drawable = GetModelDrawableFromIndex(drawCmd->modelID, assetManifest);
-      draw_static_model_with_materials(drawable, drawCmd->modelMatrix);
+      ModelAsset *model = drawCmd->model;
+      DrawStaticModelWithMaterials(model, drawCmd->modelMatrix);
     }
   }
 
@@ -514,9 +511,10 @@ static inline void render_outlined_objects(RenderState *rs, Camera *camera, Asse
     VenomDrawList *drawList = &rs->drawList;
     for (size_t i = 0; i < drawList->outlinedModelDrawCommandCount; i++) {
       VenomModelDrawCommand* drawCmd = &drawList->outlinedModelDrawCommands[i];
-      ModelDrawable* drawable = GetModelDrawableFromIndex(drawCmd->modelID, assetManifest);
+      ModelAsset *model = drawCmd->model;
+      assert(model != nullptr);
       M4 modelMatrix = Translate(drawCmd->position) * Rotate(drawCmd->rotation) * Scale(V3(1.02));
-      draw_model_with_only_geometry(drawable, modelMatrix);
+      DrawModelWithOnlyGeometry(model, modelMatrix);
     }
     glEnable(GL_DEPTH_TEST);
   }
@@ -529,7 +527,7 @@ static inline void DebugRenderPass(RenderState *rs) {
     Animated_Model_Draw_Command *cmd = &rs->drawList.animated_model_draw_commands[i];
     ModelAsset *model = cmd->model;
     assert(model != nullptr);
-    DrawSkeleton(model->data.joints, model->data.jointCount, cmd->animation_state, cmd->model_matrix);
+    DrawSkeleton(model->joints, model->jointCount, cmd->animation_state, cmd->model_matrix);
   }
 }
 

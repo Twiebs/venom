@@ -39,7 +39,7 @@ static int VenomCopyFile(const char *a, const char *b);
 #include "venom_debug.cpp"
 #include "venom_render.cpp"
 #include "venom_physics.cpp"
-#include "venom_asset.cpp"
+#include "assets/venom_asset.cpp"
 #include "venom_audio.cpp"
 
 #include "utility/serializer.cpp"
@@ -94,7 +94,7 @@ UserConfig GetUserConfig() {
 		result.screen_width  = VENOM_DEFAULT_SCREEN_WIDTH;
 		result.screen_height = VENOM_DEFAULT_SCREEN_HEIGHT;
 		result.is_fullscreen = false;
-		result.memory_size = GIGABYTES(2);
+		result.memory_size = MEGABYTES(512);
 
 		file = fopen(VENOM_USER_CONFIG_PATH, "wb");
 		if (file == NULL) 
@@ -215,7 +215,8 @@ void PlatformKeyEventHandler(GameMemory *memory, int keycode, int keysym, int is
 //to allocate before attemping to initalize the game
 static inline
 GameMemory* AllocateGameMemory(UserConfig* config) {
-  U8* rawMemory = (U8*)calloc(1, config->memory_size);
+  U8* rawMemory = (U8*)MemoryAllocate(config->memory_size);
+  memset(rawMemory, 0x00, config->memory_size);
   GameMemory* memory = (GameMemory*)rawMemory;
 
   //TODO(Torin)Make sure this is aligned on an 8byte boundry
@@ -267,8 +268,19 @@ static_assert(false, "No emscripten support yet!")
 #endif
 
 #ifndef VENOM_RELEASE
-using namespace Win32;
+#undef malloc
+#undef free
+#undef realloc
+#define malloc(size) MemoryAllocate(size)
+#define free(ptr) MemoryFree(ptr)
+#define realloc(ptr, size) MemoryReAllocate(ptr, size)
 #include "thirdparty/imgui.cpp"
 #include "thirdparty/imgui_draw.cpp"
 #include "thirdparty/imgui_demo.cpp"
+#undef malloc
+#undef free
+#undef realloc
+#define malloc(size) static_assert(false, "USE CUSTOM ALLOCATORS");
+#define free(ptr) static_assert(false, "USE CUSTOM ALLOCATORS");
+#define realloc(ptr, size) static_assert(false, "USE CUSTOM ALLOCATORS");
 #endif//VENOM_RELEASE

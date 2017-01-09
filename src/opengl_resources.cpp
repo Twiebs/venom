@@ -314,9 +314,7 @@ GLuint CreateTextureArray(U16 width, U16 height, U32 depth, GLenum internal_form
 	return textureID;
 }
 
-MaterialDrawable CreateMaterialDrawable(MaterialData *data) {
-	MaterialDrawable drawable = {};
-	drawable.flags = data->materialFlags;
+void CreateMaterialOpenGLData(MaterialData *data) {
   assert(data->materialFlags & MaterialFlag_DIFFUSE);
 	U8 *pixels_to_read = data->textureData;
 	GLenum wrap_mode = GL_CLAMP_TO_EDGE;
@@ -324,37 +322,31 @@ MaterialDrawable CreateMaterialDrawable(MaterialData *data) {
     wrap_mode = GL_REPEAT;
 
 	if (data->materialFlags & MaterialFlag_TRANSPARENT) {
-		drawable.diffuse_texture_id = CreateTextureWithMipmaps(pixels_to_read,
+		data->diffuseTextureID = CreateTextureWithMipmaps(pixels_to_read,
       data->textureWidth, data->textureHeight, GL_RGBA8, GL_RGBA, wrap_mode);
 		pixels_to_read += (data->textureWidth * data->textureHeight * 4);
 	} else {
-		drawable.diffuse_texture_id = CreateTextureWithMipmaps(pixels_to_read,
+		data->diffuseTextureID = CreateTextureWithMipmaps(pixels_to_read,
       data->textureWidth, data->textureHeight, GL_RGB8, GL_RGB, wrap_mode);
 		pixels_to_read += (data->textureWidth * data->textureHeight * 3);
 	}
 
 	if (data->materialFlags & MaterialFlag_NORMAL) {
-		drawable.normal_texture_id = CreateTextureWithMipmaps(pixels_to_read,
+		data->normalTextureID = CreateTextureWithMipmaps(pixels_to_read,
       data->textureWidth, data->textureHeight, GL_RGB8, GL_RGB, wrap_mode);
 		pixels_to_read += (data->textureWidth * data->textureHeight * 3);
 	}
 
 	if (data->materialFlags & MaterialFlag_SPECULAR) {
-		drawable.specular_texture_id = CreateTextureWithMipmaps(pixels_to_read,
+		data->specularTextureID = CreateTextureWithMipmaps(pixels_to_read,
       data->textureWidth, data->textureHeight, GL_RGB8, GL_RGB, wrap_mode);
 	}
-
-	return drawable;
 }
 
-void DestroyMaterialDrawable(MaterialDrawable* drawable) {
-  if (drawable->diffuse_texture_id)
-    glDeleteTextures(1, &drawable->diffuse_texture_id);
-  if (drawable->specular_texture_id)
-    glDeleteTextures(1, &drawable->specular_texture_id);
-  if (drawable->normal_texture_id)
-    glDeleteTextures(1, &drawable->normal_texture_id);
-  drawable->flags = 0;
+void DestroyMaterialOpenGLData(MaterialData *data) {
+  glDeleteTextures(1, &data->diffuseTextureID);
+  glDeleteTextures(1, &data->normalTextureID);
+  glDeleteTextures(1, &data->specularTextureID);
 }
 
 inline RenderGroup CreateImGuiRenderGroup() {
