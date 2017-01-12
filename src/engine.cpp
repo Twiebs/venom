@@ -67,6 +67,7 @@ void ScheduleTask(Task task) {
 }
 
 void InitalizeEngine() {
+  BeginProfileEntry("Initalize Engine");
   Engine *engine = &g_engine;
   size_t workerCount = std::thread::hardware_concurrency();
   size_t requiredMemory = Align8(workerCount * sizeof(Worker));
@@ -87,4 +88,6 @@ void InitalizeEngine() {
     currentStackMemoryPtr += WORKER_STACK_MEMORY_SIZE;
     worker->thread = std::thread(WorkerThreadProc, worker);
   }
+
+  EndProfileEntry();
 }

@@ -47,7 +47,7 @@ struct Asset_ID {
 
 struct AssetSlot {
   AssetState assetState;
-  //AtomicU32 lock;
+  SpinLock lock;
 
   void* asset;
 

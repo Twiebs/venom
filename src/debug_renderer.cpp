@@ -156,8 +156,8 @@ void render_debug_draw_commands(Camera *camera, AssetManifest *assetManifest, fl
       glUniform1i(USE_LINE_POSITION_LOCATION, 1);
       modelMatrix = M4Identity();
       glUniformMatrix4fv(MODEL_MATRIX_LOCATION, 1, GL_FALSE, &modelMatrix[0][0]);
-      set_uniform(LINE_SEGMENT_POSITIONS_LOCATION + 0, cmd->lineSegmentPositions[0]);
-      set_uniform(LINE_SEGMENT_POSITIONS_LOCATION + 1, cmd->lineSegmentPositions[1]);
+      SetUniform(LINE_SEGMENT_POSITIONS_LOCATION + 0, cmd->lineSegmentPositions[0]);
+      SetUniform(LINE_SEGMENT_POSITIONS_LOCATION + 1, cmd->lineSegmentPositions[1]);
       glDisable(GL_DEPTH_TEST);
       glDrawArrays(GL_LINES, 0, 2);
       glEnable(GL_DEPTH_TEST);
@@ -184,8 +184,8 @@ void render_debug_draw_commands(Camera *camera, AssetManifest *assetManifest, fl
 
     case DebugDrawCommand_CAMERA: {
       M4 translation = Translate(cmd->position);
-      set_uniform(MODEL_MATRIX_LOCATION, translation);
-      set_uniform(COLOR_LOCATION, cmd->color);
+      SetUniform(MODEL_MATRIX_LOCATION, translation);
+      SetUniform(COLOR_LOCATION, cmd->color);
       glDrawElements(GL_TRIANGLES, debugRenderer->sphereIndexCount,
         GL_UNSIGNED_INT, (void*)(uintptr_t)debugRenderer->sphereIndexOffset);
     } break;

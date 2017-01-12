@@ -10,13 +10,14 @@ struct PersistantProfilerEntry {
 };
 
 struct ExplicitProfilerEntry {
-  const char *name;
+  char *name;
   U64 elapsedCPUCycles;
-  float elapsedFrameTime;
+  U64 elapsedTimeTicks;
+  float elapsedTimeMilliseconds;
 };
 
 struct ProfileData {
-  std::mutex mutex;
+  SpinLock lock;
   PersistantProfilerEntry persistantEntries[PROFILE_PERSISTANT_ENTRY_COUNT_MAX];
   ExplicitProfilerEntry explictEntries[256];
   U32 persistantEntryCount;
@@ -25,3 +26,6 @@ struct ProfileData {
 
 void EndTimedBlock(const char *name);
 void BeginTimedBlock(const char *name);
+
+void BeginProfileEntry(const char *name);
+void EndProfileEntry();

@@ -3,13 +3,13 @@ void BeginTimedBlock(const char *name) {
   auto engine = GetEngine();
   auto profileData = &engine->profileData;
 
-  /* LOCK */ profileData->mutex.lock();
+  AquireLock(&profileData->lock);
 
   for (size_t i = 0; i < profileData->persistantEntryCount; i++) {
     PersistantProfilerEntry *entry = &profileData->persistantEntries[i];
     if (strcmp(name, entry->name) == 0) {
       entry->startTime = GetPerformanceCounterTime();
-      /* UNLOCK */profileData->mutex.unlock();
+      ReleaseLock(&profileData->lock);
       return;
     }
   }
@@ -25,8 +25,7 @@ void BeginTimedBlock(const char *name) {
   entry->name[name_length] = 0;
   memcpy(entry->name, name, name_length);
   entry->startTime = GetPerformanceCounterTime();
-
-  profileData->mutex.unlock();
+  ReleaseLock(&profileData->lock);
 }
 
 void EndTimedBlock(const char *name) {
@@ -34,21 +33,46 @@ void EndTimedBlock(const char *name) {
   auto engine = GetEngine();
   auto profileData = &engine->profileData;
 
-  profileData->mutex.lock();
+  AquireLock(&profileData->lock);
   for (size_t i = 0; i < profileData->persistantEntryCount; i++) {
     PersistantProfilerEntry *entry = &profileData->persistantEntries[i];
     if (strcmp(name, entry->name) == 0) {
       U64 elapsedTime = currentTime - entry->startTime;
-      float elapsedTimeInNanoseconds = (elapsedTime / (GetPerformanceCounterFrequency()));
-      float elapsedTimeInMilliseconds = elapsedTimeInNanoseconds / 1000000.0f;
-      entry->elapsedTimes[entry->historyWriteIndex++] = elapsedTimeInMilliseconds;
+      F64 frequency = (F64)GetPerformanceCounterFrequency() / 1000.0;
+      float elapsedTimeInMilliSeconds = elapsedTime / frequency;
+
+      entry->elapsedTimes[entry->historyWriteIndex++] = elapsedTimeInMilliSeconds;
       if (entry->historyWriteIndex > ARRAY_COUNT(entry->elapsedTimes))
         entry->historyWriteIndex = 0;
-      profileData->mutex.unlock();
+      ReleaseLock(&profileData->lock);
       return;
     }
   }
 
-  profileData->mutex.unlock();
+  ReleaseLock(&profileData->lock);
   assert(false && "No matching label for profile block");
+}
+
+void BeginProfileEntry(const char *name) {
+  auto engine = GetEngine();
+  auto profileData = &engine->profileData;
+  AquireLock(&profileData->lock);
+  if (profileData->explicitEntryCount > ARRAY_COUNT(profileData->explictEntries)) {
+    //TODO(Torin) Serialize!
+    assert(false);
+  }
+
+  ExplicitProfilerEntry *entry = &profileData->explictEntries[profileData->explicitEntryCount++];
+  ReleaseLock(&profileData->lock);
+  entry->name = strdup(name);
+  entry->elapsedTimeTicks = GetPerformanceCounterTime();
+}
+
+void EndProfileEntry() {
+  U64 currentTime = GetPerformanceCounterTime();
+  auto profileData = &GetEngine()->profileData;
+  ExplicitProfilerEntry *entry = &profileData->explictEntries[profileData->explicitEntryCount - 1];
+  U64 elapsedTime = currentTime - entry->elapsedTimeTicks;
+  F64 frequency = (F64)GetPerformanceCounterFrequency() / 1000.0;
+  entry->elapsedTimeMilliseconds = (F64)elapsedTime / frequency;
 }

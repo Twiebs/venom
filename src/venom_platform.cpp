@@ -36,9 +36,12 @@ static int VenomCopyFile(const char *a, const char *b);
 #ifdef VENOM_SINGLE_TRANSLATION_UNIT
 #include "utility/StringUtils.cpp"
 #include "math/math_procedural.cpp"
+
+#include "venom_memory.cpp"
 #include "venom_debug.cpp"
 #include "venom_render.cpp"
 #include "venom_physics.cpp"
+
 #include "assets/venom_asset.cpp"
 #include "venom_audio.cpp"
 
@@ -213,8 +216,7 @@ void PlatformKeyEventHandler(GameMemory *memory, int keycode, int keysym, int is
 //TODO(Torin) Make this procedure take a availible system memory
 //variable so that we can check if there is enough memory availible
 //to allocate before attemping to initalize the game
-static inline
-GameMemory* AllocateGameMemory(UserConfig* config) {
+static inline GameMemory* AllocateGameMemory(UserConfig* config) {
   U8* rawMemory = (U8*)MemoryAllocate(config->memory_size);
   memset(rawMemory, 0x00, config->memory_size);
   GameMemory* memory = (GameMemory*)rawMemory;
@@ -243,6 +245,7 @@ GameMemory* AllocateGameMemory(UserConfig* config) {
 #endif //VENOM_HOTLOAD
 
     InitalizeEngine();
+
 
   //TODO(Torin)An Error log is also needed in release mode this should be rethought
 #ifndef VENOM_RELEASE

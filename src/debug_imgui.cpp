@@ -47,8 +47,7 @@ draw_debug_render_info_ui(VenomDebugRenderFrameInfo* debugInfo, VenomDebugRender
   ImGui::EndGroup();
 }
 
-static void 
-draw_profiler_ui(const ProfileData* profileData, const MemoryBlock* block){
+static void DrawProfilerUI(ProfileData* profileData){
 	for(size_t i = 0; i < profileData->persistantEntryCount; i++){
 		const PersistantProfilerEntry *entry = &profileData->persistantEntries[i];
 		if(ImGui::CollapsingHeader(entry->name)){
@@ -60,6 +59,12 @@ draw_profiler_ui(const ProfileData* profileData, const MemoryBlock* block){
 			ImGui::PopID();
 		}
 	}
+
+  for (size_t i = 0; i < profileData->explicitEntryCount; i++) {
+    ExplicitProfilerEntry *entry = &profileData->explictEntries[i];
+    ImGui::Text("%s: %.2f ms", entry->name, entry->elapsedTimeMilliseconds);
+  }
+
 }
 
 static bool ShowModelCreateWidgets(AssetManifest *manifest) {
@@ -137,10 +142,10 @@ static void ShowMaterialDataInfo(const MaterialData *data, bool firstOpen = fals
 }
 //===================================================================================
 
-static void
-ShowConsole(const DebugLog *log, bool scrollToBottom = false){
+static void ShowConsole(const DebugLog *log, bool scrollToBottom = false){
+  auto engine = GetEngine();
 	ImGui::Begin("Console");
-	ImGui::BeginChild("LogEntries");
+  ImGui::BeginChildFrame(0, ImVec2(480, 0));
   for (size_t i = 0; i < log->current_entry_count; i++) {
 		const LogEntry& entry = log->entries[i];
 		const V4& color = LOGLEVEL_COLOR[entry.level];
@@ -150,10 +155,13 @@ ShowConsole(const DebugLog *log, bool scrollToBottom = false){
     ImGui::PopStyleColor();
 	}
   if (scrollToBottom) ImGui::SetScrollHere();
-	ImGui::EndChild();
-	ImGui::End();
+	ImGui::EndChildFrame();
+  ImGui::SameLine();
+  ImGui::BeginChildFrame(1, ImVec2(0, 0));
+  DrawProfilerUI(&engine->profileData);
+  ImGui::EndChildFrame();
+  ImGui::End();
 
-  auto engine = GetEngine();
   engine->unseenErrorCount = 0;
   engine->unseenWarningCount = 0;
   engine->unseenInfoCount = 0;

@@ -234,7 +234,9 @@ EngineAPIList
   io.Fonts->TexID = (void *)(size_t)memory->renderState.imguiFontTexture;
 
 
-  initalize_asset_manifest(&memory->assetManifest);
+  BeginProfileEntry("Initalize Asset Manifest");
+  InitalizeAssetManifest(&memory->assetManifest);
+  EndProfileEntry();
 
   VenomModuleStart(memory);
 
@@ -370,7 +372,7 @@ EngineAPIList
 
 extern "C" void _VenomModuleUpdate(GameMemory* memory) {
   BeginTimedBlock("HotloadAssets");
-  hotload_modified_assets(&memory->assetManifest);
+  HotloadModifedAssets(&memory->assetManifest);
   EndTimedBlock("HotloadAssets");
 
   imgui_update_state(memory);

@@ -12,45 +12,47 @@ inline bool AtomicCompareAndExchange(AtomicU64 *atom, U64 exchange, U64 comparan
 }
 
 #ifndef VENOM_TRACK_LOCKS
-inline bool TryLockDefault(AtomicU32 *lock) {
+inline bool TryLockDefault(SpinLock *lock) {
   U32 result = (U32)Win32::_InterlockedCompareExchange((volatile long *)&lock->value, (long)1, (long)0);
   return result == 0;
 }
 
-inline void SpinLockDefault(AtomicU32 *lock) {
+inline void AquireLockDefault(SpinLock *lock) {
   while (Win32::_InterlockedCompareExchange(&lock->value, 1, 0) == 1) {
 
   }
 }
 
 #else//VENOM_TRACK_LOCKS
-inline void SpinLockTracked(AtomicU32 *lock, size_t line, const char *file, const char *procedure) {
+inline void AquireLockTracked(SpinLock *lock, size_t line, const char *file, const char *procedure) {
   while (Win32::_InterlockedCompareExchange(&lock->value, 1, 0) == 1) { }
   lock->line = line;
   lock->file = file;
   lock->procedure = procedure;
+  lock->threadID = g_threadID;
 }
 
-inline bool TryLockTracked(AtomicU32 *lock, size_t line, const char *file, const char *procedure) {
+inline bool TryLockTracked(SpinLock *lock, size_t line, const char *file, const char *procedure) {
   U32 result = (U32)Win32::_InterlockedCompareExchange((volatile long *)&lock->value, (long)1, (long)0);
   if (result == 0) {
     lock->line = line;
     lock->file = file;
     lock->procedure = procedure;
+    lock->threadID = g_threadID;
     return true;
   }
   return false;
 }
 #endif//VENOM_TRACK_LOCKS
 
-
-inline void ReleaseLock(AtomicU32 *lock) {
+inline void ReleaseLock(SpinLock *lock) {
   strict_assert(lock->value == 1);
   strict_assert(((uintptr_t)lock & 0b11) == 0);
 #ifdef VENOM_TRACK_LOCKS
   lock->line = 0;
   lock->file = 0;
   lock->procedure = 0;
+  lock->threadID = 0;
 #endif//VENOM_TRACK_LOCKS
   lock->value = 0;
 }

@@ -78,30 +78,6 @@ M4 CalculateLocalJointPoseForClip(S32 joint_index, Animation_Joint *joint, Model
 
 #define DebugCodeBlock if(1) 
 
-M4 CalculateLocalJointPose(S32 joint_index, Animation_Joint *joint, AnimationState *state) {
-  ModelAsset *model = GetModelAsset(state->model_id);
-  if (model == nullptr) return joint->localTransform;
-  if (model->animationClipCount == 0) return joint->localTransform;
-  if (state->animationStateCount == 0) return joint->localTransform;
-
-  DebugCodeBlock {
-    F32 totalBlendWeightValue = 0.0f;
-    for (size_t i = 0; i < state->animationStateCount; i++)
-      totalBlendWeightValue += state->animationStates[i].blendWeightValue;
-    assert(Equals(totalBlendWeightValue, 1.0f));
-  }
-
-
-  M4 result = {};
-  for (size_t i = 0; i < state->animationStateCount; i++) {
-    AnimationClipState *clipState = &state->animationStates[i];
-    M4 clipLocalPose = CalculateLocalJointPoseForClip(joint_index, joint, model, clipState);
-    result = result + (clipLocalPose * clipState->blendWeightValue);
-  }
-
-  return result;
-}
-
 M4 CalculateGlobalJointPose(S32 joint_index, Animation_Joint *joint_list, M4 *local_poses) {
   Animation_Joint *joint = &joint_list[joint_index];
   M4 transform = local_poses[joint_index];
@@ -121,15 +97,29 @@ void CalculateGlobalPosesForSkeleton(Animation_Joint *jointList, size_t count, M
   }
 }
 
-void CalculateLocalPosesForSkeleton(Animation_Joint *jointList, size_t count, AnimationState *animState, M4 *localPoses) {
-  for (size_t i = 0; i < count; i++) {
-    Animation_Joint *joint = &jointList[i];
-    localPoses[i] = CalculateLocalJointPose((S32)i, joint, animState);
+void CalculateLocalPosesForSkeleton(ModelAsset *model, AnimationState *animState, M4 *localPoses) {
+  assert(model != nullptr);
+  assert(model->animationClipCount > 0);
+  assert(animState->animationStateCount > 0);
+  for (size_t i = 0; i < model->jointCount; i++) {
+    Animation_Joint *joint = &model->joints[i];
+    localPoses[i] = M4Zero();
+    for (size_t i = 0; i < animState->animationStateCount; i++) {
+      AnimationClipState *clipState = &animState->animationStates[i];
+      M4 clipLocalPose = CalculateLocalJointPoseForClip(i, joint, model, clipState);
+      localPoses[i] = localPoses[i] + (clipLocalPose * clipState->blendWeightValue);
+    }
   }
 }
 
 M4 CalculateSkinningMatrix(Animation_Joint *joint, M4 globalPose) {
   return globalPose * joint->inverseBindPose;
+}
+
+static U32 FindAnimationClipIndex(Animation_Clip *clips, size_t count, AnimationType type) {
+  for (size_t i = 0; i < count; i++)
+    if (clips[i].type == type) return i;
+  return INVALID_U32;
 }
 
 void UpdateAnimationState(AnimationState *animState, ModelAsset *model, F32 deltaTime) {
@@ -143,7 +133,6 @@ void UpdateAnimationState(AnimationState *animState, ModelAsset *model, F32 delt
       animState->blendElapsedTime = 0.0f;
       animState->blendDurationTime = 0.0f;
       animState->blendMode = AnimationBlendMode_None;
-      //TODO(Torin) Better system than this!
       AnimationClipState *clipState0 = &animState->animationStates[0];
       AnimationClipState *clipState1 = &animState->animationStates[1];
       clipState0->blendWeightValue = 1.0f;
@@ -159,13 +148,35 @@ void UpdateAnimationState(AnimationState *animState, ModelAsset *model, F32 delt
     }
   }
 
+  DebugCodeBlock {
+    F32 totalBlendWeightValue = 0.0f;
+    for (size_t i = 0; i < animState->animationStateCount; i++)
+      totalBlendWeightValue += animState->animationStates[i].blendWeightValue;
+    assert(Equals(totalBlendWeightValue, 1.0f));
+  }
+
   assert(model != nullptr);
   animState->localPoseOffset = Memory::FrameStackPush(model->jointCount * sizeof(M4));
   animState->globalPoseOffset = Memory::FrameStackPush(model->jointCount * sizeof(M4));
   M4 *localPoses = (M4 *)Memory::FrameStackPointer(animState->localPoseOffset);
   M4 *globalPoses = (M4 *)Memory::FrameStackPointer(animState->globalPoseOffset);
-  CalculateLocalPosesForSkeleton(model->joints, model->jointCount, animState, localPoses);
+  CalculateLocalPosesForSkeleton(model, animState, localPoses);
   CalculateGlobalPosesForSkeleton(model->joints, model->jointCount, localPoses, globalPoses);
+}
+
+void SetAnimation(AnimationState *animState, AnimationType type) {
+  auto model = GetModelAsset(animState->model_id);
+  U32 clipID = FindAnimationClipIndex(model->animationClips, model->animationClipCount, type);
+  if (clipID != INVALID_U32) {
+    animState->blendMode = AnimationBlendMode_None;
+    animState->blendDurationTime = 0.0f;
+    auto clipState = &animState->animationStates[0];
+    clipState->animationClipID = clipID;
+    clipState->blendWeightValue = 1.0f;
+    clipState->localTimeSeconds = 0.0f;
+    clipState->playbackSpeedScalar = 1.0f;
+  }
+  animState->animationStateCount = 1;
 }
 
 //TODO(Torin) Fix bogus crossfading thing
@@ -182,12 +193,7 @@ void CrossFade(AnimationState *animState, F32 durationInSeconds, U32 sourceClip,
   animState->animationStateCount = 2;
 }
 
-U32 FindAnimationClipIndex(Animation_Clip *clips, size_t count, AnimationType type) {
-  for (size_t i = 0; i < count; i++) {
-    if (clips[i].type == type) return i;
-  }
-  return INVALID_U32;
-}
+
 
 //TODO(Torin 2016-12-24) Remove duplication of modelID in animState and entity
 

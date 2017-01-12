@@ -380,7 +380,6 @@ int WindowsPlatformMain() {
 	GetSystemInfo(&win32SystemInfo);
 	sys->cpu_core_count = win32SystemInfo.dwNumberOfProcessors;
 
-
 #ifdef VENOM_HOTLOAD
 	EngineAPI *API = &memory->engineAPI;
 #define OpenGLProc(signature, name) API->name = name;

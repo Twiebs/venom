@@ -79,16 +79,21 @@ struct AnimationClipState {
 struct AnimationState {
   B8 isInitalized;
   Asset_ID model_id;
+
   F32 blendElapsedTime;
   F32 blendDurationTime;
+  U32 animationStateCount;
   AnimationBlendMode blendMode;
   AnimationClipState animationStates[4];
-  U32 animationStateCount;
+  
+
   U32 localPoseOffset;
   U32 globalPoseOffset;
 };
 
+struct ModelAsset;
+
 M4 CalculateSkinningMatrix(Animation_Joint *joint, M4 globalPose);
 void CalculateGlobalPosesForSkeleton(Animation_Joint *jointList, size_t count, M4 *localPoses, M4 *globalPoses);
-void CalculateLocalPosesForSkeleton(Animation_Joint *jointList, size_t count, AnimationState *animState, M4 *localPoses);
+void CalculateLocalPosesForSkeleton(ModelAsset *model, AnimationState *animState, M4 *localPoses);
 

@@ -6,7 +6,6 @@
 #include "venom_editor.cpp"
 #include "venom_entity.cpp"
 
-
 #include "terrain.cpp"
 
 #include "Game/CameraMovement.cpp"
@@ -18,9 +17,7 @@ struct GameData {
   bool initalized;
   Player player;
   IndexedVertexArray proceduralMesh;
-
   EntityIndex playerEntityIndex;
-
   TerrainGenerationState terrain;
 };
 
@@ -44,8 +41,11 @@ void VenomModuleStart(GameMemory* memory) {
   GameData* data = PushStruct(GameData, &memory->mainBlock);
   memory->userdata = data;
   RenderState* rs = &memory->renderState;
-
+  
+  BeginProfileEntry("Initalize Terrain Generator");
   InitalizeTerrainGenerator(&data->terrain, &memory->mainBlock, V3(0.0, 0.0, 0.0));
+  EndProfileEntry();
+
   rs->terrain = &data->terrain;
 
 #if 0

@@ -5,8 +5,7 @@
 //generate the data for opengl.  This is probably a temporary measure!
 static inline bool CreateModelAssetFromFile(U32 slot_index) {
   AssetSlot *slot = &GetAssetManifest()->modelAssets[slot_index];
-
-  SpinLock(&slot->lock);
+  AquireLock(&slot->lock);
 
   assert(slot->assetState == AssetState_Loading);
   assert(slot->asset == 0);
@@ -19,13 +18,13 @@ static inline bool CreateModelAssetFromFile(U32 slot_index) {
   slot->lastWriteTime = GetFileLastWriteTime(filename);
 
   slot->asset = (void *)CreateModelAssetFromExternalFormat(filename);
-  ModelAsset *model = (ModelAsset *)slot->asset;
   if (slot->asset == nullptr) {
     slot->assetState = AssetState_Invalid;
     ReleaseLock(&slot->lock);
     return false;
   }
 
+  ModelAsset *model = (ModelAsset *)slot->asset;
   model->aabb = ComputeAABB(model->vertices, model->vertexCount);
   model->size = Abs(model->aabb.max - model->aabb.min);
   slot->lastWriteTime = GetFileLastWriteTime(filename);
@@ -36,12 +35,13 @@ static inline bool CreateModelAssetFromFile(U32 slot_index) {
   return true;
 }
 
+//NOTE(Torin 2017-01-11) This procedure is always invoked by the main thread!
 static inline void CreateOpenGLResourcesForModelAsset(U32 slotIndex) {
   auto manifest = GetAssetManifest();
   auto slot = &manifest->modelAssets[slotIndex];
-  SpinLock(&slot->lock);
-  ModelAsset *model = (ModelAsset *)slot->asset;
+  AquireLock(&slot->lock);
 
+  ModelAsset *model = (ModelAsset *)slot->asset;
   create_indexed_animated_vertex_array(&model->vertexArray.vertexArrayID, &model->vertexArray.vertexBufferID, &model->vertexArray.indexBufferID,
     model->vertexCount, model->indexCount, model->vertices, model->indices, GL_STATIC_DRAW);
   for (size_t i = 0; i < model->meshCount; i++) {
@@ -53,39 +53,28 @@ static inline void CreateOpenGLResourcesForModelAsset(U32 slotIndex) {
   ReleaseLock(&slot->lock);
 }
 
+//TODO(Torin 2017-01-11) Move this somewhere more suitable!
 static ModelAsset *g_nullModelAsset;
 
-
-void initalize_asset_manifest(AssetManifest *manifest) {
-#ifndef VENOM_RELEASE
-  //manifest->default_model_asset.
-
-
-#endif//VENOM_RELEASE
-
+void InitalizeAssetManifest(AssetManifest *manifest) {
   g_nullModelAsset = CreateModelAssetFromExternalFormat("../assets/internal/null_model.fbx");
   ReadAssetManifestFile("../project/assets.vsf", manifest);
 }
 
-
-
-
-#ifndef VENOM_RELEASE //===========================================================
-//NOTE(Torin) The asset manifest is used to store asset information in
-//development builds for easy runtime modifcation of asset data without
-//using hardcoded values or requiring seperate metadata to be mantained
-
-
-//TODO(Torin) This should be renamed or combined with a procedure
-//that actualy modifes the asset slot to indicate the model is now unloaded
-static inline void UnloadModelAsset(ModelAsset *modelAsset) {
-  DestroyIndexedVertexArray(&modelAsset->vertexArray);
-  for (size_t i = 0; i < modelAsset->meshCount; i++)
-    DestroyMaterialOpenGLData(&modelAsset->materialDataPerMesh[i]);
-  MemoryFree(modelAsset);
+//NOTE(Torin 2017-01-11) The caller is responcible for aquiring a releasing the lock
+static inline void UnloadModelAsset(AssetSlot *slot) {
+  assert(slot->lock.value == 1);
+  assert(slot->assetState == AssetState_Loaded);
+  ModelAsset *model = (ModelAsset *)slot->asset;
+  DestroyIndexedVertexArray(&model->vertexArray);
+  for (size_t i = 0; i < model->meshCount; i++)
+    DestroyMaterialOpenGLData(&model->materialDataPerMesh[i]);
+  MemoryFree(model);
+  slot->assetState = AssetState_Unloaded;
+  LogDebug("Unloaded model asset %s", slot->name);
 }
 
-void hotload_modified_assets(AssetManifest *manifest) {
+void HotloadModifedAssets(AssetManifest *manifest) {
   for (U32 i = 0; i < DEBUGShaderID_COUNT; i++) {
     DEBUGLoadedShader *loadedShader = manifest->loadedShaders + i;
     if (!loadedShader->is_loaded) continue;
@@ -115,43 +104,37 @@ void hotload_modified_assets(AssetManifest *manifest) {
   }
 
 
+  //Hotload modifed model assets
+  //TODO(Torin) All this code is really scarry!
   char modelFilename[1024] = {};
   memcpy(modelFilename, VENOM_ASSET_DIRECTORY, sizeof(VENOM_ASSET_DIRECTORY) - 1);
   char *modelFilenameWrite = modelFilename + sizeof(VENOM_ASSET_DIRECTORY) - 1;
-  
   for (size_t i = 0; i < manifest->modelAssets.count; i++) {
     AssetSlot* slot = &manifest->modelAssets[i];
-    if (slot->assetState == AssetState_Loading) continue;
-    if (TryLock(&modelSlot->lock) == false) continue;
-    AssetState assetState = (AssetState)manifest->modelAssets[i].assetState;
-    if (assetState == AssetState_Loaded || assetState == AssetState_Invalid) {
-      ModelAsset* modelAsset = (ModelAsset *)manifest->modelAssets[i].asset;
-      strcpy(modelFilenameWrite, modelSlot->filename);
+    AquireLock(&slot->lock);
+    if (slot->assetState == AssetState_Loaded || slot->assetState == AssetState_Invalid) {
+      strcpy(modelFilenameWrite, slot->filename);
       U64 lastWriteTime = GetFileLastWriteTime(modelFilename);
-      if (lastWriteTime != modelSlot->lastWriteTime) {
-        modelSlot->lastWriteTime = lastWriteTime;
-        if (manifest->modelAssets[i].assetState == AssetState_Invalid) {
-          UnloadModelAsset(modelAsset);
-        }
-
-        manifest->modelAssets[i].assetState = AssetState_Unloaded;
-        manifest->modelAssets[i].asset = 0;
-        LogDebug("Unloaded model asset %s", modelSlot->name);
+      if (lastWriteTime != slot->lastWriteTime) {
+        slot->lastWriteTime = lastWriteTime;
+        UnloadModelAsset(slot);
       }
     }
-    ReleaseLock(&modelSlot->lock);
+    ReleaseLock(&slot->lock);
   }
 }
 
-
-
-
-
+//TODO(Torin) This whole procedure is really dangerous.  It should
+//be moved to a seprate section only for the editor/debug mode
+//and processed at a known time.  If there is work to do(assets to remove, etc)
+//then it forces all the worker threads to finish what they are doing removes the model,
+//and then restarts the work queue so we don't have to deal with requiring a lock on the 
+//entire asset manifest which would be absurd.  It's only a debug thing anyway!
 void RemoveModelFromManifest(U32 index, AssetManifest *manifest) {
   AssetSlot *slot = &manifest->modelAssets[index];
-  SpinLock(&slot->lock);
+  AquireLock(&slot->lock);
   if (slot->assetState == AssetState_Loaded) {
-    UnloadModelAsset((ModelAsset *)slot->asset);
+    UnloadModelAsset(slot);
   }
 
   MemoryFree(slot->name);
@@ -219,10 +202,6 @@ Asset_ID GetModelID(const char *name, AssetManifest *manifest) {
   return result;
 }
 
-
-//====================================================================================
-#endif//VENOM_RELEASE
-
 ModelAsset *GetModelAsset(Asset_ID& id) {
   AssetManifest *manifest = get_asset_manifest();
   return GetModelAsset(id, manifest);
@@ -236,25 +215,29 @@ ModelAsset* GetModelAsset(Asset_ID& id, AssetManifest* manifest) {
     return g_nullModelAsset;
   }
 
-  AssetSlot* modelAssetSlot = &manifest->modelAssets[id.slot_index];
-  if (TryLock(&modelAssetSlot->lock)) {
-    if (modelAssetSlot->assetState == AssetState_Unloaded) {
+  AssetSlot *slot = &manifest->modelAssets[id.slot_index];
+  if (TryLock(&slot->lock)) {
+    if (slot->assetState == AssetState_Unloaded) {
       Task task;
       task.type = TaskType_LoadModel;
       task.slotID = id.slot_index;
       ScheduleTask(task);
-      modelAssetSlot->assetState = AssetState_Loading;
-      ReleaseLock(&modelAssetSlot->lock);
-    } else if (modelAssetSlot->assetState == AssetState_Invalid) {
+      slot->assetState = AssetState_Loading;
+      ReleaseLock(&slot->lock);
+    } else if (slot->assetState == AssetState_Invalid) {
       Asset_ID null_id = {};
-      ReleaseLock(&modelAssetSlot->lock);
+      ReleaseLock(&slot->lock);
       return GetModelAsset(null_id, manifest);
-    } else if (modelAssetSlot->assetState == AssetState_Loaded) {
+    } else if (slot->assetState == AssetState_Loaded) {
       ModelAsset *modelAsset = (ModelAsset *)manifest->modelAssets[id.slot_index].asset;
-      ReleaseLock(&modelAssetSlot->lock);
+      ReleaseLock(&slot->lock);
       return modelAsset;
+    } else {
+      ReleaseLock(&slot->lock);
+      return nullptr;
     }
   }
+
 
   return nullptr;
 }

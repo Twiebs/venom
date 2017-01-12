@@ -75,12 +75,12 @@ struct VenomDrawList {
   PointLight shadowCastingPointLights[SHADOW_CASTING_POINT_LIGHT_MAX];
 };
 
-static inline void set_uniform(S32 location, S32 value);
-static inline void set_uniform(S32 location, F32 value);
-static inline void set_uniform(S32 location, V2 value);
-static inline void set_uniform(S32 location, V3 value);
-static inline void set_uniform(S32 location, V4 value);
-static inline void set_uniform(S32 location, M4 value);
+inline void SetUniform(S32 location, S32 value);
+inline void SetUniform(S32 location, F32 value);
+inline void SetUniform(S32 location, V2 value);
+inline void SetUniform(S32 location, V3 value);
+inline void SetUniform(S32 location, V4 value);
+inline void SetUniform(S32 location, M4 value);
 
 inline void 
 AddPointLight(const V3 position, const V3 color, const F32 radius, VenomDrawList* list) {

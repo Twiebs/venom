@@ -2,12 +2,12 @@
 
 //===========================================================================================================
 
-static inline void set_uniform(GLint location, S32 value) { glUniform1i(location, value); }
-static inline void set_uniform(GLint location, F32 value) { glUniform1f(location, value); }
-static inline void set_uniform(GLint location, V2 value) { glUniform2f(location, value.x, value.y); }
-static inline void set_uniform(GLint location, V3 value) { glUniform3f(location, value.x, value.y, value.z); }
-static inline void set_uniform(GLint location, V4 value) { glUniform4f(location, value.x, value.y, value.z, value.w); }
-static inline void set_uniform(GLint location, M4 value) { glUniformMatrix4fv(location, 1, GL_FALSE, &value[0][0]); }
+inline void SetUniform(GLint location, S32 value) { glUniform1i(location, value); }
+inline void SetUniform(GLint location, F32 value) { glUniform1f(location, value); }
+inline void SetUniform(GLint location, V2 value)  { glUniform2f(location, value.x, value.y); }
+inline void SetUniform(GLint location, V3 value)  { glUniform3f(location, value.x, value.y, value.z); }
+inline void SetUniform(GLint location, V4 value)  { glUniform4f(location, value.x, value.y, value.z, value.w); }
+inline void SetUniform(GLint location, M4 value)  { glUniformMatrix4fv(location, 1, GL_FALSE, &value[0][0]); }
 
 static inline void BindMaterial(MaterialData *material) {
   glActiveTexture(GL_TEXTURE0);
@@ -24,29 +24,29 @@ static inline void SetLightingUniforms(const VenomDrawList* drawList, const Came
   static const U32 POINT_LIGHT_COUNT_LOCATION = 6;
   static const U32 SHADOW_CASTING_POINT_LIGHT_LOCAION = 7;
 
-  set_uniform(CAMERA_VIEW_POSITON_LOCATION, camera.position);
-  set_uniform(DIRECTIONAL_LIGHT_COUNT_LOCATION, (S32)drawList->directionalLightCount);
-  set_uniform(POINT_LIGHT_COUNT_LOCATION, (S32)drawList->pointLightCount);
-  set_uniform(SHADOW_CASTING_POINT_LIGHT_LOCAION, (S32)drawList->shadowCastingPointLightCount);
+  SetUniform(CAMERA_VIEW_POSITON_LOCATION, camera.position);
+  SetUniform(DIRECTIONAL_LIGHT_COUNT_LOCATION, (S32)drawList->directionalLightCount);
+  SetUniform(POINT_LIGHT_COUNT_LOCATION, (S32)drawList->pointLightCount);
+  SetUniform(SHADOW_CASTING_POINT_LIGHT_LOCAION, (S32)drawList->shadowCastingPointLightCount);
 
   for (size_t i = 0; i < drawList->directionalLightCount; i++) {
     const DirectionalLight& light = drawList->directionalLights[i];
-    set_uniform(DIRECTIONAL_LIGHT_UNIFORM_LOCATION + 0 + (i*UNIFORM_COUNT_PER_DIRECTIONAL_LIGHT), light.direction);
-    set_uniform(DIRECTIONAL_LIGHT_UNIFORM_LOCATION + 1 + (i*UNIFORM_COUNT_PER_DIRECTIONAL_LIGHT), light.color);
+    SetUniform(DIRECTIONAL_LIGHT_UNIFORM_LOCATION + 0 + (i*UNIFORM_COUNT_PER_DIRECTIONAL_LIGHT), light.direction);
+    SetUniform(DIRECTIONAL_LIGHT_UNIFORM_LOCATION + 1 + (i*UNIFORM_COUNT_PER_DIRECTIONAL_LIGHT), light.color);
   }
 
   for (size_t i = 0; i < drawList->pointLightCount; i++) {
     const PointLight& light = drawList->pointLights[i];
-    set_uniform(POINT_LIGHT_UNIFORM_LOCATION + 0 + (i*UNIFORM_COUNT_PER_POINT_LIGHT), light.position);
-    set_uniform(POINT_LIGHT_UNIFORM_LOCATION + 1 + (i*UNIFORM_COUNT_PER_POINT_LIGHT), light.color);
+    SetUniform(POINT_LIGHT_UNIFORM_LOCATION + 0 + (i*UNIFORM_COUNT_PER_POINT_LIGHT), light.position);
+    SetUniform(POINT_LIGHT_UNIFORM_LOCATION + 1 + (i*UNIFORM_COUNT_PER_POINT_LIGHT), light.color);
     glUniform1f(POINT_LIGHT_UNIFORM_LOCATION + 2 + (i*UNIFORM_COUNT_PER_POINT_LIGHT), light.radius);
   }
 
   for (size_t i = 0; i < drawList->shadowCastingPointLightCount; i++) {
     const PointLight& light = drawList->shadowCastingPointLights[i];
-    set_uniform(SHADOW_CASTING_POINT_LIGHT_UNIFORM_LOCATION + 0 + (i*UNIFORM_COUNT_PER_POINT_LIGHT), light.position);
-    set_uniform(SHADOW_CASTING_POINT_LIGHT_UNIFORM_LOCATION + 1 + (i*UNIFORM_COUNT_PER_POINT_LIGHT), light.color);
-    set_uniform(SHADOW_CASTING_POINT_LIGHT_UNIFORM_LOCATION + 2 + (i*UNIFORM_COUNT_PER_POINT_LIGHT), light.radius);
+    SetUniform(SHADOW_CASTING_POINT_LIGHT_UNIFORM_LOCATION + 0 + (i*UNIFORM_COUNT_PER_POINT_LIGHT), light.position);
+    SetUniform(SHADOW_CASTING_POINT_LIGHT_UNIFORM_LOCATION + 1 + (i*UNIFORM_COUNT_PER_POINT_LIGHT), light.color);
+    SetUniform(SHADOW_CASTING_POINT_LIGHT_UNIFORM_LOCATION + 2 + (i*UNIFORM_COUNT_PER_POINT_LIGHT), light.radius);
   }
 }
 
@@ -85,9 +85,9 @@ static inline void DrawTerrain(RenderState *rs, TerrainGenerationState *terrain,
   GLuint shaderProgram = GetShaderProgram(ShaderID_terrain, assets);
   glUseProgram(shaderProgram);
   SetLightingUniforms(&rs->drawList, *camera);
-  set_uniform(MODEL_MATRIX_LOCATION, M4Identity());
-  set_uniform(VIEW_MATRIX_LOCATION, camera->view);
-  set_uniform(PROJECTION_MATRIX_LOCATION, camera->projection);
+  SetUniform(MODEL_MATRIX_LOCATION, M4Identity());
+  SetUniform(VIEW_MATRIX_LOCATION, camera->view);
+  SetUniform(PROJECTION_MATRIX_LOCATION, camera->projection);
   DrawTerrainGeometry(terrain);
 
   //TODO(Torin) Give the terrain a better material system
@@ -97,7 +97,6 @@ static inline void DrawTerrain(RenderState *rs, TerrainGenerationState *terrain,
   //glBindTexture(GL_TEXTURE_2D, material0.diffuse_texture_id);
   //glActiveTexture(GL_TEXTURE1);
   //glBindTexture(GL_TEXTURE_2D, material1.diffuse_texture_id);
-
 }
 #endif
 
@@ -136,8 +135,8 @@ static inline void draw_atmosphere_oneil(const RenderState *rs, const Camera *ca
   V3 lightPosition = { 0.0f, 0.2f, 1.0f };
   glUseProgram(GetShaderProgram(ShaderID_Atmosphere, am));
   glUniformMatrix4fv(MVP_MATRIX_LOCATION, 1, GL_FALSE, &mvp_matrix[0][0]);
-  set_uniform(CAMERA_POSITION_LOCATION, camera->position);
-  set_uniform(SUN_POSITION_LOCATION, lightPosition);
+  SetUniform(CAMERA_POSITION_LOCATION, camera->position);
+  SetUniform(SUN_POSITION_LOCATION, lightPosition);
   glBindVertexArray(rs->skydomeIVA.vertexArrayID);
   glDrawElements(GL_TRIANGLES, rs->skydomeIVA.indexCount, GL_UNSIGNED_INT, 0);
   glEnable(GL_CULL_FACE);
@@ -153,8 +152,8 @@ static inline void draw_atmosphere_oneil(const RenderState *rs, const Camera *ca
   AssetManifest *am = GetAssetManifest();
   glUseProgram(GetShaderProgram(ShaderID_Atmosphere, am));
   glUniformMatrix4fv(MVP_MATRIX_LOCATION, 1, GL_FALSE, &mvp_matrix[0][0]);
-  set_uniform(CAMERA_POSITION_LOCATION, camera->position);
-  set_uniform(SUN_POSITION_LOCATION, lightPosition);
+  SetUniform(CAMERA_POSITION_LOCATION, camera->position);
+  SetUniform(SUN_POSITION_LOCATION, lightPosition);
   glBindVertexArray(rs->skydomeIVA.vertexArrayID);
   glDrawElements(GL_TRIANGLES, rs->skydomeIVA.indexCount, GL_UNSIGNED_INT, 0);
   glEnable(GL_CULL_FACE);
@@ -168,11 +167,11 @@ static inline void draw_atmosphere_glsl(RenderState *rs, Camera *camera, AssetMa
   V3 sun_position = V3(-1.0f, 0.5f, 0.0f);
   GLuint program_id = GetShaderProgram(ShaderID_atmospheric_scattering_glsl, assetManifest);
   glUseProgram(program_id);
-  set_uniform(SUN_POSITION_LOCATION, sun_position);
+  SetUniform(SUN_POSITION_LOCATION, sun_position);
   M4 mvp = Rotate(-camera->pitch, -camera->yaw, 0.0f) * Translate(0.0f, 0.0f, 1.0f);
-  set_uniform(CAMERA_POSITION_LOCATION, camera->position);
-  set_uniform(CAMERA_DIRECTION_LOCATION, camera->front);
-  set_uniform(VIEW_MATRIX_LOCATION, mvp);
+  SetUniform(CAMERA_POSITION_LOCATION, camera->position);
+  SetUniform(CAMERA_DIRECTION_LOCATION, camera->front);
+  SetUniform(VIEW_MATRIX_LOCATION, mvp);
   glBindVertexArray(rs->quadVao);
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
@@ -182,7 +181,7 @@ static inline void DrawModelWithMaterialsCommon(ModelAsset *model, M4 modelMatri
   static const U32 NORMALMAP_PRESENT_LOCATION = 3;
   static const U32 SPECULARMAP_PRESENT_LOCATION = 4;
 
-  set_uniform(MODEL_MATRIX_LOCATION, modelMatrix);
+  SetUniform(MODEL_MATRIX_LOCATION, modelMatrix);
   glBindVertexArray(model->vertexArray.vertexArrayID);
   U64 currentIndexOffset = 0;
   for (size_t j = 0; j < model->meshCount; j++) {
@@ -198,9 +197,10 @@ static inline void DrawModelWithMaterialsCommon(ModelAsset *model, M4 modelMatri
 static inline void DrawAnimatedModelWithMaterials(ModelAsset *model, AnimationState *animation_state, M4 model_matrix) {
   static const U32 BONE_OFFSET_LOCATION = 5;
   static const U32 IS_MESH_STATIC_LOCATION = 69;
-  set_uniform(IS_MESH_STATIC_LOCATION, false);
+  SetUniform(IS_MESH_STATIC_LOCATION, false);
 
   Animation_Joint *joints = model->joints;
+
 #if 0
   M4 local_joint_poses[64];
 
@@ -214,7 +214,7 @@ static inline void DrawAnimatedModelWithMaterials(ModelAsset *model, AnimationSt
       ts[i];
     M4 global_joint_pose = CalculateGlobalJointPose(i, drawable->joints, local_joint_poses);
     M4 final_skinning_matrix = CalculateSkinningMatrix(joint, global_joint_pose);
-    set_uniform(BONE_OFFSET_LOCATION + i, final_skinning_matrix);
+    SetUniform(BONE_OFFSET_LOCATION + i, final_skinning_matrix);
   }
 #endif
 
@@ -222,7 +222,7 @@ static inline void DrawAnimatedModelWithMaterials(ModelAsset *model, AnimationSt
   for (size_t i = 0; i < model->jointCount; i++) {
     Animation_Joint *joint = &joints[i];
     M4 final_skinning_matrix = CalculateSkinningMatrix(joint, globalPoses[i]);
-    set_uniform(BONE_OFFSET_LOCATION + i, final_skinning_matrix);
+    SetUniform(BONE_OFFSET_LOCATION + i, final_skinning_matrix);
   }
 
   DrawModelWithMaterialsCommon(model, model_matrix);
@@ -231,9 +231,9 @@ static inline void DrawAnimatedModelWithMaterials(ModelAsset *model, AnimationSt
 static inline void DrawStaticModelWithMaterials(ModelAsset* model, M4 modelMatrix) {
   static const U32 BONE_OFFSET_LOCATION = 5;
   static const U32 IS_MESH_STATIC_LOCATION = 69;
-  set_uniform(IS_MESH_STATIC_LOCATION, true);
+  SetUniform(IS_MESH_STATIC_LOCATION, true);
   for (size_t i = 0; i < 16; i++) {
-    set_uniform(BONE_OFFSET_LOCATION + i, M4Identity());
+    SetUniform(BONE_OFFSET_LOCATION + i, M4Identity());
   }
 
   DrawModelWithMaterialsCommon(model, modelMatrix);
@@ -244,7 +244,7 @@ static inline void DrawModelWithOnlyGeometry(ModelAsset* model, M4 modelMatrix) 
   static const U32 BONE_OFFSET_LOCATION = 5;
   U64 currentIndexOffset = 0;
   glBindVertexArray(model->vertexArray.vertexArrayID);
-  set_uniform(MODEL_MATRIX_LOCATION, modelMatrix);
+  SetUniform(MODEL_MATRIX_LOCATION, modelMatrix);
   for (size_t j = 0; j < model->meshCount; j++) {
     glDrawElements(GL_TRIANGLES, model->indexCountPerMesh[j], GL_UNSIGNED_INT, (GLvoid*)(sizeof(U32)*currentIndexOffset));
     currentIndexOffset += model->indexCountPerMesh[j];
@@ -483,9 +483,9 @@ static inline void render_outlined_objects(RenderState *rs, Camera *camera, Asse
     static const U32 VIEW_MATRIX_LOCATION = 1;
     static const U32 PROJECTION_MATRIX_LOCATION = 2;
     glUseProgram(GetShaderProgram(ShaderID_material_opaque, assetManifest));
-    set_uniform(MODEL_MATRIX_LOCATION, M4Identity());
-    set_uniform(VIEW_MATRIX_LOCATION, camera->view);
-    set_uniform(PROJECTION_MATRIX_LOCATION, camera->projection);
+    SetUniform(MODEL_MATRIX_LOCATION, M4Identity());
+    SetUniform(VIEW_MATRIX_LOCATION, camera->view);
+    SetUniform(PROJECTION_MATRIX_LOCATION, camera->projection);
     SetLightingUniforms(&rs->drawList, *camera);
     glStencilOp(GL_KEEP, GL_REPLACE, GL_REPLACE);
     glStencilFunc(GL_ALWAYS, 1 << 1, 1 << 1);
@@ -503,9 +503,9 @@ static inline void render_outlined_objects(RenderState *rs, Camera *camera, Asse
     static const U32 COLOR_UNIFORM_LOCATION = 3;
     static const V4 OUTLINE_COLOR = { 1.0, 1.0, 0.0, 0.2f };
     glUseProgram(GetShaderProgram(ShaderID_SingleColor, assetManifest));
-    set_uniform(VIEW_MATRIX_LOCATION, camera->view);
-    set_uniform(PROJECTION_MATRIX_LOCATION, camera->projection);
-    set_uniform(COLOR_UNIFORM_LOCATION, OUTLINE_COLOR);
+    SetUniform(VIEW_MATRIX_LOCATION, camera->view);
+    SetUniform(PROJECTION_MATRIX_LOCATION, camera->projection);
+    SetUniform(COLOR_UNIFORM_LOCATION, OUTLINE_COLOR);
     glStencilFunc(GL_NOTEQUAL, 2, 0xFF);
     glDisable(GL_DEPTH_TEST);
     VenomDrawList *drawList = &rs->drawList;
@@ -694,7 +694,7 @@ void VenomRenderScene(GameMemory* memory, Camera* camera) {
     glUniformMatrix4fv(SSAO_VIEW_LOCATION, 1, GL_FALSE, &camera->view[0][0]);
     glUniformMatrix4fv(SSAO_PROJECTION_LOCATION, 1, GL_FALSE, &camera->projection[0][0]);
     for (size_t i = 0; i < SSAO_SAMPLE_COUNT; i++) {
-      set_uniform(SSAO_SAMPLE_LOCATION + i, ssao->kernelSamples[i]);
+      SetUniform(SSAO_SAMPLE_LOCATION + i, ssao->kernelSamples[i]);
     }
     glBindVertexArray(rs->quadVao);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);

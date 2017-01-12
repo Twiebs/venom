@@ -28,13 +28,13 @@ void MoveEntityWithThirdPersonCharacterMovement(Entity *e, MovementInput *input,
   if (input->left) deltaVelocity -= V3(1.0f, 0, 0);
   if (input->right) deltaVelocity += V3(1.0f, 0, 0);
 
-#if 0
+#if 1
+  AnimationState *animState = &e->animation_state;
   static F32 elapsedTime = 0.0f;
-  static int crossFadeDirection = 0;
   elapsedTime += deltaTime;
-  if (crossFadeDirection == 0 && elapsedTime > 3.0f) {
-    CrossFade(&e->animation_state, 1.0f, 1, 0);
-    crossFadeDirection = 1;
+  if (elapsedTime > 3.0f) {
+    SetAnimation(animState, AnimationType_Walk);
+    elapsedTime = 0.0f;
   }
 #endif
 

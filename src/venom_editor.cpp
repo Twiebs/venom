@@ -583,7 +583,7 @@ static void draw_asset_manifest_ui(EditorData *editor, AssetManifest* manifest) 
     if (name_modifed || filename_modifed || (editor->selectedIndex != editor->lastSelectedIndex)) {
       if (editor->lastSelectedIndex != -1 && editor->lastSelectedIndex != 0) {
         AssetSlot *lastSlot = &manifest->modelAssets[editor->lastSelectedIndex];
-        SpinLock(&lastSlot->lock);
+        AquireLock(&lastSlot->lock);
         MemoryFree(lastSlot->name);
         MemoryFree(lastSlot->filename);
         lastSlot->name = strdup(nameBuffer);
@@ -592,7 +592,7 @@ static void draw_asset_manifest_ui(EditorData *editor, AssetManifest* manifest) 
       }
 
       editor->lastSelectedIndex = editor->selectedIndex;
-      SpinLock(&slot->lock);
+      AquireLock(&slot->lock);
       strcpy(nameBuffer, slot->name);
       strcpy(filenameBuffer, slot->filename);
       ReleaseLock(&slot->lock);
@@ -641,7 +641,7 @@ static void draw_asset_manifest_ui(EditorData *editor, AssetManifest* manifest) 
               //TODO(Torin) Dynamic temporary memory!
               M4 localPoses[64];
               M4 globalPoses[64];
-              CalculateLocalPosesForSkeleton(asset->joints, asset->jointCount, &animationState, localPoses);
+              CalculateLocalPosesForSkeleton(asset, &animationState, localPoses);
               CalculateGlobalPosesForSkeleton(asset->joints, asset->jointCount, localPoses, globalPoses);
               M4 skinningMatrix = CalculateSkinningMatrix(joint, globalPoses[selected_joint]);
               

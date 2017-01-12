@@ -96,6 +96,9 @@ struct AssetManifest {
 
   std::atomic<U32> modelReloadCounter;
 
+  DynamicArray<U32> modelsToLoad;
+  DynamicArray<U32> modelsToUnload;
+
 #else//VENOM_REALEASE
   AssetSlot material_assets[Material_Asset_COUNT];
   AssetSlot model_assets[Model_Asset_COUNT];
