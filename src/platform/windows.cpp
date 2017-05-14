@@ -59,26 +59,6 @@ SystemTime GetSystemTime() {
   return result;
 }
 
-#ifdef VENOM_VULKAN
-#include "vulkan/vulkan.h"
-static inline
-void vulkan_initalize()
-{
-	HMODULE module = LoadLibraryA("vulkan-1.dll");
-	if (module)
-	{
-		VkApplicationInfo appInfo = {};
-		appInfo.apiVersion = 1;
-		appInfo.applicationVersion = 1;
-		appInfo.engineVersion = 1;
-		appInfo.pApplicationName = "venom_test";
-		appInfo.pEngineName = "venom";
-	}
-}
-#endif
-
-
-
 #ifdef VENOM_HOTLOAD
 struct Win32GameCode
 {
@@ -130,23 +110,20 @@ void InternalLoadGameCode()
 
 #if 1
 using namespace Win32;
-static LRESULT CALLBACK Win32WindowCallback(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
-{
+static LRESULT CALLBACK Win32WindowCallback(HWND window, UINT message, WPARAM wparam, LPARAM lparam) {
 	LRESULT result = DefWindowProc(window, message, wparam, lparam);
 	return result;
 }
 #endif
 
-U64 GetPerformanceCounter()
-{
+U64 GetPerformanceCounter() {
   using namespace Win32;
 	LARGE_INTEGER counterValue;
 	QueryPerformanceCounter(&counterValue);
 	return counterValue.QuadPart;
 }
 
-U64 GetPerformanceFrequency()
-{
+U64 GetPerformanceFrequency() {
   using namespace Win32;
 	LARGE_INTEGER counterFrequency;
 	QueryPerformanceFrequency(&counterFrequency);
@@ -155,9 +132,6 @@ U64 GetPerformanceFrequency()
 
 int WindowsPlatformMain() {
   using namespace Win32;
-	//NOTE(Torin) This will be read in from disk
-	//If the serialized file does not exist then we
-	//know that this is the first run of the game!
 	UserConfig config = GetUserConfig();
 
 	HINSTANCE hInstance = GetModuleHandle(NULL);
@@ -189,8 +163,7 @@ int WindowsPlatformMain() {
 		NULL
 	);
 
-	if (window == NULL)
-	{
+	if (window == NULL) {
 		PostQuitMessage(1);
 	}
 
@@ -375,10 +348,10 @@ int WindowsPlatformMain() {
 	InputState *input = &memory->inputState;
 	SystemInfo *sys = &memory->systemInfo;
 
-	sys->virtual_memory_size = memoryStatus.ullTotalVirtual;
+	sys->virtualMemorySize = memoryStatus.ullTotalVirtual;
 	SYSTEM_INFO win32SystemInfo;
 	GetSystemInfo(&win32SystemInfo);
-	sys->cpu_core_count = win32SystemInfo.dwNumberOfProcessors;
+	sys->cpuCoreCount = win32SystemInfo.dwNumberOfProcessors;
 
 #ifdef VENOM_HOTLOAD
 	EngineAPI *API = &memory->engineAPI;
@@ -415,8 +388,8 @@ int WindowsPlatformMain() {
 		POINT cursorPoint;
 		GetCursorPos(&cursorPoint);
 		ScreenToClient(window, &cursorPoint);
-		float x = Clamp((float)cursorPoint.x, 0.0f, sys->screen_width);
-		float y = Clamp((float)cursorPoint.y, 0.0f, sys->screen_height);
+		float x = Clamp((float)cursorPoint.x, 0.0f, sys->screenWidth);
+		float y = Clamp((float)cursorPoint.y, 0.0f, sys->screenHeight);
 		input->cursorDeltaX = input->cursorPosX - x;
 		input->cursorDeltaY = input->cursorPosY - y;
 		input->cursorPosX = x;
@@ -436,19 +409,13 @@ int WindowsPlatformMain() {
 			case WM_SYSKEYDOWN:
 			case WM_SYSKEYUP:
 			case WM_KEYDOWN: 
-			case WM_KEYUP:
-			{
-				int was_down = ((message.lParam & (1 << 30)) != 0);
-				int is_down = ((message.lParam & (1 << 31)) == 0);
-				input->isKeyDown[message.wParam] = is_down;
-
-
+			case WM_KEYUP: {
+        U16 keysymCode = 0;
+				int wasDown = ((message.lParam & (1 << 30)) != 0);
+				int isDown = ((message.lParam & (1 << 31)) == 0);
         UINT scanCode = MapVirtualKey(message.wParam, MAPVK_VK_TO_VSC);
-
-         
-        U16 result = 0;
-        ToAscii(message.wParam, scanCode, 0, &result, 0);
-        PlatformKeyEventHandler(memory, message.wParam, result, is_down);
+        ToAscii(message.wParam, scanCode, 0, &keysymCode, 0);
+        PlatformKeyEventHandler(memory, message.wParam, keysymCode, isDown, wasDown);
 			} break;
 
       case WM_CHAR: {

@@ -25,10 +25,11 @@ static inline bool CreateModelAssetFromFile(U32 slot_index) {
   }
 
   ModelAsset *model = (ModelAsset *)slot->asset;
-  model->aabb = ComputeAABB(model->vertices, model->vertexCount);
+  model->aabb = ComputeAABB(&model->vertices->position, model->vertexCount, sizeof(AnimatedVertex));
   model->size = Abs(model->aabb.max - model->aabb.min);
-  slot->lastWriteTime = GetFileLastWriteTime(filename);
 
+
+  slot->lastWriteTime = GetFileLastWriteTime(filename);
   //NOTE(Torin) The asset is still in the loading state and requires
   //additional processing after this procedure completes
   ReleaseLock(&slot->lock);
@@ -71,6 +72,7 @@ static inline void UnloadModelAsset(AssetSlot *slot) {
     DestroyMaterialOpenGLData(&model->materialDataPerMesh[i]);
   MemoryFree(model);
   slot->assetState = AssetState_Unloaded;
+  slot->asset = nullptr;
   LogDebug("Unloaded model asset %s", slot->name);
 }
 
@@ -117,7 +119,9 @@ void HotloadModifedAssets(AssetManifest *manifest) {
       U64 lastWriteTime = GetFileLastWriteTime(modelFilename);
       if (lastWriteTime != slot->lastWriteTime) {
         slot->lastWriteTime = lastWriteTime;
-        UnloadModelAsset(slot);
+        if (slot->assetState != AssetState_Invalid) {
+          UnloadModelAsset(slot);
+        }
       }
     }
     ReleaseLock(&slot->lock);
@@ -164,8 +168,8 @@ void ReadAssetManifestFile(const char *filename, AssetManifest *manifest){
     vs::ReadString("name", nameBuffer, sizeof(nameBuffer));
     vs::ReadString("filename", filenameBuffer, sizeof(filenameBuffer));
     AssetSlot *slot = manifest->modelAssets.AddElement();
-    slot->name = strdup(nameBuffer);
-    slot->filename = strdup(filenameBuffer);
+    slot->name = CStringDuplicate(nameBuffer);
+    slot->filename = CStringDuplicate(filenameBuffer);
     vs::EndGroupRead();
   }
   vs::EndFileRead();
@@ -256,6 +260,10 @@ GetMaterial(U32 id, AssetManifest* manifest){
 	return materialAsset->drawable;
 }
 #endif
+
+GLuint GetShaderProgram(DEBUGShaderID shaderID) {
+  return GetShaderProgram(shaderID, GetAssetManifest());
+}
 
 GLuint GetShaderProgram(DEBUGShaderID shaderID, AssetManifest* manifest) {
 	DEBUGLoadedShader *loadedShader = &manifest->loadedShaders[shaderID];

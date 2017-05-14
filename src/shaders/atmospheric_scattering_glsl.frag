@@ -28,6 +28,9 @@ vec2 rsi(vec3 r0, vec3 rd, float sr) {
     );
 }
 
+
+
+
 vec3 atmosphere(vec3 r, vec3 r0, vec3 sun_direction, float iSun, float rPlanet, float rAtmos, vec3 kRlh, float kMie, float shRlh, float shMie, float g) {
     // Normalize the sun and view directions.
     r = normalize(r);
@@ -146,6 +149,8 @@ void main() {
     color = 1.0 - exp(-1.0 * color);
 
     
+    out_color = vec4(0.0f, 0.0f, 1.0f, 1.0f);
+
     out_color = vec4(color, 1.0);
     //out_color = vec4((quad_vertex_position.x + 1.0)*0.5, 0.0, 0.0, 1.0);
 

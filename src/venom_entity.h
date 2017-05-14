@@ -8,6 +8,19 @@ static const U32 INVALID_ENTITY_INDEX = ((((U64)1) << 32) - 1);
   _(Bullet) \
   _(Player) \
 
+enum EntityType {
+#define _(type) EntityType_##type,
+  EntityTypeList
+#undef _
+  EntityType_Count
+};
+
+static const char* EntityTypeStrings[] = {
+#define _(type) #type,
+  EntityTypeList
+#undef _
+};
+
 struct StaticObject {
   AABB aabb;
 };
@@ -30,9 +43,14 @@ struct Player {
 };
 
 struct Entity {
+  EntityType type;
   V3 position;
   V3 velocity;
+  
+
   Quaternion rotation;
+  F32 movementFacingAngle;
+
   Asset_ID modelID;
   AnimationState animation_state;
 
@@ -43,18 +61,7 @@ struct Entity {
   };
 };
 
-enum EntityType {
-#define _(type) EntityType_##type,
-EntityTypeList
-#undef _
-EntityType_Count
-};
 
-static const char* EntityTypeStrings[] = {
-#define _(type) #type,
-EntityTypeList
-#undef _
-};
 
 enum EntityFlag {
   EntityFlag_PRESENT = 1 << 0,
@@ -81,8 +88,8 @@ struct EntityDataBlock {
 };
 
 struct EntityContainer {
-  EntityBlock** blocks;
-  EntityBlock* firstAvaibleBlock;
+  EntityBlock **blocks;
+  EntityBlock *firstAvaibleBlock;
   U32 capacityPerBlock;
   U32 currentBlockCount;
   U32 currentBlockCapacity;
@@ -110,3 +117,11 @@ CreateEntity(EntityType type, EntityContainer* container){
 }
 
 
+static inline void ItterateEntities(EntityContainer *entities, std::function<void(Entity *, EntityIndex)> proc) {
+  EntityBlock* block = entities->firstAvaibleBlock;
+  for (size_t i = 0; i < entities->capacityPerBlock; i++) {
+    if (block->flags[i] & EntityFlag_PRESENT) {
+      proc(&block->entities[i], EntityIndex{ (U32)0, (U32)i });
+    }
+  }
+}

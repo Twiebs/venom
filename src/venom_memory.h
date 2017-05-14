@@ -45,7 +45,7 @@ namespace Memory {
 
 
   U32 FrameStackPush(size_t size) {
-    return StackPush(&globals.frameStack, size);
+    return (U32)StackPush(&globals.frameStack, size);
   }
 
   U8 *FrameStackPointer(U32 offset) {
@@ -159,6 +159,18 @@ struct DynamicArray {
     data = newData;
     capacity = newCapacity;
   }
+
+  TElement& LastElement() {
+    return data[count - 1];
+  }
+
+  void ClearAndDestruct() {
+    for (size_t i = 0; i < count; i++) {
+      TElement *element = &data[i];
+      element->~TElement();
+    }
+  }
+
 };
 
 

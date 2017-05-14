@@ -5,8 +5,8 @@ layout (location = 1) uniform mat4 uViewMatrix;
 layout (location = 2) uniform mat4 uProjectionMatrix;
 
 //TODO(Torin) Lazy hacks
-layout (location = 4) uniform vec3 uLineSegmentPositions[2];
-layout (location = 6) uniform int uUseLinePos = 0;
+layout (location = 4) uniform vec3 uLineSegmentPositions[3];
+layout (location = 7) uniform int uUseLinePos = 0;
 
 void main() {
   if(uUseLinePos == 1) {

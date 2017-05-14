@@ -283,10 +283,10 @@ ModelAsset *CreateModelAssetFromExternalFormat(const char *filename) {
         aiMesh *assimpMesh = scene->mMeshes[n];
         aiNode *meshNode = scene->mRootNode->FindNode(assimpMesh->mName);
         if (meshNode == nullptr) {
-          LogError("Mesh name does not match parent object!");
+          LogError("[Assimp Importer] Mesh name does not match parent object!");
           MemoryFree(model);
           return false;
-        }
+        } 
 
         M4 transformMatrix = root_transform * AssimpMatrixToM4(meshNode->mTransformation);
 
@@ -432,7 +432,7 @@ ModelAsset *CreateModelAssetFromExternalFormat(const char *filename) {
         joint_animation->rotations[k].rotation.z = node_anim->mRotationKeys[k].mValue.z;
         joint_animation->rotations[k].rotation.w = node_anim->mRotationKeys[k].mValue.w;
         if (joint->parent_index == -1) {
-          M4 rotation_matrix = root_transform * QuaternionToMatrix(joint_animation->rotations[k].rotation);
+          M4 rotation_matrix = root_transform * QuaternionToMatrix4x4(joint_animation->rotations[k].rotation);
           rotation_matrix = armatureTransform * rotation_matrix;
           joint_animation->rotations[k].rotation = MatrixToQuaternion(rotation_matrix);
         }

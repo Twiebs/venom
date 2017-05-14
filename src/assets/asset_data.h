@@ -16,7 +16,9 @@
   _(SSAO, "vertexarray_quad.vert", "ssao.frag", "") \
   _(DeferredMaterial, "vertexarray_quad.vert", "material_deferred.frag", "") \
   _(Atmosphere, "Atmosphere.vert", "Atmosphere.frag", "") \
-  _(atmospheric_scattering_glsl, "vertexarray_quad.vert", "atmospheric_scattering_glsl.frag", "")
+  _(Font, "Font.vert", "Font.frag", "") \
+  _(atmospheric_scattering_glsl, "vertexarray_quad.vert", "atmospheric_scattering_glsl.frag", "") \
+  _(NewTerrain, "NewTerrain.vert", "NewTerrain.frag", "")
 
 struct MaterialAsset {
   U64 flags;
@@ -134,6 +136,7 @@ ModelAsset *GetModelAsset(Asset_ID& id, AssetManifest* assets);
 
 MaterialAsset *GetMaterialAsset(U32 index, AssetManifest *assets);
 
+GLuint GetShaderProgram(DEBUGShaderID shaderID);
 GLuint GetShaderProgram(DEBUGShaderID shaderID, AssetManifest *assets);
 
 

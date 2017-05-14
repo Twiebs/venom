@@ -8,15 +8,6 @@ struct M2 {
 	}
 };
 
-struct M3 {
-	float data[3][3];
-	inline float* operator[](size_t i) {
-		strict_assert(i >= 0);
-		strict_assert(i < 3);
-		return (float *)&data[i];
-	}
-};
-
 
 
 inline M4 operator*(const M4& a, const M4& b) {
@@ -343,8 +334,7 @@ inline M4 Perspective(float fieldOfView, float viewportWidth, float viewportHeig
 	return m;
 }
 
-inline M4 LookAt(const V3& position, const V3& target, const V3& up) 
-{
+inline M4 LookAt(const V3& position, const V3& target, const V3& up) {
 	const V3 zaxis = Normalize(target - position);
 	const V3 xaxis = Normalize(Cross(zaxis, up));
 	const V3 yaxis = Cross(xaxis, zaxis);

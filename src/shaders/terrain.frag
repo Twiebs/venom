@@ -23,15 +23,18 @@ void main()
 	vec3 diffuse_color_0  = texture(u_diffuse_samplers[0], fs_in.texcoord).rgb;
 	vec3 diffuse_color_1  = texture(u_diffuse_samplers[1], fs_in.texcoord).rgb;
 	//vec3 fragment_color = mix(diffuse_color_0, diffuse_color_1, fs_in.terrain_detail);
-	vec3 fragmentBaseColor = vec3(1.0);
+	vec3 fragmentBaseColor = vec3(0.2, 0.8, 0.3);
 
 	FragmentInfo fragment;
 	fragment.position = fs_in.position;
 	fragment.normal = fs_in.normal;
-	fragment.specularExponent = 0;
+	fragment.specularExponent = 100;
 	fragment.color = fragmentBaseColor;
 
 	out_color = ApplyLighting(fragment);
+
+	//out_color = vec4(fragment.normal, 1.0);
+
 	//out_color.xyz *= CalculateShadowScalar(vec4(fs_in.position, 1.0));
 	//out_color = mix(vec4(0.2f, 0.4f, 0.9f, 1.0), out_color, fs_in.visibility);
 	//out_color = vec4(fragment.normal, 1.0);

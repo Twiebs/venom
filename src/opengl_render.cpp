@@ -1,6 +1,5 @@
 #include "debug_renderer.cpp"
-
-//===========================================================================================================
+#include "Render/DebugRenderPass.cpp"
 
 inline void SetUniform(GLint location, S32 value) { glUniform1i(location, value); }
 inline void SetUniform(GLint location, F32 value) { glUniform1f(location, value); }
@@ -53,10 +52,8 @@ static inline void SetLightingUniforms(const VenomDrawList* drawList, const Came
 static inline void SetLightSpaceTransformUniforms(CascadedShadowMap* csm, GLuint programID) {
   GLint matrixLocation = glGetUniformLocation(programID, "u_light_space_matrix");
   GLint distanceLocation = glGetUniformLocation(programID, "u_shadow_cascade_distance");
-  glUniformMatrix4fv(matrixLocation, SHADOW_MAP_CASCADE_COUNT,
-    GL_FALSE, &csm->lightSpaceTransforms[0][0][0]);
-  glUniform1fv(distanceLocation, SHADOW_MAP_CASCADE_COUNT,
-    &csm->shadowCascadeDistances[0]);
+  glUniformMatrix4fv(matrixLocation, SHADOW_MAP_CASCADE_COUNT, GL_FALSE, &csm->lightSpaceTransforms[0][0][0]);
+  glUniform1fv(distanceLocation, SHADOW_MAP_CASCADE_COUNT, &csm->shadowCascadeDistances[0]);
 }
 
 //=========================================================================================================
@@ -70,7 +67,7 @@ static inline void DrawTerrainGeometry(TerrainGenerationState *terrainGenState) 
   glActiveTexture(GL_TEXTURE7);
   glBindTexture(GL_TEXTURE_2D_ARRAY, terrainGenState->detailmap_texture_array);
   glBindVertexArray(terrainGenState->base_mesh.vertexArrayID);
-  glDrawElementsInstanced(GL_TRIANGLES, TERRAIN_INDEX_COUNT_PER_CHUNK, GL_UNSIGNED_INT, 0, TERRAIN_TOTAL_CHUNK_COUNT);
+  glDrawElementsInstanced(GL_TRIANGLES, TerrainParameters::INDEX_COUNT_PER_CHUNK, GL_UNSIGNED_INT, 0, TerrainParameters::CHUNK_COUNT);
   glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
   glBindTexture(GL_TEXTURE_2D, 0);
   glBindVertexArray(0);
@@ -86,8 +83,8 @@ static inline void DrawTerrain(RenderState *rs, TerrainGenerationState *terrain,
   glUseProgram(shaderProgram);
   SetLightingUniforms(&rs->drawList, *camera);
   SetUniform(MODEL_MATRIX_LOCATION, M4Identity());
-  SetUniform(VIEW_MATRIX_LOCATION, camera->view);
-  SetUniform(PROJECTION_MATRIX_LOCATION, camera->projection);
+  SetUniform(VIEW_MATRIX_LOCATION, camera->viewMatrix);
+  SetUniform(PROJECTION_MATRIX_LOCATION, camera->projectionMatrix);
   DrawTerrainGeometry(terrain);
 
   //TODO(Torin) Give the terrain a better material system
@@ -100,54 +97,24 @@ static inline void DrawTerrain(RenderState *rs, TerrainGenerationState *terrain,
 }
 #endif
 
-static void DrawBone(S32 jointIndex, Animation_Joint *jointList, M4 *globalTransforms, M4 modelMatrix) {
-  static const V4 LINE_COLOR = COLOR_YELLOW;
-  Animation_Joint *joint = &jointList[jointIndex];
-  if (joint->child_index != -1) {
-    V4 start = globalTransforms[jointIndex] * V4(0.0f, 0.0f, 0.0f, 1.0f);
-    V4 end = globalTransforms[joint->child_index] * V4(0.0f, 0.0f, 0.0f, 1.0f);
-    start = modelMatrix * start;
-    end = modelMatrix * end;
-    draw_debug_line(V3(start), V3(end), LINE_COLOR);
-  } else {
-    V4 start = globalTransforms[jointIndex] * V4(0.0f, 0.0f, 0.0f, 1.0f);
-    V4 end = globalTransforms[jointIndex] * V4(0.0f, 1.0f, 0.0f, 1.0f);
-    start = modelMatrix * start;
-    end = modelMatrix * end;
-    draw_debug_line(V3(start), V3(end), LINE_COLOR);
+static inline void DrawTerrain(RenderState *rs, Terrain *terrain, Camera *camera) {
+  static const S32 MVP_MATRIX_LOCATION = 0;
+  const M4 mvpMatrix = camera->projectionMatrix * camera->viewMatrix;
+  glUseProgram(GetShaderProgram(ShaderID_NewTerrain));
+  SetUniform(MVP_MATRIX_LOCATION, mvpMatrix);
+  SetLightingUniforms(&rs->drawList, *camera);
+  for (size_t i = 0; i < terrain->chunkCount; i++) {
+    TerrainChunk *chunk = &terrain->chunks[i];
+    glBindVertexArray(chunk->vertexArrayID);
+    glDrawArrays(GL_TRIANGLES, 0, terrain->vertexCountPerChunk);
   }
 }
-
-static inline void DrawSkeleton(Animation_Joint *jointList, size_t jointCount, AnimationState *animState, M4 modelMatrix) {
-  M4 *globalJointPoses = (M4 *)Memory::FrameStackPointer(animState->globalPoseOffset);
-  for (size_t i = 0; i < jointCount; i++) {
-    Animation_Joint *joint = &jointList[i];
-    DrawBone((S32)i, jointList, globalJointPoses, modelMatrix);
-  }
-}
-
-static inline void draw_atmosphere_oneil(const RenderState *rs, const Camera *camera, AssetManifest *am) {
+static inline void DrawAtmosphereOneil(const RenderState *rs, const Camera *camera) {
   static const U32 MVP_MATRIX_LOCATION = 0;
   static const U32 CAMERA_POSITION_LOCATION = 1;
   static const U32 SUN_POSITION_LOCATION = 2;
   glDisable(GL_CULL_FACE);
-  M4 mvp_matrix = camera->projection * camera->view * Translate(camera->position);
-  V3 lightPosition = { 0.0f, 0.2f, 1.0f };
-  glUseProgram(GetShaderProgram(ShaderID_Atmosphere, am));
-  glUniformMatrix4fv(MVP_MATRIX_LOCATION, 1, GL_FALSE, &mvp_matrix[0][0]);
-  SetUniform(CAMERA_POSITION_LOCATION, camera->position);
-  SetUniform(SUN_POSITION_LOCATION, lightPosition);
-  glBindVertexArray(rs->skydomeIVA.vertexArrayID);
-  glDrawElements(GL_TRIANGLES, rs->skydomeIVA.indexCount, GL_UNSIGNED_INT, 0);
-  glEnable(GL_CULL_FACE);
-}
-
-static inline void draw_atmosphere_oneil(const RenderState *rs, const Camera *camera) {
-  static const U32 MVP_MATRIX_LOCATION = 0;
-  static const U32 CAMERA_POSITION_LOCATION = 1;
-  static const U32 SUN_POSITION_LOCATION = 2;
-  glDisable(GL_CULL_FACE);
-  M4 mvp_matrix = camera->projection * camera->view * Translate(camera->position);
+  M4 mvp_matrix = camera->projectionMatrix * camera->viewMatrix * Translate(camera->position);
   V3 lightPosition = { 0.0f, 0.2f, 1.0f };
   AssetManifest *am = GetAssetManifest();
   glUseProgram(GetShaderProgram(ShaderID_Atmosphere, am));
@@ -168,9 +135,10 @@ static inline void draw_atmosphere_glsl(RenderState *rs, Camera *camera, AssetMa
   GLuint program_id = GetShaderProgram(ShaderID_atmospheric_scattering_glsl, assetManifest);
   glUseProgram(program_id);
   SetUniform(SUN_POSITION_LOCATION, sun_position);
-  M4 mvp = Rotate(-camera->pitch, -camera->yaw, 0.0f) * Translate(0.0f, 0.0f, 1.0f);
+  M4 mvp = camera->viewMatrix * Translate(0.0f, 0.0f, 1.0f);
+  V3 cameraDirection = V3(camera->viewMatrix * V4(0.0f, 0.0f, -1.0f, 0.0f));
   SetUniform(CAMERA_POSITION_LOCATION, camera->position);
-  SetUniform(CAMERA_DIRECTION_LOCATION, camera->front);
+  SetUniform(CAMERA_DIRECTION_LOCATION, cameraDirection);
   SetUniform(VIEW_MATRIX_LOCATION, mvp);
   glBindVertexArray(rs->quadVao);
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
@@ -336,9 +304,9 @@ static inline void RenderDrawListWithMaterials(VenomDrawList* drawList, AssetMan
 
 inline void InitalizeRenderState(RenderState* rs, SystemInfo* sys) {
   glGenVertexArrays(1, &rs->quadVao);
-  InitGBuffer(&rs->gbuffer, sys->screen_width, sys->screen_height);
-  SSAOInit(&rs->ssao, sys->screen_width, sys->screen_height);
-  InitCascadedShadowMaps(&rs->csm, sys->screen_width, sys->screen_height, 45.0f*DEG2RAD);
+  InitGBuffer(&rs->gbuffer, sys->screenWidth, sys->screenHeight);
+  SSAOInit(&rs->ssao, sys->screenWidth, sys->screenHeight);
+  InitCascadedShadowMaps(&rs->csm, sys->screenWidth, sys->screenHeight, 45.0f*DEG2RAD);
   for (size_t i = 0; i < SHADOW_CASTING_POINT_LIGHT_MAX; i++) {
     InitOmnidirectionalShadowMap(&rs->osm[i]);
   }
@@ -365,17 +333,17 @@ inline void InitalizeRenderState(RenderState* rs, SystemInfo* sys) {
 
 static inline void UpdateCSMFustrums(CascadedShadowMap* csm, Camera* camera) {
   Frustum *f = csm->cascadeFrustums;
-  float clip_plane_distance_ratio = camera->far_clip / camera->near_clip;
-  f[0].near_plane_distance = camera->near_clip;
+  float clip_plane_distance_ratio = camera->farClip / camera->nearClip;
+  f[0].near_plane_distance = camera->nearClip;
   for (U32 i = 1; i < SHADOW_MAP_CASCADE_COUNT; i++) {
     float scalar = (float)i / (float)SHADOW_MAP_CASCADE_COUNT;
     f[i].near_plane_distance = SHADOW_MAP_CASCADE_WEIGHT *
-      (camera->near_clip * powf(clip_plane_distance_ratio, scalar)) +
-      (1 - SHADOW_MAP_CASCADE_WEIGHT) * (camera->near_clip + 
-      (camera->far_clip - camera->near_clip) * scalar);
+      (camera->nearClip * powf(clip_plane_distance_ratio, scalar)) +
+      (1 - SHADOW_MAP_CASCADE_WEIGHT) * (camera->nearClip +
+      (camera->farClip - camera->nearClip) * scalar);
     f[i - 1].far_plane_distance = f[i].near_plane_distance * SHADOW_MAP_CASCADE_TOLERANCE;
   }
-  f[SHADOW_MAP_CASCADE_COUNT - 1].far_plane_distance = camera->far_clip;
+  f[SHADOW_MAP_CASCADE_COUNT - 1].far_plane_distance = camera->farClip;
 }
 
 static inline void RenderCSM(CascadedShadowMap* csm, Camera* camera, DirectionalLight* light, VenomDrawList* drawList, AssetManifest* manifest) {
@@ -384,11 +352,11 @@ static inline void RenderCSM(CascadedShadowMap* csm, Camera* camera, Directional
     //Compute cascade frustum points	
     Frustum *f = csm->cascadeFrustums + i;
     csm->shadowCascadeDistances[i] = 0.5f * (-f->far_plane_distance *
-      camera->projection[2][2] + camera->projection[3][2]) /
+      camera->projectionMatrix[2][2] + camera->projectionMatrix[3][2]) /
       f->far_plane_distance + 0.5f;
 
     V3 up = V3(0.0f, 1.0f, 0.0f);
-    V3 view_direction = camera->front;
+    V3 view_direction = V3(camera->viewMatrix * V4(0.0f, 0.0f, -1.0f, 0.0f));
     V3 center = camera->position;
     V3 right = Cross(view_direction, up);
 
@@ -484,8 +452,8 @@ static inline void render_outlined_objects(RenderState *rs, Camera *camera, Asse
     static const U32 PROJECTION_MATRIX_LOCATION = 2;
     glUseProgram(GetShaderProgram(ShaderID_material_opaque, assetManifest));
     SetUniform(MODEL_MATRIX_LOCATION, M4Identity());
-    SetUniform(VIEW_MATRIX_LOCATION, camera->view);
-    SetUniform(PROJECTION_MATRIX_LOCATION, camera->projection);
+    SetUniform(VIEW_MATRIX_LOCATION, camera->viewMatrix);
+    SetUniform(PROJECTION_MATRIX_LOCATION, camera->projectionMatrix);
     SetLightingUniforms(&rs->drawList, *camera);
     glStencilOp(GL_KEEP, GL_REPLACE, GL_REPLACE);
     glStencilFunc(GL_ALWAYS, 1 << 1, 1 << 1);
@@ -503,8 +471,8 @@ static inline void render_outlined_objects(RenderState *rs, Camera *camera, Asse
     static const U32 COLOR_UNIFORM_LOCATION = 3;
     static const V4 OUTLINE_COLOR = { 1.0, 1.0, 0.0, 0.2f };
     glUseProgram(GetShaderProgram(ShaderID_SingleColor, assetManifest));
-    SetUniform(VIEW_MATRIX_LOCATION, camera->view);
-    SetUniform(PROJECTION_MATRIX_LOCATION, camera->projection);
+    SetUniform(VIEW_MATRIX_LOCATION, camera->viewMatrix);
+    SetUniform(PROJECTION_MATRIX_LOCATION, camera->projectionMatrix);
     SetUniform(COLOR_UNIFORM_LOCATION, OUTLINE_COLOR);
     glStencilFunc(GL_NOTEQUAL, 2, 0xFF);
     glDisable(GL_DEPTH_TEST);
@@ -522,15 +490,6 @@ static inline void render_outlined_objects(RenderState *rs, Camera *camera, Asse
   glDisable(GL_STENCIL_TEST);
 }
 
-static inline void DebugRenderPass(RenderState *rs) {
-  for (size_t i = 0; i < rs->drawList.animated_model_draw_commands.count; i++) {
-    Animated_Model_Draw_Command *cmd = &rs->drawList.animated_model_draw_commands[i];
-    ModelAsset *model = cmd->model;
-    assert(model != nullptr);
-    DrawSkeleton(model->joints, model->jointCount, cmd->animation_state, cmd->model_matrix);
-  }
-}
-
 void VenomRenderScene(GameMemory* memory, Camera* camera) {
   RenderState* rs = &memory->renderState;
   AssetManifest* assetManifest = &memory->assetManifest;
@@ -539,7 +498,7 @@ void VenomRenderScene(GameMemory* memory, Camera* camera) {
   UpdateCamera(camera);
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
-  glViewport(0, 0, sys->screen_width, sys->screen_height);
+  glViewport(0, 0, sys->screenWidth, sys->screenHeight);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
   glEnable(GL_CULL_FACE);
@@ -658,15 +617,15 @@ void VenomRenderScene(GameMemory* memory, Camera* camera) {
     static const U32 VIEW_MATRIX_LOCATION = 1;
     static const U32 PROJECTION_MATRIX_LOCATION = 2;
     GBuffer* gbuffer = &rs->gbuffer;
-    glViewport(0, 0, sys->screen_width, sys->screen_height);
+    glViewport(0, 0, sys->screenWidth, sys->screenHeight);
     glBindFramebuffer(GL_FRAMEBUFFER, gbuffer->framebuffer);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glUseProgram(GetShaderProgram(ShaderID_GBuffer, assetManifest));
     M4 model = M4Identity();
     glUniformMatrix4fv(MODEL_MATRIX_LOCATION, 1, GL_FALSE, &model[0][0]);
-    glUniformMatrix4fv(VIEW_MATRIX_LOCATION, 1, GL_FALSE, &camera->view[0][0]);
-    glUniformMatrix4fv(PROJECTION_MATRIX_LOCATION, 1, GL_FALSE, &camera->projection[0][0]);
+    glUniformMatrix4fv(VIEW_MATRIX_LOCATION, 1, GL_FALSE, &camera->viewMatrix[0][0]);
+    glUniformMatrix4fv(PROJECTION_MATRIX_LOCATION, 1, GL_FALSE, &camera->projectionMatrix[0][0]);
     glEnable(GL_STENCIL_TEST);
     glStencilOp(GL_KEEP, GL_REPLACE, GL_REPLACE);
     glStencilFunc(GL_ALWAYS, 1, 1);
@@ -732,8 +691,8 @@ void VenomRenderScene(GameMemory* memory, Camera* camera) {
     GBuffer *gbuffer = &rs->gbuffer;
     glBindFramebuffer(GL_READ_FRAMEBUFFER, gbuffer->framebuffer);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-    glBlitFramebuffer(0, 0, sys->screen_width, sys->screen_height, 
-      0, 0, sys->screen_width, sys->screen_height, 
+    glBlitFramebuffer(0, 0, sys->screenWidth, sys->screenHeight, 
+      0, 0, sys->screenWidth, sys->screenHeight, 
       GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT, GL_NEAREST);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
   }
@@ -746,7 +705,10 @@ void VenomRenderScene(GameMemory* memory, Camera* camera) {
     if (settings->isWireframeEnabled) {
       glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     }
-    DrawTerrain(rs, rs->terrain, camera);
+
+    //DrawTerrain(rs, rs->terrain, camera);
+    DrawTerrain(rs, rs->newTerrain, camera);
+
     if (settings->isWireframeEnabled) {
       glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
@@ -761,11 +723,9 @@ void VenomRenderScene(GameMemory* memory, Camera* camera) {
   DEBUG_DisableIf(GetDebugRenderSettings()->disableAtmosphere) {
     glEnable(GL_STENCIL_TEST);
     glStencilFunc(GL_EQUAL, 0, 0xFF);
-    draw_atmosphere_glsl(rs, camera, assetManifest);
+    DrawAtmosphereOneil(rs, camera);
     glDisable(GL_STENCIL_TEST);
   }
-
-
 
 
 #if 0
@@ -791,8 +751,6 @@ void VenomRenderScene(GameMemory* memory, Camera* camera) {
 #warning depthMapVisualizerBroken!
   }
 #endif
-
-
 
   drawList->drawCommandCount = 0;
   drawList->modelDrawComandCount = 0;

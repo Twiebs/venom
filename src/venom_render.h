@@ -40,8 +40,11 @@ struct VenomDebugRenderSettings {
   B8 disableAtmosphere;
   B8 renderDebugNormals;
   B8 renderFromDirectionalLight;
-  B8 drawPhysicsColliders;
+
   B8 drawDepthMap;
+  B8 drawSkeletons;
+
+  B8 drawBroadphaseVolumes;
 };
 
 struct VenomDebugRenderFrameInfo {
@@ -110,31 +113,9 @@ AddDirectionalLight(const V3 direction, const V3 color, VenomDrawList* list) {
   light.color = color;
 }
 
-inline void 
-InitializeCamera(Camera *camera, float fov, 
-  float near_clip, float far_clip, float viewportWidth, float viewportHeight) 
-{
-	camera->position = V3(0.0f, 0.0f, 0.0f);
-	camera->front = V3(0.0f, 0.0f, 0.0f);
-	camera->fov = fov;
-	camera->yaw = 0.0f;
-	camera->pitch = 0.0f;
-	camera->near_clip = near_clip;
-	camera->far_clip = far_clip;
-  camera->projection = Perspective(camera->fov, viewportWidth, viewportHeight,
-    camera->near_clip, camera->far_clip);
-  //camera->viewportWidth = viewportWidth;
-  //camera->viewportHeight = viewportHeight;
-}
 
-inline void 
-UpdateCamera(Camera *camera) {
-	camera->front.x = cosf(camera->yaw) * cosf(camera->pitch);
-	camera->front.y = sinf(camera->pitch);
-	camera->front.z = sin(camera->yaw) * cos(camera->pitch);
-	camera->front = Normalize(camera->front);
-  camera->view = LookAt(camera->position, camera->front + camera->position, V3(0.0f, 1.0f, 0.0f));
-}
+
+
 
 #ifdef VENOM_OPENGL
 #include "thirdparty/glcorearb.h"

@@ -21,18 +21,6 @@ static const char *SHADER_TYPE_STRINGS[] = {
 	"Compute Shader"
 };
 
-uint64_t string_to_uint64(const char *str, size_t length) {
-	uint64_t result = 0;
-	size_t scalar = 1;
-  for (int64_t i = length - 1; i >= 0; i--) {
-		assert(str[i] >= '0' && str[i] <= '9');
-		uint64_t value = str[i] - '0';
-		result += value * scalar;
-		scalar *= 10;
-	}
-	return result;
-}
-
 #ifndef VENOM_RELEASE
 
 struct ShaderParseEntry {
@@ -94,6 +82,7 @@ static char* ReadAndParseShaderSource(const char* rootFilename, ShaderParseInfo*
 
       included_files[files_to_include_count].filename_length = 
         current - included_files[files_to_include_count].filename;
+
       included_files[files_to_include_count].end = current + 1;
       files_to_include_count++;
     }
@@ -301,7 +290,7 @@ inline GLuint DEBUGCreateShaderProgramFromFiles(const char *filenames[4]) {
               const char *numberString = current;
               while(*current != ')') current++;
               size_t numberLength = current - numberString;
-              lineNumber = string_to_uint64(numberString, numberLength);
+              lineNumber = StringToU64(numberString, numberLength);
               break;
             }
           }

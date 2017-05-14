@@ -17,6 +17,25 @@ char CharToLowercaseIfAlpha(char c) {
   return c;
 }
 
+U64 StringToU64(const char *str, size_t length) {
+  uint64_t result = 0;
+  size_t scalar = 1;
+  for (int64_t i = length - 1; i >= 0; i--) {
+    assert(str[i] >= '0' && str[i] <= '9');
+    uint64_t value = str[i] - '0';
+    result += value * scalar;
+    scalar *= 10;
+  }
+  return result;
+}
+
+inline char *CStringDuplicate(const char *str) {
+  size_t length = strlen(str);
+  char *result = (char *)MemoryAllocate(length + 1);
+  memcpy(result, str, length + 1);
+  return result;
+}
+
 inline bool CStringContainsCSubstringCaseInsensitive(const char *substring, const char *text) {
   //TODO(Torin) Optimize!
   size_t textLength = strlen(text);

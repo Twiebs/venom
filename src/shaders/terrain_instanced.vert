@@ -19,17 +19,19 @@ out VS_OUT
 } vs_out;
 
 void main() {
-	vec2 material_texcoord = in_position * (1.0 / 8.0);
-
 	int ix = int(in_position.x);
 	int iy = int(in_position.y);
-
 	float terrain_height = texelFetch(height_sampler, ivec3(ix, iy, gl_InstanceID), 0).r;
 	float terrain_detail = texelFetch(u_detail_sampler, ivec3(ix, iy, gl_InstanceID), 0).r;
 	vec3  terrain_normal = texelFetch(normal_sampler, ivec3(ix, iy, gl_InstanceID), 0).xyz;
 
-	terrain_height *= 0.0f;
 
+	terrain_normal = vec3(0.0, 1.0, 0.0);
+
+	//terrain_height *= TERRAIN_HEIGHT_SCALAR;
+	terrain_height = 0.0f;
+
+	vec2 material_texcoord = in_position * (1.0 / 8.0);
 
 	vec4 world_position = in_model_matrix * vec4(in_position.x, terrain_height, in_position.y, 1.0);
 

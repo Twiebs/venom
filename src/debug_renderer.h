@@ -1,30 +1,42 @@
 
 enum DebugDrawCommandType {
+  DebugDrawCommand_LINE,
+  DebugDrawCommand_TRIANGLE,
   DebugDrawCommand_BOX,
   DebugDrawCommand_SPHERE,
-  DebugDrawCommand_LINE,
+
   DebugDrawCommand_AXIS,
-  DebugDrawCommand_PLANE,
   DebugDrawCommand_CAMERA,
+  DebugDrawCommand_TEXT,
+
   DebugDrawCommand_COUNT
 };
 
 struct DebugDrawCommand {
   DebugDrawCommandType type;
-  bool isSolid;
+  B8 isSolid;
+  B8 isLightingEnabled;
   V4 color;
   F32 duration;
 
   union {
-    struct {
+
+    struct /* AABB */ {
       V3 min, max;
     };
-    struct {
+
+    struct /* Sphere */ {
       V3 center;
       F32 radius;
     };
+
+    struct /* Triangle */ {
+      V3 a, b, c;
+    };
+
     V3 position;
     V3 lineSegmentPositions[2];
+    const char *text;
   };
 };
 

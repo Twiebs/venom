@@ -37,7 +37,6 @@ struct AnimatedVertex {
   F32 weight[4];
 };
 
-
 enum MaterialTextureType {
 	MaterialTextureType_DIFFUSE,
 	MaterialTextureType_NORMAL,
@@ -95,16 +94,6 @@ struct Frustum {
 	F32 near_plane_distance;
 	F32 far_plane_distance;
 	V3 points[8];
-};
-
-struct Camera {
-	V3 position;
-	V3 front;
-	F32 fov;
-	F32 yaw, pitch;
-	F32 near_clip, far_clip;
-	//F32 viewportWidth, viewportHeight;
-	M4 view, projection;
 };
 
 struct DirectionalLight {

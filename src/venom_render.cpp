@@ -37,6 +37,7 @@ U32 indexCount, U32 indexOffset, VenomDrawList* drawList){
 
 void AddStaticModelToDrawList(VenomDrawList *drawList, ModelAsset *model, V3 position, V3 rotation = V3(0.0f)) {
   assert(drawList->modelDrawComandCount + 1 < ARRAY_COUNT(drawList->modelDrawCommands));
+  if (model == nullptr) return;
   VenomModelDrawCommand& cmd = drawList->modelDrawCommands[drawList->modelDrawComandCount++];
   cmd.model = model;
   cmd.modelMatrix = Translate(position) * Rotate(rotation);

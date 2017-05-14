@@ -30,18 +30,18 @@ U64 Random01U64 (RNGSeed& seed) {
 
 inline V4 RandomSolidColor(RNGSeed& seed) {
 	V4 result;
-	result.x = RandomInRange(0.0f, 1.0f, seed);
-	result.y = RandomInRange(0.0f, 1.0f, seed);
-	result.z = RandomInRange(0.0f, 1.0f, seed);
+	result.x = (F32)RandomInRange(0.0f, 1.0f, seed);
+	result.y = (F32)RandomInRange(0.0f, 1.0f, seed);
+	result.z = (F32)RandomInRange(0.0f, 1.0f, seed);
 	result.w = 1.0f;
 	return result;
 }
 
 inline V3 RandomInRange(const V3& min, const V3& max, RNGSeed& seed) {
 	V3 result;
-	result.x = RandomInRange(min.x, max.x, seed);
-	result.y = RandomInRange(min.y, max.y, seed);
-	result.z = RandomInRange(min.z, max.z, seed);
+	result.x = (F32)RandomInRange(min.x, max.x, seed);
+	result.y = (F32)RandomInRange(min.y, max.y, seed);
+	result.z = (F32)RandomInRange(min.z, max.z, seed);
 	return result;
 }
 

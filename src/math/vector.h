@@ -26,10 +26,7 @@ struct V3 {
 };
 
 struct V4 {
-	float x;
-	float y;
-	float z;
-	float w;
+  float x, y, z, w;
 	V4() {}
 	V4(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
 	V4(float v) : x(v), y(v), z(v), w(v) {}
@@ -42,8 +39,7 @@ V3::V3(const V4& v){
   this->z = v.z;
 }
 
-inline V4 operator-(const V4& a, const V4& b) 
-{
+inline V4 operator-(const V4& a, const V4& b)  {
 	V4 result;
 	result.x = a.x - b.x;
 	result.y = a.y - b.y;
@@ -52,8 +48,7 @@ inline V4 operator-(const V4& a, const V4& b)
 	return result;
 }
 
-inline V3 operator-(const V3& a)
-{
+inline V3 operator-(const V3& a) {
 	V3 result;
 	result.x = -a.x;
 	result.y = -a.y;
@@ -93,8 +88,7 @@ inline V3 operator/(const V3& a, const V3& b) {
 	return result;
 }
 
-inline V3 operator+(const V3& a, const float b)
-{
+inline V3 operator+(const V3& a, const float b) {
 	V3 result;
 	result.x = a.x + b;
 	result.y = a.y + b;
@@ -110,9 +104,7 @@ inline V3 operator*(const V3& a, const float b) {
 	return result;
 }
 
-
-inline V3 operator*(const float b, const V3& a)
-{
+inline V3 operator*(const float b, const V3& a) {
 	V3 result;
 	result.x = a.x * b;
 	result.y = a.y * b;
@@ -120,137 +112,117 @@ inline V3 operator*(const float b, const V3& a)
 	return result;
 }
 
-
-inline V3& operator+=(V3& a, const V3& b)
-{
+inline V3& operator+=(V3& a, const V3& b) {
 	a.x += b.x;
 	a.y += b.y;
 	a.z += b.z;
 	return a;
 }
 
-inline V3& operator-=(V3& a, const V3&b)
-{
+inline V3& operator-=(V3& a, const V3&b) {
 	a.x -= b.x;
 	a.y -= b.y;
 	a.z -= b.z;
 	return a;
 }
 
-inline V3& operator*=(V3& a, const V3& b)
-{
+inline V3& operator*=(V3& a, const V3& b) {
 	a.x *= b.x;
 	a.y *= b.y;
 	a.z *= b.z;
 	return a;
 }
 
-inline V3& operator/=(V3& a, const V3& b)
-{
+inline V3& operator/=(V3& a, const V3& b) {
 	a.x /= b.x;
 	a.y /= b.y;
 	a.z /= b.z;
 	return a;
 }
 
-inline V3& operator+=(V3& a, const float b)
-{
+inline V3& operator+=(V3& a, const float b) {
 	a.x += b;
 	a.y += b;
 	a.z += b;
 	return a;
 }
 
-inline V3& operator-=(V3& a, const float b)
-{
+inline V3& operator-=(V3& a, const float b) {
 	a.x -= b;
 	a.y -= b;
 	a.z -= b;
 	return a;
 }
 
-inline V3& operator *=(V3& a, const float b)
-{
+inline V3& operator *=(V3& a, const float b) {
 	a.x *= b;
 	a.y *= b;
 	a.z *= b;
 	return a;
 }
 
-inline V3& operator /=(V3& a, const float b)
-{
+inline V3& operator /=(V3& a, const float b) {
 	a.x /= b;
 	a.y /= b;
 	a.z /= b;
 	return a;
 }
 
-inline V2 operator*=(V2& a, const float b)
-{
+inline V2 operator*=(V2& a, const float b) {
 	a.x *= b;
 	a.y *= b;
 	return a;
 }
 
-inline V2 operator+(const V2& a, const V2& b)
-{
+inline V2 operator+(const V2& a, const V2& b) {
 	V2 result;
 	result.x = a.x + b.x;
 	result.y = a.y + b.y;
 	return result;
 }
 
-inline V2 operator-(const V2& a, const V2& b)
-{
+inline V2 operator-(const V2& a, const V2& b) {
 	V2 result;
 	result.x = a.x - b.x;
 	result.y = a.y - b.y;
 	return result;
 }
 
-inline V2 operator*(const V2& a, const V2& b)
-{
+inline V2 operator*(const V2& a, const V2& b) {
 	V2 result;
 	result.x = a.x * b.x;
 	result.y = a.y * b.y;
 	return result;
 }
 
-inline V2 operator/(const V2& a, const V2& b)
-{
+inline V2 operator/(const V2& a, const V2& b) {
 	V2 result;
 	result.x = a.x / b.x;
 	result.y = a.y / b.y;
 	return result;
 }
 
-inline float Magnitude(const V2& v)
-{
+inline float Magnitude(const V2& v) {
 	float result = (v.x*v.x) + (v.y*v.y);
 	return result;
 }
 
-
-inline float MagnitudeSquared(const V3& v)
-{
+inline float MagnitudeSquared(const V3& v) {
 	float result = (v.x*v.x) + (v.y*v.y) + (v.z*v.z);
 	return result;
 }
 
-inline float MagnitudeSquared(const V2& v)
-{
+inline float MagnitudeSquared(const V2& v) {
 	float result = (v.x*v.x) + (v.y*v.y);
 	return result;
 }
 
-inline float Magnitude(const V3& v)
-{
+inline float Magnitude(const V3& v) {
 	float result = sqrtf((v.x * v.x) + (v.y * v.y) + (v.z *v.z));
 	return result;
 }
 
-inline float Magnitude(const V4& v)
-{
+inline float Magnitude(const V4& v) {
 	float result = sqrtf((v.x * v.x) + (v.y * v.y) + (v.z *v.z) + (v.w * v.w));
 	return result;
 }
@@ -263,8 +235,7 @@ inline V3 Abs(const V3& v) {
   return result;
 }
 
-inline V2 Normalize(const V2& v)
-{
+inline V2 Normalize(const V2& v) {
 	float magnitude = Magnitude(v);
 	V2 result;
 	result.x = v.x / magnitude;
@@ -272,8 +243,7 @@ inline V2 Normalize(const V2& v)
 	return result;
 }
 
-inline V3 Normalize(const V3& v)
-{
+inline V3 Normalize(const V3& v) {
 	const float magnitude = Magnitude(v);
 	V3 result;
 	result.x = v.x / magnitude;
@@ -282,8 +252,7 @@ inline V3 Normalize(const V3& v)
 	return result;
 }
 
-inline V4 Normalize(const V4& v)
-{
+inline V4 Normalize(const V4& v) {
 	const float magnitude = Magnitude(v);
 	V4 result;
 	result.x = v.x / magnitude;
@@ -293,9 +262,7 @@ inline V4 Normalize(const V4& v)
 	return result;
 }
 
-
-inline V3 Cross(const V3& a, const V3& b)
-{
+inline V3 Cross(const V3& a, const V3& b) {
 	V3 result;
 	result.x = (a.y * b.z) - (a.z * b.y);
 	result.y = (a.z * b.x) - (a.x * b.z);
@@ -303,8 +270,7 @@ inline V3 Cross(const V3& a, const V3& b)
 	return result;
 }
 
-inline float Dot(const V3& a, const V3& b)
-{
+inline float Dot(const V3& a, const V3& b) {
 	float result = (a.x * b.x) + (a.y * b.y) + (a.z * b.z);
 	return result;
 }
@@ -324,15 +290,6 @@ inline B32 Equals(const V4& a, const V4& b, const F32 epsilon) {
 	return true;
 }
 
-inline V3 lerp(V3 a, V3 b, F32 t) {
-  V3 result;
-  result.x = a.x + t * (b.x - a.x);
-  result.y = a.y + t * (b.y - a.y);
-  result.z = a.z + t * (b.z - a.z);
-  return result;
-}
-
-
 inline V3 Lerp(V3 a, V3 b, F32 t) {
   V3 result;
   result.x = a.x + t * (b.x - a.x);
@@ -341,5 +298,17 @@ inline V3 Lerp(V3 a, V3 b, F32 t) {
   return result;
 }
 
+inline V3 Project(const V3& a, const V3& b) {
+  F32 dot = Dot(a, b);
+  V3 result = b * (dot / MagnitudeSquared(b));
+  return result;
+}
 
+F32 Orient2D(V2 a, V2 b, V2 c) {
+  return (b.x - a.x)*(c.y - a.y) - (b.y - a.y)*(c.x - a.x);
+}
 
+inline F32 TrippleProduct(const V3& a, const V3& b, const V3& c) {
+  F32 result = Dot(a, Cross(b, c));
+  return result;
+}

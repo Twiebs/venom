@@ -40,7 +40,11 @@ static int VenomCopyFile(const char *a, const char *b);
 #include "venom_memory.cpp"
 #include "venom_debug.cpp"
 #include "venom_render.cpp"
-#include "venom_physics.cpp"
+
+
+#include "physics/volume.cpp"
+#include "physics/collision.cpp"
+#include "physics/simulation.cpp"
 
 #include "assets/venom_asset.cpp"
 #include "venom_audio.cpp"
@@ -48,9 +52,25 @@ static int VenomCopyFile(const char *a, const char *b);
 #include "utility/serializer.cpp"
 #include "utility/profiler.cpp"
 
-
-
+#include "Render/Camera.cpp"
+#include "Render/PrimitiveRenderer.cpp"
+#include "Render/RenderText.cpp"
 #include "engine.cpp"
+
+#include "terrain.cpp"
+#include "NewTerrain.cpp"
+#include "InstancedTerrain.cpp"
+
+#include "Game/CameraMovement.cpp"
+#include "Game/CharacterMovement.cpp"
+#include "Game/MousePicker.cpp"
+
+
+#include "Editor/Draw.cpp"
+#include "Editor/DrawEditorTabs.cpp"
+#include "Editor/Editor.cpp"
+
+
 #endif//VENOM_SINGLE_TRANSLATION_UNIT
 
 #ifndef VENOM_DEFAULT_SCREEN_WIDTH
@@ -180,10 +200,16 @@ void PlatformDebugUpdate(GameMemory *memory, VenomModule* module) {
 #endif
 
 static inline 
-void PlatformKeyEventHandler(GameMemory *memory, int keycode, int keysym, int isDown) {
+void PlatformKeyEventHandler(GameMemory *memory, int keycode, int keysym, int isDown, B8 wasDown) {
   InputState* input = &memory->inputState;
   input->isKeyDown[keycode] = isDown;
   auto engine = GetEngine();
+
+  if (wasDown == false && isDown) {
+    input->isKeyPressed[keycode] = true;
+  } else {
+    input->isKeyPressed[keycode] = false;
+  }
 
   if (isDown) {
 	  switch(keycode) {
@@ -200,8 +226,11 @@ void PlatformKeyEventHandler(GameMemory *memory, int keycode, int keysym, int is
 
     case KEYCODE_F3: {
       memory->editor.isSearchWindowOpen = !memory->editor.isSearchWindowOpen;
-
     } break;
+
+    case KEYCODE_F4: {
+      memory->editor.isVisualizerVisible = !memory->editor.isVisualizerVisible;
+    }
 
                
 
@@ -228,12 +257,12 @@ static inline GameMemory* AllocateGameMemory(UserConfig* config) {
   memory->isRunning = true;
   memory->deltaTime = 1.0f / 60.0f;
 
-  //TODO(Torin) Move out these opengl specific routines
   SystemInfo* sys = &memory->systemInfo;  
-  sys->screen_width = config->screen_width;
-	sys->screen_height = config->screen_height;	
-	glGetIntegerv(GL_MAJOR_VERSION, &sys->opengl_major_version);
-	glGetIntegerv(GL_MINOR_VERSION, &sys->opengl_minor_version);
+  sys->screenWidth = config->screen_width;
+	sys->screenHeight = config->screen_height;	
+	glGetIntegerv(GL_MAJOR_VERSION, &sys->openglMajorVersion);
+	glGetIntegerv(GL_MINOR_VERSION, &sys->openglMinorVersion);
+
 
 #ifdef VENOM_HOTLOAD
 #define _(returnType, name, ...) memory->engineAPI.name = name;

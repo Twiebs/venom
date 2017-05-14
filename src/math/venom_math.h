@@ -13,16 +13,25 @@ struct Quaternion {
 struct M4 {
   F32 data[4][4];
 
-  inline const float* operator[](int i) const {
+  inline const float* operator[](size_t i) const {
     strict_assert(i >= 0);
     strict_assert(i < 4);
     return (const float*)&data[i];
   }
 
-  inline float* operator[](int i) {
+  inline float* operator[](size_t i) {
     strict_assert(i >= 0);
     strict_assert(i < 4);
     return (float*)&data[i];
+  }
+};
+
+struct Matrix3x3 {
+  F32 data[3][3];
+  inline F32* operator[](size_t i) {
+    strict_assert(i >= 0);
+    strict_assert(i < 3);
+    return (F32 *)&data[i];
   }
 };
 

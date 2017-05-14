@@ -5,6 +5,7 @@ struct Orientation {
   V3 position;
 };
 
+#if 0
 inline Orientation CalculateCameraOrientationForTrackTarget(V3 targetPosition) {
   Orientation result = {};
   result.position = targetPosition;
@@ -18,7 +19,14 @@ inline Orientation CalculateCameraOrientationForTrackTarget(V3 targetPosition) {
   result.rotation = QuaternionFromEulerAngles(viewAngle, 0.0f, 0.0f);
   return result;
 }
+#endif
 
+struct CameraControls {
+  F32 mouseRotationSpeed;
+
+};
+
+#if 0
 inline void TrackPositionWithCamera(V3 position, Camera *camera) {
   Orientation target = CalculateCameraOrientationForTrackTarget(position);
   V3 eulerRotation = QuaternionToEuler(target.rotation);
@@ -27,17 +35,20 @@ inline void TrackPositionWithCamera(V3 position, Camera *camera) {
 
   camera->position = Lerp(camera->position, target.position, 0.2f);
 }
+#endif
 
 inline void MoveCameraWithFPSControls(Camera *camera, InputState* input, float deltaTime) {
   V3 dp = { 0.0f, 0.0f, 0.0f };
 
+  V3 direction = camera->front;
+
   float speed = 6.0f;
-  if (input->isKeyDown[KEYCODE_W]) dp += camera->front;
-  if (input->isKeyDown[KEYCODE_S]) dp -= camera->front;
+  if (input->isKeyDown[KEYCODE_W]) dp += direction;
+  if (input->isKeyDown[KEYCODE_S]) dp -= direction;
   if (input->isKeyDown[KEYCODE_A]) dp -= Normalize(
-    Cross(camera->front, V3(0.0f, 1.0f, 0.0f)));
+    Cross(direction, V3(0.0f, 1.0f, 0.0f)));
   if (input->isKeyDown[KEYCODE_D]) dp += Normalize(
-    Cross(camera->front, V3(0.0f, 1.0f, 0.0f)));
+    Cross(direction, V3(0.0f, 1.0f, 0.0f)));
   if (input->isKeyDown[KEYCODE_SPACE]) dp.y += 1.0f;
   if (input->isKeyDown[KEYCODE_CTRL]) dp.y -= 1.0f;
   if (input->isKeyDown[KEYCODE_SHIFT]) speed *= 3;

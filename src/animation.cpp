@@ -1,7 +1,6 @@
 //XXX(Torin) Make sure that the animation joinst keyframes are sorted by time value!
 //TODO(Torin) Make sure that each animation clip has at least 2 keyframes
 
-
 M4 CalculateLocalJointPoseForClip(S32 joint_index, Animation_Joint *joint, ModelAsset *model, AnimationClipState *state) {
   Animation_Clip *clip = &model->animationClips[state->animationClipID];
   F32 inverseTicksPerSecond = 1.0f / clip->ticksPerSecond;
@@ -43,7 +42,7 @@ M4 CalculateLocalJointPoseForClip(S32 joint_index, Animation_Joint *joint, Model
       F32 transition_length = abs((end_translation->time*inverseTicksPerSecond) - (start_translation->time*inverseTicksPerSecond));
       F32 normalized_animation_time = current_animation_time - (start_translation->time*inverseTicksPerSecond);
       F32 time_interp = normalized_animation_time / transition_length;
-      V3 current_translation = lerp(start_translation->translation, end_translation->translation, time_interp);
+      V3 current_translation = Lerp(start_translation->translation, end_translation->translation, time_interp);
       joint_translation = Translate(current_translation);
     }
 
@@ -66,7 +65,7 @@ M4 CalculateLocalJointPoseForClip(S32 joint_index, Animation_Joint *joint, Model
       F32 normalized_local_time = current_animation_time - start_rotation->time*inverseTicksPerSecond;
       F32 interpolation_constant = normalized_local_time / time_between_keyframes;
       Quaternion interpolated_rotation = Lerp(start_rotation->rotation, end_rotation->rotation, interpolation_constant);
-      joint_rotation = QuaternionToMatrix(interpolated_rotation);
+      joint_rotation = QuaternionToMatrix4x4(interpolated_rotation);
     }
   } else {
     return joint->localTransform;
@@ -99,17 +98,7 @@ void CalculateGlobalPosesForSkeleton(Animation_Joint *jointList, size_t count, M
 
 void CalculateLocalPosesForSkeleton(ModelAsset *model, AnimationState *animState, M4 *localPoses) {
   assert(model != nullptr);
-  assert(model->animationClipCount > 0);
-  assert(animState->animationStateCount > 0);
-  for (size_t i = 0; i < model->jointCount; i++) {
-    Animation_Joint *joint = &model->joints[i];
-    localPoses[i] = M4Zero();
-    for (size_t i = 0; i < animState->animationStateCount; i++) {
-      AnimationClipState *clipState = &animState->animationStates[i];
-      M4 clipLocalPose = CalculateLocalJointPoseForClip(i, joint, model, clipState);
-      localPoses[i] = localPoses[i] + (clipLocalPose * clipState->blendWeightValue);
-    }
-  }
+
 }
 
 M4 CalculateSkinningMatrix(Animation_Joint *joint, M4 globalPose) {
@@ -122,7 +111,23 @@ static U32 FindAnimationClipIndex(Animation_Clip *clips, size_t count, Animation
   return INVALID_U32;
 }
 
+//TODO(Torin 2016-12-24) Remove duplication of modelID in animState and entity
+
 void UpdateAnimationState(AnimationState *animState, ModelAsset *model, F32 deltaTime) {
+  //NOTE(Torin 2017-01-12) This happens here because the model may have just been loaded into
+  //memory by the async asset system but the entities animState existed before the model was fully loaded.
+  if (animState->isInitalized == false) {
+    animState->isInitalized = true;
+    animState->blendDurationTime = 0.0f;
+    animState->blendElapsedTime = 0.0f;
+    animState->blendMode = AnimationBlendMode_None;
+    animState->animationStateCount = 1;
+    AnimationClipState *clipState = &animState->animationStates[0];
+    clipState->blendWeightValue = 1.0f;
+    clipState->animationClipID = FindAnimationClipIndex(model->animationClips, model->animationClipCount, AnimationType_Idle);
+    clipState->playbackSpeedScalar = 1.0f;
+  }
+
   for (size_t i = 0; i < animState->animationStateCount; i++) {
     animState->animationStates[i].localTimeSeconds += deltaTime;
   }
@@ -156,11 +161,25 @@ void UpdateAnimationState(AnimationState *animState, ModelAsset *model, F32 delt
   }
 
   assert(model != nullptr);
+  assert(model->animationClipCount > 0);
+  assert(animState->animationStateCount > 0);
   animState->localPoseOffset = Memory::FrameStackPush(model->jointCount * sizeof(M4));
   animState->globalPoseOffset = Memory::FrameStackPush(model->jointCount * sizeof(M4));
   M4 *localPoses = (M4 *)Memory::FrameStackPointer(animState->localPoseOffset);
   M4 *globalPoses = (M4 *)Memory::FrameStackPointer(animState->globalPoseOffset);
-  CalculateLocalPosesForSkeleton(model, animState, localPoses);
+
+  //Calculate local poses for this animation state
+  for (size_t i = 0; i < model->jointCount; i++) {
+    Animation_Joint *joint = &model->joints[i];
+    localPoses[i] = M4Zero();
+
+    for (size_t j = 0; j < animState->animationStateCount; j++) {
+      AnimationClipState *clipState = &animState->animationStates[j];
+      M4 clipLocalPose = CalculateLocalJointPoseForClip(i, joint, model, clipState);
+      localPoses[i] = localPoses[i] + (clipLocalPose * clipState->blendWeightValue);
+    }
+  }
+
   CalculateGlobalPosesForSkeleton(model->joints, model->jointCount, localPoses, globalPoses);
 }
 
@@ -179,7 +198,6 @@ void SetAnimation(AnimationState *animState, AnimationType type) {
   animState->animationStateCount = 1;
 }
 
-//TODO(Torin) Fix bogus crossfading thing
 void CrossFade(AnimationState *animState, F32 durationInSeconds, U32 sourceClip, U32 destClip) {
   assert(animState->animationStateCount != 0);
   animState->blendMode = AnimationBlendMode_SmoothCrossFade;
@@ -190,23 +208,6 @@ void CrossFade(AnimationState *animState, F32 durationInSeconds, U32 sourceClip,
   clipState0->blendWeightValue = 1.0f;
   clipState1->animationClipID = destClip;
   clipState1->blendWeightValue = 0.0f;
+  clipState1->localTimeSeconds = 0.0f;
   animState->animationStateCount = 2;
-}
-
-
-
-//TODO(Torin 2016-12-24) Remove duplication of modelID in animState and entity
-
-//NOTE(Torin 2017-01-08) The model must already be fulled loaded into memory
-//when this procedure is called.  Initalization of the entities animation state
-//is therefore deffered until the model has been loaded.
-void InitalizeAnimationState(AnimationState *animState, ModelAsset *model) {
-  animState->blendDurationTime = 0.0f;
-  animState->blendElapsedTime = 0.0f;
-  animState->blendMode = AnimationBlendMode_None;
-  animState->animationStateCount = 1;
-  AnimationClipState *clipState = &animState->animationStates[0];
-  clipState->blendWeightValue = 1.0f;
-  clipState->animationClipID = FindAnimationClipIndex(model->animationClips, model->animationClipCount, AnimationType_Idle);
-  clipState->playbackSpeedScalar = 1.0f;
 }

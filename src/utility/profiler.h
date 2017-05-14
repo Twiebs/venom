@@ -5,7 +5,7 @@
 struct PersistantProfilerEntry {
   char* name;
   U64 startTime;
-  float elapsedTimes[PROFILER_ELAPSED_TIME_HISTORY_COUNT];
+  F32 elapsedTimes[PROFILER_ELAPSED_TIME_HISTORY_COUNT];
   U64 historyWriteIndex;
 };
 
@@ -13,7 +13,7 @@ struct ExplicitProfilerEntry {
   char *name;
   U64 elapsedCPUCycles;
   U64 elapsedTimeTicks;
-  float elapsedTimeMilliseconds;
+  F32 elapsedTimeMilliseconds;
 };
 
 struct ProfileData {
@@ -22,6 +22,7 @@ struct ProfileData {
   ExplicitProfilerEntry explictEntries[256];
   U32 persistantEntryCount;
   U32 explicitEntryCount;
+  B8 isPaused;
 };
 
 void EndTimedBlock(const char *name);

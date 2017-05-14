@@ -76,11 +76,10 @@ const char *MATERIAL_NAMES[] = {
 #ifdef VENOM_MATERIAL_LIST_FILE
 #include VENOM_MATERIAL_LIST_FILE
 #endif//VENOM_MATERIAL_LIST_FILE
-  "FUCKYOUWINDOWS"
+  "FUCKYOUWINDOWS" //Why is this needed again?
 }; 
 #undef _
 #endif
-#include "debug_imgui.cpp"
 
 #if 0
 static inline
@@ -124,10 +123,12 @@ void LoadMaterialList(MaterialAssetList* list) {
 static inline
 void InitalizeVenomDebugData(GameMemory* memory) {
   RenderState* rs = &memory->renderState;
-  InitializeCamera(&rs->debugCamera, 45.0f * DEG2RAD, 0.01f, 256.0f,
-    memory->systemInfo.screen_width, memory->systemInfo.screen_height);
-  rs->debugCamera.position = V3(0.0f, 4.0f, 0.0f);
-  rs->debugCamera.front = V3(-0.7f, 0.0f, 0.7f);
+
+  //TODO(Torin) Consider removing this shit
+
+  //rs->debugCamera.front = V3(-0.7f, 0.0f, 0.7f);
+
+
   rs->imguiRenderGroup = CreateImGuiRenderGroup();
 }
 
@@ -146,10 +147,10 @@ RenderImGuiDrawList(ImDrawData *data) {
 	glBlendEquation(GL_FUNC_ADD);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-	glViewport(0, 0, system->screen_width, system->screen_height);
+	glViewport(0, 0, system->screenWidth, system->screenHeight);
 	glUseProgram(GetShaderProgram(ShaderID_Sprite, &memory->assetManifest));
-	M4 screenProjection = Orthographic(0.0f, system->screen_width, 
-    0.0f, system->screen_height, -1.0f, 100.0f, -1.0f);
+	M4 screenProjection = Orthographic(0.0f, system->screenWidth, 
+    0.0f, system->screenHeight, -1.0f, 100.0f, -1.0f);
 	glUniformMatrix4fv(2, 1, GL_FALSE, &screenProjection[0][0]);
   glBindVertexArray(rs->imguiRenderGroup.vao);
   glActiveTexture(GL_TEXTURE0);
@@ -165,8 +166,7 @@ RenderImGuiDrawList(ImDrawData *data) {
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, draw_list->IdxBuffer.size() * sizeof(ImDrawIdx),
       &draw_list->IdxBuffer.Data[0], GL_DYNAMIC_DRAW);
 
-    for (const ImDrawCmd* cmd = draw_list->CmdBuffer.begin(); 
-          cmd != draw_list->CmdBuffer.end(); cmd++) {
+    for (const ImDrawCmd* cmd = draw_list->CmdBuffer.begin();  cmd != draw_list->CmdBuffer.end(); cmd++) {
       glBindTexture(GL_TEXTURE_2D, (GLuint)(uintptr_t)cmd->TextureId);
       glDrawElements(GL_TRIANGLES, cmd->ElemCount, GL_UNSIGNED_SHORT, index_buffer_offset);
       index_buffer_offset += cmd->ElemCount;
@@ -217,7 +217,7 @@ EngineAPIList
   U8* pixels;
   int width, height;
   ImGuiIO& io = ImGui::GetIO();
-  //io.Fonts->AddFontFromFileTTF("/usr/share/fonts/TTF/DejaVuSans.ttf", 14);
+  io.Fonts->AddFontFromFileTTF(VENOM_ASSET_DIRECTORY "fonts/Blogger Sans.ttf", 16);
   io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
   GLuint textureID;
   glGenTextures(1, &textureID);
@@ -350,7 +350,7 @@ EngineAPIList
   memory->keyEventCallback = HackVenomKeyEventCallback;
 
 	io.RenderDrawListsFn = RenderImGuiDrawList;
-	io.DisplaySize = ImVec2(system->screen_width, system->screen_height);
+	io.DisplaySize = ImVec2(system->screenWidth, system->screenHeight);
 	io.UserData = memory;
 
   U8* pixels;
@@ -381,7 +381,6 @@ extern "C" void _VenomModuleUpdate(GameMemory* memory) {
   BeginTimedBlock("Update");
   VenomModuleUpdate(memory);
   EndTimedBlock("Update");
-  FinalizeAllTasks(GetEngine());
 }
 
 extern "C"

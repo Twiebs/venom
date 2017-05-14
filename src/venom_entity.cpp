@@ -45,6 +45,7 @@ EntityIndex* outIndex, EntityContainer* container)
   }
 
   entity->rotation = QuaternionIdentity();
+  entity->type = type;
   return entity;
 }
 

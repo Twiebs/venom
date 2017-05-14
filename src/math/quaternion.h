@@ -95,38 +95,8 @@ inline Quaternion QuaternionFromEulerAngles(V3 angles) {
 }
 
 
-inline M4 QuaternionToMatrix(Quaternion& q) {
-#if 0
-  M4 r;
-
-  F32 x2 = q.x*q.x;
-  F32 y2 = q.y*q.y;
-  F32 z2 = q.z*q.z;
-  F32 w2 = q.w*q.w;
-
-  r[0][0] = 1 - (2 * y2) - (2 * z2);
-  r[0][1] = (2 * q.x * q.y) - (2 * q.w * q.z);
-  r[0][2] = (2 * q.x * q.z) + (2 * q.w * q.y);
-  r[0][3] = 0.0f;
-
-  r[1][0] = (2 * q.x * q.y) + (2 * q.w * q.z);
-  r[1][1] = 1.0f - (2.0f * x2) - (2.0f * z2);
-  r[1][2] = (2 * q.y * q.z) - (2 * q.w * q.x);
-  r[1][3] = 0.0f;
-
-  r[2][0] = (2 * q.x * q.z) - (2 * q.w * q.y);
-  r[2][1] = (2 * q.y * q.z) + (2 * q.w * q.x);
-  r[2][2] = 1.0f - (2 * x2) - (2 * y2);
-  r[2][3] = 0.0f;
-
-  r[3][0] = 0.0f;
-  r[3][1] = 0.0f;
-  r[3][2] = 0.0f;
-  r[3][3] = 1.0f;
-
-  return r;
-
-#else //https://github.com/g-truc/glm/blob/master/glm/gtc/quaternion.inl
+inline M4 QuaternionToMatrix4x4(Quaternion& q) {
+ //https://github.com/g-truc/glm/blob/master/glm/gtc/quaternion.inl
   M4 Result = M4Identity();
   F32 qxx(q.x * q.x);
   F32 qyy(q.y * q.y);
@@ -150,11 +120,33 @@ inline M4 QuaternionToMatrix(Quaternion& q) {
   Result[2][1] = F32(2) * (qyz - qwx);
   Result[2][2] = F32(1) - F32(2) * (qxx + qyy);
   return Result;
-#endif
 }
 
+inline Matrix3x3 QuaterionToMatrix3x3(const Quaternion& q) {
+  Matrix3x3 Result;
+  F32 qxx(q.x * q.x);
+  F32 qyy(q.y * q.y);
+  F32 qzz(q.z * q.z);
+  F32 qxz(q.x * q.z);
+  F32 qxy(q.x * q.y);
+  F32 qyz(q.y * q.z);
+  F32 qwx(q.w * q.x);
+  F32 qwy(q.w * q.y);
+  F32 qwz(q.w * q.z);
 
+  Result[0][0] = F32(1) - F32(2) * (qyy + qzz);
+  Result[0][1] = F32(2) * (qxy + qwz);
+  Result[0][2] = F32(2) * (qxz - qwy);
 
+  Result[1][0] = F32(2) * (qxy - qwz);
+  Result[1][1] = F32(1) - F32(2) * (qxx + qzz);
+  Result[1][2] = F32(2) * (qyz + qwx);
+
+  Result[2][0] = F32(2) * (qxz + qwy);
+  Result[2][1] = F32(2) * (qyz - qwx);
+  Result[2][2] = F32(1) - F32(2) * (qxx + qyy);
+  return Result;
+}
 
 inline V3 QuaternionToEuler(const Quaternion& q) {
 //https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles

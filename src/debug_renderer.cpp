@@ -113,7 +113,7 @@ void draw_debug_camera(Camera *camera) {
   cmd->position = camera->position;
 }
 
-void render_debug_draw_commands(Camera *camera, AssetManifest *assetManifest, float deltaTime) {
+void render_debug_draw_commands(Camera *camera, AssetManifest *assetManifest, F32 deltaTime) {
   static const U32 MODEL_MATRIX_LOCATION = 0;
   static const U32 VIEW_MATRIX_LOCATION = 1;
   static const U32 PROJECTION_MATRIX_LOCATION = 2;
@@ -124,9 +124,9 @@ void render_debug_draw_commands(Camera *camera, AssetManifest *assetManifest, fl
   DebugRenderer *debugRenderer = &g_debug_renderer;
   M4 modelMatrix = M4Identity();
   glUseProgram(GetShaderProgram(ShaderID_DebugShape, assetManifest));
-  glUniformMatrix4fv(MODEL_MATRIX_LOCATION, 1, GL_FALSE, &modelMatrix[0][0]);
-  glUniformMatrix4fv(VIEW_MATRIX_LOCATION, 1, GL_FALSE, &camera->view[0][0]);
-  glUniformMatrix4fv(PROJECTION_MATRIX_LOCATION, 1, GL_FALSE, &camera->projection[0][0]);
+  SetUniform(MODEL_MATRIX_LOCATION, modelMatrix);
+  SetUniform(VIEW_MATRIX_LOCATION, camera->viewMatrix);
+  SetUniform(PROJECTION_MATRIX_LOCATION, camera->projectionMatrix);
   glBindVertexArray(debugRenderer->vao);
 
   for (size_t i = 0; i < debugRenderer->drawCommands.count; i++) {
@@ -138,6 +138,7 @@ void render_debug_draw_commands(Camera *camera, AssetManifest *assetManifest, fl
 
     glUniform4fv(COLOR_LOCATION, 1, &cmd->color.x);
     switch (cmd->type) {
+
     case DebugDrawCommand_BOX: {
       V3 boundsSize = Abs(cmd->max - cmd->min);
       modelMatrix = Translate(cmd->min + (boundsSize * 0.5f)) * Scale(boundsSize);
@@ -164,6 +165,12 @@ void render_debug_draw_commands(Camera *camera, AssetManifest *assetManifest, fl
       glUniform1i(USE_LINE_POSITION_LOCATION, 0);
     } break;
 
+    case DebugDrawCommand_TRIANGLE: {
+      modelMatrix = M4Identity();
+      SetUniform(MODEL_MATRIX_LOCATION, modelMatrix);
+
+    } break;
+
     case DebugDrawCommand_AXIS: {
       M4 translation = Translate(cmd->position);
       glUniformMatrix4fv(MODEL_MATRIX_LOCATION, 1, GL_FALSE, &translation[0][0]);
@@ -188,10 +195,6 @@ void render_debug_draw_commands(Camera *camera, AssetManifest *assetManifest, fl
       SetUniform(COLOR_LOCATION, cmd->color);
       glDrawElements(GL_TRIANGLES, debugRenderer->sphereIndexCount,
         GL_UNSIGNED_INT, (void*)(uintptr_t)debugRenderer->sphereIndexOffset);
-    } break;
-
-    case DebugDrawCommand_PLANE: {
-
     } break;
 
     default: {

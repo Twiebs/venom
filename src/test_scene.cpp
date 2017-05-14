@@ -3,20 +3,15 @@
 #define VENOM_MATERIAL_LIST_FILE "assets/asset_list.h"
 
 #include "venom_module.cpp"
-#include "venom_editor.cpp"
+
 #include "venom_entity.cpp"
-
-#include "terrain.cpp"
-
-#include "Game/CameraMovement.cpp"
-#include "Game/CharacterMovement.cpp"
 
 struct GameData {
   Camera camera;
   EntityContainer entityContainer;
   bool initalized;
   Player player;
-  IndexedVertexArray proceduralMesh;
+  IndexedVertexArray procedural ;
   EntityIndex playerEntityIndex;
   TerrainGenerationState terrain;
 };
@@ -43,10 +38,11 @@ void VenomModuleStart(GameMemory* memory) {
   RenderState* rs = &memory->renderState;
   
   BeginProfileEntry("Initalize Terrain Generator");
-  InitalizeTerrainGenerator(&data->terrain, &memory->mainBlock, V3(0.0, 0.0, 0.0));
+  InitalizeTerrainGenerator(&data->terrain, V3(0.0, 0.0, 0.0), &memory->mainBlock);
   EndProfileEntry();
 
   rs->terrain = &data->terrain;
+  GetEngine()->physicsSimulation.terrain = &data->terrain;
 
 #if 0
   {
@@ -66,11 +62,9 @@ void VenomModuleStart(GameMemory* memory) {
   }
 #endif
 
-
-  InitializeCamera(&data->camera, 45*DEG2RAD, 0.1f, 10000.0f, sys->screen_width, sys->screen_height);
+ 
+  InitializeCamera(&data->camera, 45*DEG2RAD, 0.1f, 10000.0f, sys->screenWidth, sys->screenHeight);
   data->camera.position = {4, 10, 2};
-  data->camera.pitch = -89.99f*DEG2RAD;
-  data->camera.yaw = -90.0f*DEG2RAD;
 
 
   EntityContainerInit(&data->entityContainer, 1024, 8);
@@ -83,13 +77,16 @@ void VenomModuleStart(GameMemory* memory) {
     assign_model_to_entity(player_index, GetModelID("player", assetManifest), assetManifest, entityContainer);
     ModelAsset *asset = GetModelAsset(player->modelID, assetManifest);
     player->animation_state.model_id = player->modelID;
+    player->position = player->position += V3(1, 5.0f, 1);
     data->playerEntityIndex = player_index;
 
+#if 0
     Orientation cameraOrientation = CalculateCameraOrientationForTrackTarget(player->position);
     data->camera.position = cameraOrientation.position;
     V3 eulerRotation = QuaternionToEuler(cameraOrientation.rotation);
     data->camera.pitch = eulerRotation.x;
     data->camera.yaw = eulerRotation.y;
+#endif
 
     RNGSeed seed(15);
     ScatterInRectangle(&seed, -128, -128, 256, 256, 8, 8, [&](V2 point) {
@@ -102,8 +99,6 @@ void VenomModuleStart(GameMemory* memory) {
   }
 }
 
-
-
 void VenomModuleUpdate(GameMemory* memory) {
   GameData* data = (GameData*)memory->userdata;
   EntityContainer* entityContainer = &data->entityContainer;
@@ -114,81 +109,37 @@ void VenomModuleUpdate(GameMemory* memory) {
   const SystemInfo* sys = &memory->systemInfo;
   InputState* input = &memory->inputState;
 
-  //Player& player = data->player;
-
-#if 0
-  const float acceleration = 15.0f;
-  const float dragCoefficent = 0.9f;
-  const F32 COOLDOWN_TIME = 0.2f;
-  float deltaTime = memory->deltaTime;
-
-
-  F32 cursorDisplacementX = input->cursorPosX - (sys->screen_width * 0.5f);
-  F32 cursorDisplacementY = input->cursorPosY - (sys->screen_height * 0.5f);
-  V2 displacementVector = { cursorDisplacementX, cursorDisplacementY };
-  displacementVector = Normalize(displacementVector);
-
-  const F32 BULLET_SPEED = 5000.0f;
-  if(input->isButtonDown[MOUSE_LEFT] && player.cooldownTime <= 0.0f) {
-    U64 id = CreateEntity(EntityType_Bullet, entityArray);
-    Entity* entity = &entityArray->entities[id];
-    entity->position = player.position + V3(0.0f, 0.4f, 0.0f);
-    entity->velocity = { displacementVector.x * BULLET_SPEED, 
-      0, displacementVector.y * BULLET_SPEED };
-    entity->bullet.decayTime = 2.0f;
-    entity->bullet.lightColor = V3(0.9, 0.0, 0.2);
-    entity->bullet.bulletRadius = 0.05f;
-    entity->bullet.lightRadius= 1.0;
-    player.cooldownTime += COOLDOWN_TIME; 
-  }
-
-  player.cooldownTime -= deltaTime;
-  if (player.cooldownTime < 0.0f)
-    player.cooldownTime = 0.0f;
-
-  Camera& camera = data->camera;
-  player.position += player.velocity * deltaTime;
-  player.velocity *= dragCoefficent;
-  camera.position.x = Lerp(camera.position.x, player.position.x, 0.2f);
-  camera.position.z = Lerp(camera.position.z, player.position.z, 0.2f);
-#endif
+  Entity *player = GetEntity(data->playerEntityIndex, entityContainer);
 
   EditorData* editor = &memory->editor;
 
-  Entity *player = GetEntity(data->playerEntityIndex, entityContainer);
-  UpdateTerrainFromViewPosition(&data->terrain, player->position);
-  TrackPositionWithCamera(player->position, &data->camera);
+  bool editorHandledInput = process_editor_mode(memory, entityContainer, editor, input, &editor->editorCamera);
 
-  if (input->isButtonDown[MOUSE_RIGHT] && editor->isEditorVisible) {
-    MoveCameraWithFPSControls(&memory->renderState.debugCamera,
-      &memory->inputState, memory->deltaTime);
-  } else {
-    static CharacterMovementParameters params;
-    params.acceleration = 30.0f;
-    params.maxVelocity = 8.0f;
-    params.stopScalar = 0.9f;
-    MovementInput movementInput = KeyboardToMovementInput(input);
-    MoveEntityWithThirdPersonCharacterMovement(player, &movementInput, &params, memory->deltaTime);
+
+
+
+  Engine *engine = GetEngine();
+  FinalizeEngineTasks(engine);
+
+
+  const F32 deltaTime = memory->deltaTime;
+
+  if (engine->isPaused == false) {
+    if (editorHandledInput == false) {
+      PlayerInput playerInput = KeyboardAndMouseToPlayerInput(input);
+      if (playerInput.lookModeActive == false) {
+        UpdateMousePicker(&data->camera);
+      }
+
+      ThirdPersonPlayerControl(player, &data->camera, &playerInput, memory->deltaTime);
+    }
+
+    //UpdateTerrainFromViewPosition(&data->terrain, player->position);
+    UpdateAnimationStates(entityContainer, deltaTime);
+    SimulatePhysics(&engine->physicsSimulation, entityContainer);
   }
 
-
-#if 0
-if (input->isKeyDown[KEYCODE_X]) {
-  if (editor->selectedEntities.count > 0) {
-    for (size_t i = 0; i < editor->selectedEntities.count; i++) {
-      EntityIndex index = {};
-      index.blockIndex = 0;
-      index.slotIndex = editor->selectedEntities[i];
-      DestroyEntity(index, entityContainer);
-}
-    editor->selectedEntities.count = 0;
-      }
-    }
-#endif
-
-
-
-  process_editor_mode(memory, entityContainer, editor, input, &rs->debugCamera);
+  
 }
 
 void VenomModuleLoad(GameMemory* memory) {
@@ -203,15 +154,26 @@ void VenomModuleRender(GameMemory* memory) {
   EditorData* editorData = &memory->editor;
   EditorData* editor = editorData;
 
-  AddDirectionalLight(V3(1.0f, 0.5f, 0.0f), V3(1.0, 1.0, 1.0), &rs->drawList);
+  const V3 sunDirection = Normalize(V3(1.0, 0.5, 0.0f));
+  AddDirectionalLight(sunDirection, V3(1.0, 1.0, 1.0), &rs->drawList);
+
+  auto sunModelID = GetModelID("Sun", GetAssetManifest());
+  auto sunModel = GetModelAsset(sunModelID);
+  AddStaticModelToDrawList(&rs->drawList, sunModel, sunDirection * 10);
+
+  
   
   const F32 deltaTime = memory->deltaTime;
   EntityContainer* entityContainer = &data->entityContainer;
+  
+  auto engine = GetEngine();
+
+
+
   EntityBlock* block = entityContainer->firstAvaibleBlock;
   for (U64 i = 0; i < entityContainer->capacityPerBlock; i++) {
     if (block->flags[i] & EntityFlag_PRESENT) {
       Entity* entity = &block->entities[i];
-      UpdateEntityPhysics(entity, deltaTime);
 
       if(block->types[i] == EntityType_PointLight) {
         AddShadowCastingPointLight(entity->position, entity->pointLight.color, 
@@ -221,13 +183,6 @@ void VenomModuleRender(GameMemory* memory) {
       ModelAsset *model = GetModelAsset(entity->modelID, &memory->assetManifest);
       if (model == nullptr) continue;
       bool is_entity_animated = model->jointCount > 0;
-      if (is_entity_animated) {
-        if (entity->animation_state.isInitalized == false) {
-          InitalizeAnimationState(&entity->animation_state, model);
-        }
-
-        UpdateAnimationState(&entity->animation_state, model, memory->deltaTime);
-      }
 
       if (block->flags[i] & EntityFlag_VISIBLE) {        
         if (editor->selectedEntities.ContainsValue(i)) {
@@ -244,27 +199,26 @@ void VenomModuleRender(GameMemory* memory) {
           position.y += model->size.y * 0.5f;
           AddStaticModelToDrawList(&rs->drawList, model, position, rotation); 
         }
-        
-        VenomDebugRenderSettings *debugRenderSettings = GetDebugRenderSettings();
-        if (debugRenderSettings->drawPhysicsColliders) {
-          V3 boundsMin = entity->position - (model->size * 0.5f);
-          V3 boundsMax = entity->position + (model->size* 0.5f);
-          boundsMin.y += model->size.y * 0.5f;
-          boundsMax.y += model->size.y * 0.5f;
-          draw_debug_box(boundsMin, boundsMax, COLOR_GREEN);
-        }
       }
     }
   }
 
   Camera *camera = nullptr;
+  camera = &data->camera;
+#if 0
   if (editor->isEditorVisible) {
-    camera = &rs->debugCamera;
-    draw_debug_camera(&data->camera);
+    //camera = &editor->editorCamera;
+    ..draw_debug_camera(&data->camera);
   } else {
-    camera = &data->camera;
+    
   }
+#endif
 
+
+  //ImGui::ShowTestWindow();
   
+  rs->newTerrain = &engine->terrain;
+
   VenomRenderScene(memory, camera);
+  RenderVisualizerFramebuffer(editor, memory->deltaTime);
 }

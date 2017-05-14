@@ -23,6 +23,9 @@ typedef float     F32;
 typedef double    F64;
 typedef bool      B8;
 
+static const F32 F32_MIN = FLT_MIN;
+static const F32 F32_MAX = FLT_MAX;
+
 static const U8 INVALID_U8    = 0xFF;
 static const U16 INVALID_U16  = 0xFFFF;
 static const U32 INVALID_U32  = 0xFFFFFFFF;
@@ -56,6 +59,8 @@ static const U64 INVALID_U64  = 0xFFFFFFFFFFFFFFFF;
 #define calloc(size, count) static_assert(false, "DONT USE CALLOC");
 #define realloc(ptr, size) static_assert(false, "DOUNT USE REALLOC");
 #define free(size, count) static_assert(false, "DONT USE FREE");
+#define strdup(str) static_assert(false, "Use CStringDuplicate");
+
 #ifndef VENOM_TRACK_MEMORY
 #define MemoryAllocate(size) MemoryAllocateDefault(size)
 #define MemoryReAllocate(ptr, size) MemoryReAllocateDefault(ptr, size)
@@ -89,18 +94,32 @@ Engine *GetEngine();
 #include "assets/venom_asset.h"
 #include "venom_audio.h"
 #include "animation.h"
+
+#include "Render/Camera.h"
 #include "venom_render.h"
-#include "venom_physics.h"
+
+#include "physics/volume.h"
+#include "venom_entity.h"
+
+#include "physics/collision.h"
+#include "physics/simulation.h"
+
 #include "assets/asset_data.h"
 #include "terrain.h"
 
+#include "NewTerrain.h"
+
 #include "debug_renderer.h"
-#include "venom_entity.h"
+
+#include "Render/PrimitiveRenderer.h"
+#include "Render/RenderText.h"
+
+
 #ifndef VENOM_RELEASE
 #include "utility/profiler.h"
 #include "utility/serializer.h"
 #include "venom_debug.h"
-#include "venom_editor.h"
+#include "Editor/Editor.h"
 #endif//VENOM_RELEASE
 
 #ifndef VENOM_RELEASE
@@ -151,21 +170,23 @@ EngineAPIList
 typedef void (*VenomKeyeEventCallbackPROC)(int keycode, int keysym, int keystate);
 
 struct SystemInfo {
-	S32 opengl_major_version;
-	S32 opengl_minor_version;
-	U64 virtual_memory_size;
-	U32 cpu_core_count;
-	F32 screen_width;
-	F32 screen_height;
+	S32 openglMajorVersion;
+	S32 openglMinorVersion;
+	U64 virtualMemorySize;
+	U32 cpuCoreCount;
+	F32 screenWidth;
+	F32 screenHeight;
 };
 
 struct InputState {
 	B8 isKeyDown[255];
+  B8 isKeyPressed[255];
+  B8 isButtonDown[8];
+  B8 isButtonPressed[8];
 	S32 cursorPosX;
 	S32 cursorPosY;
 	S32 cursorDeltaX;
 	S32 cursorDeltaY;
-	B8 isButtonDown[8];
 };
 
 struct Worker {
@@ -196,8 +217,15 @@ struct MemoryAllocationEntry {
 };
 
 struct Engine {
-  B8 isEngineRunning;
+  B8 isRunning;
+  B8 isPaused;
+  B8 isEditorInFocus;
 
+  PhysicsSimulation physicsSimulation;
+  EntityContainer entityContainer;
+  Terrain terrain;
+
+  //Venom Task system
   Worker *workers;
   U32 workerCount;
   std::mutex workLock;
@@ -220,6 +248,8 @@ struct Engine {
 #endif//VENOM_RELEASE
 };
 
+#include "engine.h"
+
 
 //Rename to somthing better?
 struct RenderState {
@@ -233,8 +263,6 @@ struct RenderState {
   IndexedVertexArray skydomeIVA;
 
 #ifndef VENOM_RELEASE
-  Camera debugCamera;
-
   VenomDebugRenderSettings debugRenderSettings;
   VenomDebugRenderFrameInfo debugRenderFrameInfo;
 
@@ -248,8 +276,8 @@ struct RenderState {
   //TODO(Torin) Remove this
 	ImDrawData *imgui_draw_data;
 
+  Terrain *newTerrain;
   TerrainGenerationState *terrain;
-
 #endif
 };
 

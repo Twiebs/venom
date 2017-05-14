@@ -2,8 +2,12 @@
 void BeginTimedBlock(const char *name) {
   auto engine = GetEngine();
   auto profileData = &engine->profileData;
-
   AquireLock(&profileData->lock);
+  if (profileData->isPaused) {
+    ReleaseLock(&profileData->lock);
+    return;
+  }
+
 
   for (size_t i = 0; i < profileData->persistantEntryCount; i++) {
     PersistantProfilerEntry *entry = &profileData->persistantEntries[i];
@@ -34,6 +38,11 @@ void EndTimedBlock(const char *name) {
   auto profileData = &engine->profileData;
 
   AquireLock(&profileData->lock);
+  if (profileData->isPaused) {
+    ReleaseLock(&profileData->lock);
+    return;
+  }
+
   for (size_t i = 0; i < profileData->persistantEntryCount; i++) {
     PersistantProfilerEntry *entry = &profileData->persistantEntries[i];
     if (strcmp(name, entry->name) == 0) {
@@ -57,6 +66,12 @@ void BeginProfileEntry(const char *name) {
   auto engine = GetEngine();
   auto profileData = &engine->profileData;
   AquireLock(&profileData->lock);
+  if (profileData->isPaused) {
+    ReleaseLock(&profileData->lock);
+    return;
+  }
+
+
   if (profileData->explicitEntryCount > ARRAY_COUNT(profileData->explictEntries)) {
     //TODO(Torin) Serialize!
     assert(false);
@@ -64,13 +79,18 @@ void BeginProfileEntry(const char *name) {
 
   ExplicitProfilerEntry *entry = &profileData->explictEntries[profileData->explicitEntryCount++];
   ReleaseLock(&profileData->lock);
-  entry->name = strdup(name);
+  entry->name = CStringDuplicate(name);
   entry->elapsedTimeTicks = GetPerformanceCounterTime();
 }
 
 void EndProfileEntry() {
   U64 currentTime = GetPerformanceCounterTime();
   auto profileData = &GetEngine()->profileData;
+  if (profileData->isPaused) {
+    ReleaseLock(&profileData->lock);
+    return;
+  }
+
   ExplicitProfilerEntry *entry = &profileData->explictEntries[profileData->explicitEntryCount - 1];
   U64 elapsedTime = currentTime - entry->elapsedTimeTicks;
   F64 frequency = (F64)GetPerformanceCounterFrequency() / 1000.0;
